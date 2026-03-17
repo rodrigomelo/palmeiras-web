@@ -432,7 +432,7 @@
         <p id="last-updated" style="font-size: 0.7rem; opacity: 0.7; margin-top: 0.25rem;"></p>
         <div style="margin-top: 1rem;">
             <p style="font-size: 0.75rem; margin-bottom: 0.5rem; opacity: 0.9;">
-                📅 <strong>Adicionar ao calendário</strong> - Sincronize os jogos do Palmeiras no seu Google Calendar, Apple Calendar ou Outlook
+                📅 <strong>Adicionar ao calendário</strong>
             </p>
             <div style="display:flex; gap:0.5rem; flex-wrap:wrap; justify-content:center; margin-bottom: 0.75rem;">
                 <button onclick="downloadCalendar()" 
@@ -452,6 +452,9 @@
                     <strong>🔗 Copiar Link:</strong> Copia URL para assinatura automática no Google/Apple Calendar.
                 </p>
             </div>
+        </div>
+        <div style="margin-top: 1.5rem; color: var(--text-muted); font-size: 0.8rem;">
+            Portal Version: <span id="portal-version">...</span>
         </div>
     </footer>
 
@@ -973,6 +976,11 @@
                 showError('prediction', 'Erro ao carregar palpite. Tente novamente.', 'loadPrediction()'); 
             }
         }
+
+        // Fetch and display portal version
+        fetch('/version').then(r => r.text()).then(v => {
+            document.getElementById('portal-version').textContent = v;
+        });
 
         document.addEventListener('DOMContentLoaded', () => {
             // Show last updated time

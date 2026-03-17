@@ -3,6 +3,19 @@ Palmeiras Web Dashboard - Flask Server for Vercel
 """
 from flask import Flask, send_from_directory, Response
 import requests
+import subprocess
+import os
+
+def get_git_version():
+    try:
+        return subprocess.check_output(['git', 'describe', '--tags', '--abbrev=0'], stderr=subprocess.DEVNULL).decode().strip()
+    except Exception:
+        return "unknown"
+
+# Write version to file at startup (if not already present)
+if not os.path.exists("version.txt"):
+    with open("version.txt", "w") as f:
+        f.write(get_git_version())
 
 app = Flask(__name__, static_folder='.')
 
@@ -18,6 +31,14 @@ def index():
 def favicon():
     return send_from_directory('.', 'favicon.png')
 
+
+@app.route('/version')
+def version():
+    try:
+        with open("version.txt") as f:
+            return f.read()
+    except Exception:
+        return "unknown"
 
 @app.route('/api/calendar.ics')
 def calendar_ics():
@@ -81,6 +102,17 @@ def calendar_ics():
                     ag = ag if ag is not None else '-'
                     summary = f"🏆 {home_name} {hg} x {ag} {away_name}"
                 
+                    # Additional details
+                    competition = m.get('competition', {})
+                    comp_name = competition.get('name') if isinstance(competition, dict) else str(competition)
+                    venue = m.get('venue', '-')
+                    matchday = m.get('matchday', '-')
+                    # Try to get broadcast info if available
+                    broadcast = m.get('broadcast', '') or m.get('tv', '') or m.get('broadcaster', '')
+                    broadcast_str = f"Broadcast/TV: {broadcast}" if broadcast else "Broadcast/TV: A confirmar"
+                    
+                    description = f"Status: {status}\\nCompeticao: {comp_name}\\nEstadio: {venue}\\nRodada: {matchday}\\n{broadcast_str}"
+                    
                 ics_lines.extend([
                     "BEGIN:VEVENT",
                     f"UID:palmeiras-{match_id}@palmeiras-web",
@@ -88,7 +120,7 @@ def calendar_ics():
                     f"DTSTART;TZID=America/Sao_Paulo:{start}",
                     f"DTEND;TZID=America/Sao_Paulo:{end}",
                     f"SUMMARY:{summary}",
-                    f"DESCRIPTION:Status: {status}",
+                            f"DESCRIPTION:{description}",
                     "END:VEVENT",
                 ])
             except Exception:
@@ -110,3 +142,7 @@ def calendar_ics():
 
 def handler(event, context):
     return app(event, context)
+
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5001, debug=True)
