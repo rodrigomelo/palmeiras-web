@@ -32,7 +32,7 @@ def favicon():
     return send_from_directory('.', 'favicon.png')
 
 
-@app.route('/version')
+@app.route('/api/version')
 def version():
     try:
         with open("version.txt") as f:

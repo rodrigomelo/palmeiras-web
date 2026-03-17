@@ -978,7 +978,7 @@
         }
 
         // Fetch and display portal version
-        fetch('/version').then(r => r.text()).then(v => {
+        fetch('/api/version').then(r => r.text()).then(v => {
             document.getElementById('portal-version').textContent = v;
         });
 
