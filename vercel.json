@@ -6,7 +6,7 @@
   ],
   "routes": [
     { "src": "/api/calendar.ics", "destination": "https://palmeiras-data.vercel.app/api/calendar.ics" },
-    { "src": "/version", "dest": "/api/version" },
+    { "src": "/version", "dest": "/version.txt" },
     { "src": "/(.*)", "dest": "/index.html" }
   ]
 }

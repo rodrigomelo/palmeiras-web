@@ -32,11 +32,13 @@ def favicon():
     return send_from_directory('.', 'favicon.png')
 
 
+
+# Serve version.txt for both /version and /api/version
+@app.route('/version')
 @app.route('/api/version')
 def version():
     try:
-        with open("version.txt") as f:
-            return f.read()
+        return send_from_directory('.', 'version.txt')
     except Exception:
         return "unknown"
 
