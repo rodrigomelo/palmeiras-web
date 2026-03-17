@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Palmeiras - Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="/favicon.png">
+    <style>
+        :root {
+            --bg: #FAFAFA;
+            --bg-card: #FFFFFF;
+            --text: #1A1A1A;
+            --text-secondary: #666666;
+            --text-muted: #999999;
+            --palmeiras-green: #01753B;
+            --palmeiras-green-dark: #014726;
+            --palmeiras-green-light: #E8F5E9;
+            --palmeiras-gold: #FFD700;
+            --shadow: 0 4px 20px rgba(1,117,59,0.1);
+            --border-radius: 16px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e8f5e9 100%);
+            color: var(--text);
+            min-height: 100vh;
+            padding-bottom: 2rem;
+        }
+
+        .header {
+            background: linear-gradient(135deg, var(--palmeiras-green), var(--palmeiras-green-dark));
+            padding: 2rem 1.5rem;
+            text-align: center;
+        }
+
+        .header-content {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+        }
+
+        .logo {
+            width: 80px;
+            height: 80px;
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .logo svg {
+            width: 60px;
+            height: 60px;
+        }
+
+        .header-text h1 {
+            font-size: 2rem;
+            color: white;
+            font-weight: 800;
+        }
+
+        .header-text .subtitle { color: rgba(255,255,255,0.9); font-size: 0.9rem; }
+
+        .container { max-width: 900px; margin: -1.5rem auto 0; padding: 0 1rem; }
+
+        /* Hero Card */
+        .hero-card {
+            background: linear-gradient(135deg, var(--palmeiras-green), #0a5a2d);
+            border-radius: var(--border-radius);
+            color: white;
+            text-align: center;
+            margin-bottom: 1.5rem;
+            box-shadow: var(--shadow);
+            perspective: 1000px;
+            min-height: 280px;
+        }
+        
+        .hero-card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+        }
+        
+        .hero-card.flipped .hero-card-inner {
+            transform: rotateY(180deg);
+        }
+        
+        .hero-card-front, .hero-card-back {
+            position: absolute;
+            width: 100%;
+            backface-visibility: hidden;
+            padding: 1.5rem;
+        }
+        
+        .hero-card-back {
+            transform: rotateY(180deg);
+            background: linear-gradient(135deg, #014726, #01753B);
+            border-radius: var(--border-radius);
+        }
+        
+        .hero-card-toggle {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            z-index: 10;
+        }
+
+        .hero-comp {
+            display: inline-block;
+            background: rgba(255,255,255,0.2);
+            padding: 0.3rem 1rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            margin-bottom: 1rem;
+        }
+
+        .hero-teams { display: flex; justify-content: space-around; align-items: center; }
+        .hero-team { flex: 1; text-align: center; }
+        .hero-team-name { font-size: 1rem; font-weight: 600; margin-top: 0.5rem; }
+        .hero-vs { font-size: 1.5rem; font-weight: bold; opacity: 0.8; }
+        .hero-score { font-size: 2.5rem; font-weight: 800; }
+        .hero-date { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.2); font-size: 1.2rem; font-weight: 600; }
+
+        /* Info Bar */
+        .info-bar { display: flex; gap: 1rem; margin-bottom: 1.5rem; }
+        .info-card {
+            flex: 1;
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            box-shadow: var(--shadow);
+        }
+        .info-icon { font-size: 1.3rem; }
+        .info-label { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; }
+        .info-value { font-size: 0.9rem; font-weight: 600; }
+
+        /* Cards */
+        .card {
+            background: var(--bg-card);
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            box-shadow: var(--shadow);
+        }
+
+        .card-title {
+            color: var(--palmeiras-green);
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* Tabs */
+        .tabs { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
+        .tab-btn {
+            padding: 0.6rem 1rem;
+            background: var(--bg-card);
+            border: none;
+            border-radius: 8px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: var(--shadow);
+            transition: all 0.2s;
+        }
+        .tab-btn:hover { background: var(--palmeiras-green-light); }
+        .tab-btn.active { background: var(--palmeiras-green); color: white; }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* Matches */
+        .match-item {
+            padding: 1rem;
+            background: var(--bg);
+            border-radius: 8px;
+            margin-bottom: 0.75rem;
+            border-left: 3px solid var(--palmeiras-green);
+        }
+
+        .match-header { display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.8rem; color: var(--text-muted); }
+        .match-teams { display: flex; justify-content: space-between; align-items: center; font-weight: 500; }
+
+        /* Standings */
+        .position-badge {
+            display: inline-block;
+            background: var(--palmeiras-green);
+            color: white;
+            width: 50px;
+            height: 50px;
+            line-height: 50px;
+            border-radius: 50%;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; margin-top: 1rem; }
+        .stat-box { text-align: center; padding: 0.75rem; background: var(--bg); border-radius: 8px; }
+        .stat-value { font-size: 1.2rem; font-weight: 700; color: var(--palmeiras-green); }
+        .stat-label { font-size: 0.7rem; color: var(--text-muted); }
+
+        /* News */
+        .news-item {
+            padding: 1rem;
+            background: var(--bg);
+            border-radius: 8px;
+            margin-bottom: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .news-item:hover { background: var(--palmeiras-green-light); }
+        .news-title { font-weight: 600; font-size: 0.95rem; margin-bottom: 0.25rem; }
+        .news-meta { font-size: 0.75rem; color: var(--text-muted); }
+        .news-source { color: var(--palmeiras-green); font-weight: 600; }
+
+        /* Stats Detailed */
+        .stat-row { display: flex; justify-content: space-between; padding: 0.75rem 0; border-bottom: 1px solid var(--bg); }
+        .stat-row:last-child { border-bottom: none; }
+        .stat-name { font-weight: 500; }
+        .stat-bar-container { flex: 1; margin: 0 1rem; background: var(--bg); border-radius: 4px; height: 8px; position: relative; }
+        .stat-bar { height: 100%; background: var(--palmeiras-green); border-radius: 4px; }
+        .stat-number { font-weight: 700; min-width: 40px; text-align: right; }
+
+        /* Prediction */
+        .prediction-card { text-align: center; padding: 1.5rem; }
+        .prediction-probs { display: flex; justify-content: space-around; margin-top: 1rem; }
+        .prob-box { text-align: center; }
+        .prob-value { font-size: 2rem; font-weight: 800; color: var(--palmeiras-green); }
+        .prob-label { font-size: 0.8rem; color: var(--text-muted); }
+
+        /* Graph placeholder */
+        .graph-placeholder {
+            height: 150px;
+            background: var(--bg);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+        }
+
+        /* Loading / Empty / Error States */
+        .loading, .empty { text-align: center; padding: 2rem; color: var(--text-muted); }
+        .loading::after { content: ''; display: inline-block; width: 16px; height: 16px; border: 2px solid var(--palmeiras-green); border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite; margin-left: 8px; vertical-align: middle; }
+        
+        /* Enhanced loading with skeleton */
+        .skeleton { background: linear-gradient(90deg, var(--bg) 25%, #e0e0e0 50%, var(--bg) 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 4px; }
+        .skeleton-card { padding: 1rem; background: var(--bg); border-radius: 8px; margin-bottom: 0.75rem; }
+        .skeleton-line { height: 16px; background: linear-gradient(90deg, var(--bg) 25%, #e0e0e0 50%, var(--bg) 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 4px; margin-bottom: 8px; }
+        .skeleton-line.short { width: 40%; }
+        .skeleton-line.medium { width: 70%; }
+        
+        /* Error state */
+        .error-state { text-align: center; padding: 2rem; color: #dc3545; }
+        .error-state .error-icon { font-size: 2rem; margin-bottom: 0.5rem; }
+        .error-state .error-message { color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem; }
+        .error-state .retry-btn { background: var(--palmeiras-green); color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; }
+        .error-state .retry-btn:hover { background: var(--palmeiras-green-dark); }
+        
+        @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .footer { text-align: center; padding: 2rem; color: var(--text-muted); font-size: 0.8rem; }
+
+        @media (max-width: 600px) {
+            .header h1 { font-size: 1.5rem; }
+            .container { padding: 0 0.75rem; }
+            .hero-teams { flex-direction: column; gap: 0.5rem; }
+            .info-bar { flex-direction: column; }
+            .stats-grid { grid-template-columns: repeat(3, 1fr); }
+
+            /* Flip card for matches */
+            .match-item { position: relative; min-height: 80px; perspective: 1000px; }
+            .match-front, .match-back { backface-visibility: hidden; transition: transform 0.4s; transform-style: preserve-3d; }
+            .match-back { position: absolute; top: 0; left: 0; right: 0; background: var(--palmeiras-green); border-radius: 8px; color: white; transform: rotateY(180deg); }
+            .match-item.flipped .match-front { transform: rotateY(180deg); }
+            .match-item.expanded .match-extra { display: block !important; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Palmeiras Shield SVG -->
+    <svg style="display:none">
+        <symbol id="palmeiras-shield" viewBox="0 0 100 100">
+            <defs>
+                <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" style="stop-color:#01753B"/>
+                    <stop offset="100%" style="stop-color:#014726"/>
+                </linearGradient>
+            </defs>
+            <path d="M50 5 L95 20 L95 50 Q95 80 50 95 Q5 80 5 50 L5 20 Z" fill="url(#shieldGrad)" stroke="#FFD700" stroke-width="2"/>
+            <path d="M50 15 L80 25 L80 50 Q80 70 50 80 Q20 70 20 50 L20 25 Z" fill="#FFFFFF"/>
+            <path d="M35 35 L50 30 L65 35 L65 55 Q50 60 35 55 Z" fill="#01753B"/>
+            <circle cx="50" cy="45" r="8" fill="#FFD700"/>
+            <text x="50" y="48" text-anchor="middle" font-size="6" font-weight="bold" fill="#01753B">SEP</text>
+            <path d="M30 62 L50 58 L70 62 L70 72 Q50 76 30 72 Z" fill="#01753B"/>
+            <path d="M25 75 L50 70 L75 75 L75 85 Q50 90 25 85 Z" fill="#FFD700"/>
+        </symbol>
+    </svg>
+
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <svg viewBox="0 0 100 100" width="60" height="60">
+                    <circle cx="50" cy="50" r="48" fill="#01753B"/>
+                    <circle cx="50" cy="50" r="42" fill="white"/>
+                    <circle cx="50" cy="50" r="38" fill="#01753B"/>
+                    <path d="M50 22 L54 34 L67 34 L57 43 L61 55 L50 46 L39 55 L43 43 L33 34 L46 34 Z" fill="white"/>
+                    <text x="50" y="72" text-anchor="middle" fill="white" font-size="12" font-weight="bold">SEP</text>
+                </svg>
+            </div>
+            <div class="header-text">
+                <h1>Palmeiras</h1>
+                <div class="subtitle">Dashboard Verdao <button onclick="location.reload()" style="margin-left:10px;padding:4px 10px;background:rgba(255,255,255,0.2);color:white;border:none;border-radius:4px;cursor:pointer;font-size:0.8rem" title="Atualizar dados">🔄</button></div>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <!-- Hero -->
+        <div class="hero-card" id="hero-match">
+            <div class="hero-card-inner">
+                <div class="hero-card-front" id="hero-front">
+                    <div class="empty" style="color:white">Carregando dados...</div>
+                </div>
+                <div class="hero-card-back" id="hero-back">
+                    <div style="padding-top:1rem">
+                        <h3 style="margin-bottom:1rem">Detalhes do Jogo</h3>
+                        <p>Carregando...</p>
+                    </div>
+                </div>
+            </div>
+            <button class="hero-card-toggle" onclick="document.getElementById('hero-match').classList.toggle('flipped')">ℹ️</button>
+        </div>
+
+        <!-- Info Bar -->
+        <div class="info-bar">
+            <div class="info-card">
+                <span class="info-icon">TV</span>
+                <div>
+                    <div class="info-label">Transmissao</div>
+                    <div class="info-value" id="where-watch">-</div>
+                </div>
+            </div>
+            <div class="info-card">
+                <span class="info-icon">EST</span>
+                <div>
+                    <div class="info-label">Estadio</div>
+                    <div class="info-value" id="stadium-info">-</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="proximos">Proximos</button>
+            <button class="tab-btn" data-tab="resultados">Resultados</button>
+            <button class="tab-btn" data-tab="classificacao">Tabela</button>
+            <button class="tab-btn" data-tab="estatisticas">Estatisticas</button>
+            <button class="tab-btn" data-tab="news">Noticias</button>
+            <button class="tab-btn" data-tab="palpites">Palpites</button>
+        </div>
+
+        <div id="proximos" class="tab-content active">
+            <div class="card">
+                <div class="card-title">Proximos Jogos <button onclick="localStorage.removeItem('palmeiras_matches');location.reload()" style="float:right;background:none;border:none;cursor:pointer;font-size:0.9rem" title="Atualizar">🔄</button></div>
+                <div id="next-matches"><div class="empty">Carregando dados...</div></div>
+            </div>
+        </div>
+
+        <div id="resultados" class="tab-content">
+            <div class="card">
+                <div class="card-title">Resultados <button onclick="localStorage.removeItem('palmeiras_results');location.reload()" style="float:right;background:none;border:none;cursor:pointer;font-size:0.9rem" title="Atualizar">🔄</button></div>
+                <div id="recent-results"><div class="empty">Carregando dados...</div></div>
+            </div>
+        </div>
+
+        <div id="classificacao" class="tab-content">
+            <div class="card">
+                <div class="card-title">Classificacao - Brasileirato <button onclick="localStorage.removeItem('palmeiras_standings');location.reload()" style="float:right;background:none;border:none;cursor:pointer;font-size:0.9rem" title="Atualizar">🔄</button></div>
+                <div id="standings"><div class="empty">Carregando dados...</div></div>
+            </div>
+        </div>
+
+        <div id="estatisticas" class="tab-content">
+            <div class="card">
+                <div class="card-title">Estatisticas da Temporada</div>
+                <div id="team-stats"><div class="empty">Carregando dados...</div></div>
+            </div>
+        </div>
+
+        <div id="news" class="tab-content">
+            <div class="card">
+                <div class="card-title">Noticias Recentes</div>
+                <div id="news-list"><div class="empty">Carregando dados...</div></div>
+            </div>
+        </div>
+
+        <div id="palpites" class="tab-content">
+            <div class="card">
+                <div class="card-title">Palpite do Proximo Jogo</div>
+                <div id="prediction"><div class="empty">Carregando dados...</div></div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>Dados: football-data.org | ge.globo</p>
+        <p id="last-updated" style="font-size: 0.7rem; opacity: 0.7; margin-top: 0.25rem;"></p>
+        <div style="margin-top: 1rem;">
+            <p style="font-size: 0.75rem; margin-bottom: 0.5rem; opacity: 0.9;">
+                📅 <strong>Adicionar ao calendário</strong> - Sincronize os jogos do Palmeiras no seu Google Calendar, Apple Calendar ou Outlook
+            </p>
+            <div style="display:flex; gap:0.5rem; flex-wrap:wrap; justify-content:center; margin-bottom: 0.75rem;">
+                <button onclick="downloadCalendar()" 
+                   style="background: #065f46; color: white; padding: 0.6rem 1.2rem; border-radius: 6px; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 0.5rem; border:none;cursor:pointer">
+                    📥 Baixar
+                </button>
+                <button onclick="copyCalendarUrl()" 
+                   style="background: #047857; color: white; padding: 0.6rem 1.2rem; border-radius: 6px; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 0.5rem; border:none;cursor:pointer">
+                    🔗 Copiar Link
+                </button>
+            </div>
+            <div style="text-align: center; padding: 0 1rem;">
+                <p style="font-size: 0.7rem; color: var(--text-muted); margin: 0.25rem 0;">
+                    <strong>📥 Baixar .ICS:</strong> Baixa um arquivo de calendário para importar manualmente. Inclui todos os jogos.
+                </p>
+                <p style="font-size: 0.7rem; color: var(--text-muted); margin: 0.25rem 0;">
+                    <strong>🔗 Copiar Link:</strong> Copia URL para assinatura automática no Google/Apple Calendar.
+                </p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Call Data API - local port 5002 for dev, Vercel URL for prod
+        // Always use Vercel API for consistency (local and production use same data source)
+        const isLocal = window.location.hostname === 'localhost' || window.location.hostname.startsWith('192.168.') || window.location.hostname.startsWith('10.') || window.location.hostname.startsWith('127.');
+        const DATA_API = isLocal ? 'http://localhost:5002/api' : 'https://palmeiras-data.vercel.app/api';
+        
+        // CONSTANT calendar subscription URL - NEVER CHANGE THIS
+        // Relative path - dynamically gets full URL when copying
+        const CALENDAR_URL = '/api/calendar.ics';
+        
+        // Copy calendar subscription URL - builds full URL dynamically
+        async function copyCalendarUrl() {
+            const fullUrl = window.location.origin + CALENDAR_URL;
+            try {
+                await navigator.clipboard.writeText(fullUrl);
+                alert('Link copiado! ✅\n\nCole no Google Calendar, Apple Calendar ou outro app de calendário.');
+            } catch(e) {
+                prompt('Copie este link:', fullUrl);
+            }
+        }
+        
+        // Download calendar ICS - includes ALL matches (past and future)
+        async function downloadCalendar() {
+            try {
+                // Fetch ALL matches - past and future
+                const res = await fetch(`${DATA_API}/matches?status=FINISHED,TIMED,SCHEDULED,IN_PLAY&limit=50`);
+                const data = await res.json();
+                const matches = data.matches || [];
+                
+                let ics = [
+                    "BEGIN:VCALENDAR",
+                    "VERSION:2.0",
+                    "PRODID:-//Palmeiras//Dashboard//EN",
+                    "X-WR-CALNAME:Palmeiras - Jogos",
+                    "CALSCALE:GREGORIAN",
+                    "METHOD:PUBLISH"
+                ];
+                
+                // Generate calendar ICS with Sao Paulo timezone
+                for (const m of matches) {
+                    // Convert UTC to Sao Paulo time (GMT-3)
+                    const dt = new Date(m.utcDate);
+                    const spOffset = -3 * 60 * 60 * 1000; // -3 hours in ms
+                    const dtSP = new Date(dt.getTime() + spOffset);
+                    
+                    const start = dtSP.toISOString().replace(/[-:]/g, '').split('.')[0];
+                    const endSP = new Date(dtSP.getTime() + 2 * 60 * 60 * 1000); // +2 hours
+                    const end = endSP.toISOString().replace(/[-:]/g, '').split('.')[0];
+                    const home = m.homeTeam?.name || 'Home';
+                    const away = m.awayTeam?.name || 'Away';
+                    const status = m.status || '';
+                    
+                    // Add score for finished matches
+                    let summary = `🏆 ${home} x ${away}`;
+                    if (status === 'FINISHED') {
+                        const score = m.score?.fullTime || {};
+                        const homeGoals = score.home ?? '-';
+                        const awayGoals = score.away ?? '-';
+                        summary = `🏆 ${home} ${homeGoals} x ${awayGoals} ${away}`;
+                    }
+                    
+                    ics.push("BEGIN:VEVENT");
+                    ics.push(`UID:palmeiras-${m.id}@palmeiras-dashboard`);
+                    ics.push(`DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').split('.')[0]}Z`);
+                    ics.push(`DTSTART:${start}`);
+                    ics.push(`DTEND:${end}`);
+                    ics.push(`SUMMARY:${summary}`);
+                    ics.push(`DESCRIPTION:Status: ${status}`);
+                    ics.push("END:VEVENT");
+                }
+                
+                ics.push("END:VCALENDAR");
+                
+                const blob = new Blob([ics.join('\n')], { type: 'text/calendar' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'palmeiras-calendar.ics';
+                a.click();
+                URL.revokeObjectURL(url);
+            } catch(e) {
+                alert('Erro ao gerar calendário: ' + e.message);
+            }
+        }
+        const TEAM_ID = 1769;
+        const BR_TZ = 'America/Sao_Paulo';
+
+        function formatDate(dateStr) {
+            return new Date(dateStr).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: BR_TZ });
+        }
+
+        function formatTime(dateStr) {
+            return new Date(dateStr).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: BR_TZ });
+        }
+
+        function formatComp(comp) {
+            const names = { 'BSA': 'Brasileirao', 'COPA_DO_BRASIL': 'Copa do Brasil', 'LIBERTADORES': 'Libertadores' };
+            return names[comp?.code] || comp?.name || 'Campeonato';
+        }
+
+        // ========== ENHANCED LOADING & ERROR HANDLING ==========
+        
+        // Loading skeleton HTML
+        function showLoadingSkeleton(containerId, type = 'card') {
+            const container = document.getElementById(containerId);
+            if (type === 'card') {
+                container.innerHTML = `
+                    <div class="skeleton-card"><div class="skeleton-line short"></div><div class="skeleton-line medium"></div></div>
+                    <div class="skeleton-card"><div class="skeleton-line short"></div><div class="skeleton-line medium"></div></div>
+                    <div class="skeleton-card"><div class="skeleton-line short"></div><div class="skeleton-line medium"></div></div>
+                `;
+            } else if (type === 'hero') {
+                container.innerHTML = `
+                    <div style="padding: 2rem">
+                        <div class="skeleton-line" style="height: 24px; width: 50%; margin: 0 auto 1rem;"></div>
+                        <div style="display: flex; justify-content: space-around; align-items: center; margin: 1rem 0">
+                            <div class="skeleton-line" style="width: 80px; height: 80px; border-radius: 50%;"></div>
+                            <div class="skeleton-line" style="width: 60px; height: 40px;"></div>
+                            <div class="skeleton-line" style="width: 80px; height: 80px; border-radius: 50%;"></div>
+                        </div>
+                        <div class="skeleton-line" style="height: 20px; width: 40%; margin: 1rem auto;"></div>
+                    </div>
+                `;
+            } else if (type === 'stats') {
+                container.innerHTML = `
+                    <div style="text-align: center;">
+                        <div class="skeleton-line" style="width: 60px; height: 60px; border-radius: 50%; margin: 0 auto 1rem;"></div>
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem;">
+                            <div class="skeleton-card"><div class="skeleton-line"></div></div>
+                            <div class="skeleton-card"><div class="skeleton-line"></div></div>
+                            <div class="skeleton-card"><div class="skeleton-line"></div></div>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+        
+        // Error state HTML
+        function showError(containerId, message, onRetry = null) {
+            const container = document.getElementById(containerId);
+            const retryHtml = onRetry ? `<button class="retry-btn" onclick="${onRetry}">🔄 Tentar novamente</button>` : '';
+            container.innerHTML = `
+                <div class="error-state">
+                    <div class="error-icon">⚠️</div>
+                    <div class="error-message">${message}</div>
+                    ${retryHtml}
+                </div>
+            `;
+        }
+        
+        // ========== EXISTING FETCH FUNCTION ==========
+        
+        // Cache utility - always fetch fresh from server (no client-side caching)
+        async function fetchWithCache(url, cacheKey, ttl = 0) {
+            try {
+                console.log('Fetching:', url);
+                const separator = url.includes('?') ? '&' : '?';
+                const freshUrl = url + separator + '_t=' + Date.now();
+                const response = await fetch(freshUrl);
+                console.log('Response:', response.status, response.statusText);
+                if (!response.ok) {
+                    console.error('Fetch failed:', response.status);
+                    return { matches: [], error: response.status, errorMsg: `Erro HTTP ${response.status}` };
+                }
+                let data = await response.json();
+                console.log('Data length:', data.length);
+                if (Array.isArray(data)) {
+                    data = { matches: data };
+                }
+                return data;
+            } catch(e) {
+                console.error('Exception:', e);
+                return { matches: [], error: e.message, errorMsg: `Erro de conexão: ${e.message}` };
+            }
+        }
+        // Tabs
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                btn.classList.add('active');
+                document.getElementById(btn.dataset.tab).classList.add('active');
+            });
+        });
+
+        // Quick Stats
+        async function loadQuickStats() {
+            const positionEl = document.getElementById('stat-position');
+            const pointsEl = document.getElementById('stat-points');
+            const formEl = document.getElementById('stat-form');
+            
+            // Show loading
+            if(positionEl) positionEl.textContent = '...';
+            if(pointsEl) pointsEl.textContent = '...';
+            if(formEl) formEl.textContent = '...';
+            
+            try {
+                const res = await fetch(`${DATA_API}/standings?competition=BSA`);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                // Handle new flat array format from Supabase
+                const standingsArray = data.standings || data || [];
+                
+                for (const s of standingsArray) {
+                    if (s.team) {
+                        const teamData = typeof s.team === 'string' ? JSON.parse(s.team) : s.team;
+                        if (teamData.id === TEAM_ID) {
+                            positionEl.textContent = s.position;
+                            pointsEl.textContent = s.points;
+                            break;
+                        }
+                    }
+                }
+                
+                // Form
+                const formRes = await fetch(`${DATA_API}/matches?status=FINISHED&limit=5`);
+                if (!formRes.ok) throw new Error(`HTTP ${formRes.status}`);
+                const formData = await formRes.json();
+                const matches = formData.matches || [];
+                const form = matches.map(m => {
+                    const isHome = m.homeTeam.id === parseInt(TEAM_ID);
+                    const our = isHome ? m.score.fullTime.home : m.score.fullTime.away;
+                    const opp = isHome ? m.score.fullTime.away : m.score.fullTime.home;
+                    return our > opp ? 'V' : our < opp ? 'D' : 'E';
+                }).join('');
+                formEl.textContent = form || '-';
+            } catch(e) { 
+                console.log('Quick stats error:', e);
+                if(positionEl) positionEl.textContent = '-';
+                if(pointsEl) pointsEl.textContent = '-';
+                if(formEl) formEl.textContent = '-';
+            }
+        }
+
+        // Hero
+        async function loadHero() {
+            const container = document.getElementById('hero-match');
+            showLoadingSkeleton('hero-front', 'hero');
+            try {
+                const data = await fetchWithCache(`${DATA_API}/matches?status=SCHEDULED,TIMED,IN_PLAY&limit=5`, 'palmeiras_hero');
+                if (data.error) {
+                    showError('hero-front', data.errorMsg || 'Erro ao carregar próximo jogo', 'loadHero()');
+                    return;
+                }
+                const match = data.matches?.[0];
+                if (!match) { document.getElementById('hero-front').innerHTML = '<div class="empty" style="color:white">Nenhum jogo agendado</div>'; return; }
+
+                const home = match.homeTeam, away = match.awayTeam;
+                const isHome = home.id === TEAM_ID;
+                const comp = formatComp(match.competition);
+                
+                // Get day of week
+                const matchDate = new Date(match.utcDate);
+                const dayOfWeek = matchDate.toLocaleDateString('pt-BR', { weekday: 'long', timeZone: BR_TZ });
+
+                document.getElementById('where-watch').textContent = 'Rodada ' + (match.matchday || '-');
+                document.getElementById('stadium-info').textContent = isHome ? 'Allianz Parque' : (match.venue || 'A definir');
+
+                // Check if match is live
+                const isLive = match.status === 'IN_PLAY';
+                const score = match.score?.fullTime || {};
+                const homeGoals = score.home ?? '-';
+                const awayGoals = score.away ?? '-';
+                const liveBadge = isLive ? '<span style="background:#ff4444;padding:2px 8px;border-radius:4px;font-size:0.75rem;margin-right:8px">🔴 AO VIVO</span>' : '';
+                
+                // Use shield for Palmeiras, placeholder for opponent
+                document.getElementById('hero-front').innerHTML = `
+                    <div class="hero-comp">${liveBadge}${comp}</div>
+                    <div class="hero-teams">
+                        <div class="hero-team">
+                            <img src="${home.crest || 'https://crests.football-data.org/1769.png'}" style="width:50px;height:50px" onerror="this.src='https://crests.football-data.org/1769.png'">
+                            <div class="hero-team-name">${home.name}</div>
+                        </div>
+                        <div class="hero-vs" style="font-size:${isLive?'2rem':'1.5rem'};color:${isLive?'#ff4444':'inherit'}">${isLive ? homeGoals + ' x ' + awayGoals : 'X'}</div>
+                        <div class="hero-team">
+                            <img src="${away.crest || 'https://crests.football-data.org/4364.png'}" style="width:50px;height:50px" onerror="this.src='https://crests.football-data.org/4364.png'">
+                            <div class="hero-team-name">${away.name}</div>
+                        </div>
+                    </div>
+                    <div class="hero-date">${isLive ? 'JOGANDO AGORA' : formatDate(match.utcDate) + ' - ' + formatTime(match.utcDate)}<span style="display:block;font-size:0.85rem;opacity:0.8;margin-top:0.3rem;font-weight:400">${isLive ? '' : dayOfWeek}</span></div>
+                `;
+                
+                // Populate back card
+                const matchday = match.matchday || '-';
+                const stadium = isHome ? 'Allianz Parque' : (match.venue || 'A definir');
+                document.getElementById('hero-back').innerHTML = `
+                    <div style="padding-top:1rem">
+                        <h3 style="margin-bottom:1rem">Detalhes do Jogo</h3>
+                        <p style="margin:0.5rem 0"><strong>Rodada:</strong> ${matchday}</p>
+                        <p style="margin:0.5rem 0"><strong>Estadio:</strong> ${stadium}</p>
+                        <p style="margin:0.5rem 0"><strong>Competicao:</strong> ${comp}</p>
+                        <p style="margin:0.5rem 0"><strong>Transmissao:</strong> A confirmar</p>
+                    </div>
+                `;
+            } catch (e) { 
+                showError('hero-front', 'Erro ao carregar próximo jogo. Tente novamente.', 'loadHero()');
+                console.error('Hero error:', e);
+            }
+        }
+
+        // Matches
+        async function loadMatches() {
+            const container = document.getElementById('next-matches');
+            showLoadingSkeleton('next-matches', 'card');
+            try {
+                const data = await fetchWithCache(`${DATA_API}/matches?status=SCHEDULED,TIMED,IN_PLAY&limit=10`, 'palmeiras_matches');
+                if (data.error) {
+                    showError('next-matches', data.errorMsg || 'Erro ao carregar jogos', 'loadMatches()');
+                    return;
+                }
+                const matches = data.matches || [];
+                if (!matches.length) { container.innerHTML = '<div class="empty">Nenhum jogo agendado</div>'; return; }
+                container.innerHTML = matches.map(m => `
+                    <div class="match-item" onclick="var x=this.querySelector(".match-extra");x.style.display=(x.style.display==="none"?"block":"none")"><div class="match-extra" style="display:none;padding:0.5rem;background:var(--palmeiras-green);border-radius:8px;margin-top:0.5rem;color:white"><p style="margin:0.2rem 0;font-size:0.8rem">🏟️ Estadio</p><p style="margin:0.2rem 0;font-size:0.8rem">📺 Transmissão: A confirmar</p><p style="margin:0.2rem 0;font-size:0.8rem">⚽ Rodada</p></div>
+                        <div class="match-header"><span>${formatDate(m.utcDate)} - ${formatTime(m.utcDate)}</span><span>${formatComp(m.competition)}</span></div>
+                        <div class="match-teams"><span><img src="${m.homeTeam.crest}" style="width:20px;height:20px;vertical-align:middle;margin-right:4px">${m.homeTeam.name}</span><span style="color:var(--text-muted)">X</span><span>${m.awayTeam.name}<img src="${m.awayTeam.crest}" style="width:20px;height:20px;vertical-align:middle;margin-left:4px"></span></div>
+                    </div>
+                `).join('');
+            } catch (e) { 
+                showError('next-matches', 'Erro ao carregar jogos. Tente novamente.', 'loadMatches()'); 
+            }
+        }
+
+        // Results
+        async function loadResults() {
+            const container = document.getElementById('recent-results');
+            showLoadingSkeleton('recent-results', 'card');
+            try {
+                const res = await fetch(`${DATA_API}/matches?status=FINISHED&limit=5`);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                const matches = data.matches || [];
+                if (!matches.length) { container.innerHTML = '<div class="empty">Nenhum resultado encontrado</div>'; return; }
+                container.innerHTML = matches.map(m => {
+                    const isHome = m.homeTeam.id === TEAM_ID;
+                    const ourScore = isHome ? m.score.fullTime.home : m.score.fullTime.away;
+                    const oppScore = isHome ? m.score.fullTime.away : m.score.fullTime.home;
+                    const oppName = isHome ? m.awayTeam.name : m.homeTeam.name;
+                    const resultClass = ourScore > oppScore ? 'win' : ourScore < oppScore ? 'loss' : 'draw';
+                    const resultText = ourScore > oppScore ? 'V' : ourScore < oppScore ? 'D' : 'E';
+                    return `<div class="match-item" onclick="var x=this.querySelector(".match-extra");x.style.display=(x.style.display==="none"?"block":"none")"><div class="match-extra" style="display:none;padding:0.5rem;background:var(--palmeiras-green);border-radius:8px;margin-top:0.5rem;color:white"><p style="margin:0.2rem 0;font-size:0.8rem">🏟️ Estadio</p><p style="margin:0.2rem 0;font-size:0.8rem">📺 Transmissão: A confirmar</p><p style="margin:0.2rem 0;font-size:0.8rem">⚽ Rodada</p></div>
+                        <div class="match-header"><span>${formatDate(m.utcDate)}</span><span>${formatComp(m.competition)}</span></div>
+                        <div class="match-teams">
+                            <span>${isHome ? '🟢' : '⚪'} ${oppName}</span>
+                            <span style="display:flex;align-items:center;gap:0.5rem">
+                                <span style="padding:0.2rem 0.5rem;border-radius:4px;font-size:0.75rem;font-weight:600;background:${(resultClass==='win')?'#d4edda':(resultClass==='loss')?'#f8d7da':'#fff3cd'};color:${(resultClass==='win')?'#155724':(resultClass==='loss')?'#721c24':'#856404'}">${resultText}</span>
+                                <span style="font-weight:700">${ourScore} - ${oppScore}</span>
+                            </span>
+                        </div>
+                    </div>`;
+                }).join('');
+            } catch (e) { 
+                showError('recent-results', 'Erro ao carregar resultados. Tente novamente.', 'loadResults()'); 
+            }
+        }
+
+        // Standings with detailed stats
+        async function loadStandings() {
+            const container = document.getElementById('standings');
+            showLoadingSkeleton('standings', 'stats');
+            try {
+                const data = await fetchWithCache(`${DATA_API}/standings?competition=BSA`, 'palmeiras_standings');
+                if (data.error) {
+                    showError('standings', data.errorMsg || 'Erro ao carregar classificação', 'loadStandings()');
+                    return;
+                }
+                
+                let pos = null, pts = 0, p = 0, w = 0, d = 0, l = 0, gf = 0, ga = 0;
+                // Handle flat array format from Supabase
+                const standingsArray = data.standings || data || [];
+                
+                for (const s of standingsArray) {
+                    if (s.team) {
+                        const teamData = typeof s.team === 'string' ? JSON.parse(s.team) : s.team;
+                        if (teamData.id === TEAM_ID) { 
+                            pos = s.position;
+                            pts = s.points;
+                            p = s.played_games;
+                            w = s.won;
+                            d = s.drawn || 0;
+                            l = s.lost;
+                            gf = s.goals_for;
+                            ga = s.goals_against;
+                            break;
+                        }
+                    }
+                }
+                
+                if (!pos) { container.innerHTML = '<div class="empty">Dados de classificação indisponíveis</div>'; return; }
+                
+                const gd = gf - ga;
+                const avgPts = p > 0 ? (pts / p).toFixed(2) : 0;
+                const winRate = p > 0 ? Math.round((w / p) * 100) : 0;
+                
+                container.innerHTML = `
+                    <div style="text-align:center">
+                        <div class="position-badge">${pos}º</div>
+                        <div class="stats-grid">
+                            <div class="stat-box"><div class="stat-value">${pts}</div><div class="stat-label">Pontos</div></div>
+                            <div class="stat-box"><div class="stat-value">${p}</div><div class="stat-label">Jogos</div></div>
+                            <div class="stat-box"><div class="stat-value">${avgPts}</div><div class="stat-label">Pts/Jogo</div></div>
+                        </div>
+                        <div class="stats-grid" style="margin-top:0.5rem">
+                            <div class="stat-box"><div class="stat-value" style="color:#27ae60">${w}</div><div class="stat-label">Vitorias</div></div>
+                            <div class="stat-box"><div class="stat-value" style="color:#f39c12">${d}</div><div class="stat-label">Empates</div></div>
+                            <div class="stat-box"><div class="stat-value" style="color:#e74c3c">${l}</div><div class="stat-label">Derrotas</div></div>
+                        </div>
+                        <div class="stats-grid" style="margin-top:0.5rem">
+                            <div class="stat-box"><div class="stat-value">${gf}</div><div class="stat-label">Gols Pro</div></div>
+                            <div class="stat-box"><div class="stat-value">${ga}</div><div class="stat-label">Gols Contra</div></div>
+                            <div class="stat-box"><div class="stat-value" style="color:${gd>=0?'#27ae60':'#e74c3c'}">${gd >= 0 ? '+' : ''}${gd}</div><div class="stat-label">Saldo</div></div>
+                        </div>
+                    </div>
+                `;
+            } catch (e) { 
+                showError('standings', 'Erro ao carregar classificação. Tente novamente.', 'loadStandings()');
+                console.error('Standings error:', e);
+            }
+        }
+
+        // Team Stats
+        async function loadTeamStats() {
+            const container = document.getElementById('team-stats');
+            showLoadingSkeleton('team-stats', 'card');
+            try {
+                const res = await fetch(`${DATA_API}/matches?status=FINISHED&limit=20`);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                const matches = data.matches || [];
+                if (!matches.length) { container.innerHTML = '<div class="empty">Nenhum dado disponível</div>'; return; }
+
+                let wins = 0, draws = 0, losses = 0, goalsFor = 0, goalsAgainst = 0;
+                matches.forEach(m => {
+                    const isHome = m.homeTeam.id === TEAM_ID;
+                    const gf = isHome ? m.score.fullTime.home : m.score.fullTime.away;
+                    const ga = isHome ? m.score.fullTime.away : m.score.fullTime.home;
+                    goalsFor += gf; goalsAgainst += ga;
+                    if (gf > ga) wins++; else if (gf < ga) losses++; else draws++;
+                });
+
+                const total = wins + draws + losses;
+                const winPct = total ? Math.round(wins / total * 100) : 0;
+
+                container.innerHTML = `
+                    <div class="stat-row"><span class="stat-name">Jogos</span><span class="stat-number">${total}</span></div>
+                    <div class="stat-row"><span class="stat-name">Vitorias</span><span class="stat-number">${wins}</span></div>
+                    <div class="stat-row"><span class="stat-name">Empates</span><span class="stat-number">${draws}</span></div>
+                    <div class="stat-row"><span class="stat-name">Derrotas</span><span class="stat-number">${losses}</span></div>
+                    <div class="stat-row"><span class="stat-name">Gols Pro</span><span class="stat-number">${goalsFor}</span></div>
+                    <div class="stat-row"><span class="stat-name">Gols Contra</span><span class="stat-number">${goalsAgainst}</span></div>
+                    <div class="stat-row"><span class="stat-name">Saldo</span><span class="stat-number">${goalsFor - goalsAgainst}</span></div>
+                    <div class="stat-row"><span class="stat-name">Aproveitamento</span><span class="stat-number">${winPct}%</span></div>
+                `;
+            } catch (e) { 
+                showError('team-stats', 'Erro ao carregar estatísticas. Tente novamente.', 'loadTeamStats()'); 
+            }
+        }
+
+        // News - reads from our Data API (Supabase)
+        async function loadNews() {
+            const container = document.getElementById('news-list');
+            showLoadingSkeleton('news-list', 'card');
+            
+            try {
+                const res = await fetch(`${DATA_API}/news`);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                const news = data.articles || [];
+                
+                if (news.length) {
+                    container.innerHTML = news.slice(0, 8).map(n => `
+                        <div class="news-item" onclick="window.open('${n.url}', '_blank')">
+                            <div class="news-title">${n.title}</div>
+                            <div class="news-meta"><span class="news-source">${data.source || 'ge.globo'}</span></div>
+                        </div>
+                    `).join('');
+                    return;
+                }
+                
+                container.innerHTML = '<div class="empty">Nenhuma notícia disponível</div>';
+            } catch (e) {
+                console.error('News error:', e);
+                showError('news-list', 'Erro ao carregar notícias. Tente novamente.', 'loadNews()');
+            }
+        }
+
+        // Prediction
+        async function loadPrediction() {
+            const container = document.getElementById('prediction');
+            showLoadingSkeleton('prediction', 'card');
+            try {
+                const res = await fetch(`${DATA_API}/matches?status=SCHEDULED,TIMED,IN_PLAY&limit=1`);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                const match = data.matches?.[0];
+                if (!match) { container.innerHTML = '<div class="empty">Nenhum jogo para palpitar</div>'; return; }
+
+                // Simple prediction based on home/away
+                const isHome = match.homeTeam.id === TEAM_ID;
+                const homeWin = isHome ? 45 : 30;
+                const draw = 28;
+                const awayWin = 100 - homeWin - draw;
+
+                container.innerHTML = `
+                    <div class="prediction-card">
+                        <div style="font-size:1.1rem;font-weight:600;margin-bottom:0.5rem">${match.homeTeam.name} X ${match.awayTeam.name}</div>
+                        <div class="prediction-probs">
+                            <div class="prob-box"><div class="prob-value">${homeWin}%</div><div class="prob-label">${isHome ? 'V' : 'D'}</div></div>
+                            <div class="prob-box"><div class="prob-value">${draw}%</div><div class="prob-label">Empate</div></div>
+                            <div class="prob-box"><div class="prob-value">${awayWin}%</div><div class="prob-label">${isHome ? 'D' : 'V'}</div></div>
+                        </div>
+                        <div style="margin-top:1rem;font-size:0.8rem;color:var(--text-muted)">* Palpite simples baseado em mando de campo</div>
+                    </div>
+                `;
+            } catch (e) { 
+                showError('prediction', 'Erro ao carregar palpite. Tente novamente.', 'loadPrediction()'); 
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Show last updated time
+            const now = new Date();
+            document.getElementById('last-updated').textContent = 'Atualizado: ' + now.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+            
+            loadQuickStats();
+            loadHero();
+            loadMatches();
+            loadResults();
+            loadStandings();
+            loadTeamStats();
+            loadNews();
+            loadPrediction();
+        });
+    </script>
+</body>
+</html>

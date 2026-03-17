@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "builds": [
+    { "src": "index.html", "use": "@vercel/static" },
+    { "src": "favicon.png", "use": "@vercel/static" }
+  ],
+  "routes": [
+    { "src": "/api/calendar.ics", "destination": "https://palmeiras-data.vercel.app/api/calendar.ics" },
+    { "src": "/(.*)", "dest": "/index.html" }
+  ]
+}
