@@ -977,8 +977,8 @@
             }
         }
 
-        // Fetch and display portal version
-        fetch('/api/version').then(r => r.text()).then(v => {
+        // Fetch and display portal version (works both local and Vercel)
+        fetch('/version').then(r => r.text()).then(v => {
             document.getElementById('portal-version').textContent = v;
         });
 
