@@ -110,9 +110,28 @@
         // Minute estimation
         const minute = isLive ? estimateMinute(match.utcDate) : null;
 
+        // Venue: use API value, or Allianz Parque for home, or opponent stadium for away
+        function getVenue(match) {
+            if (match.venue) return match.venue;
+            if (match.homeTeam?.id === TEAM_ID) return 'Allianz Parque';
+            // Known stadiums
+            const stadiums = {
+                1776: 'Morumbi',        // São Paulo
+                1777: 'Fonte Nova',     // Bahia
+                1770: 'Nilton Santos',  // Botafogo
+                1779: 'Maracanã',       // Flamengo/Fluminense
+                1783: 'Beira-Rio',      // Internacional
+                1766: 'Mineirão',       // Cruzeiro
+                1780: 'Castelão',       // Fortaleza
+                1765: 'Arena MRV',      // Atlético-MG
+            };
+            const awayId = match.awayTeam?.id === TEAM_ID ? match.homeTeam?.id : match.awayTeam?.id;
+            return stadiums[awayId] || 'A definir';
+        }
+
         // Info bar
         document.getElementById('where-watch').textContent = match.broadcast || 'Rodada ' + (match.matchday || '-');
-        document.getElementById('stadium-info').textContent = match.venue || (home.id === TEAM_ID ? 'Allianz Parque' : 'A definir');
+        document.getElementById('stadium-info').textContent = getVenue(match);
 
         // Score display
         let scoreHtml;
@@ -139,11 +158,12 @@
             <div class="hero-date">${isLive ? 'JOGANDO AGORA' : formatDate(match.utcDate) + ' · ' + formatTime(match.utcDate)}<span style="display:block;font-size:0.85rem;opacity:0.8;margin-top:0.3rem;font-weight:400">${isLive ? '' : dayOfWeek}</span></div>`;
 
         // Back card with details
+        const venue = getVenue(match);
         const htScore = (ht.home != null && ht.away != null) ? `<p style="margin:0.5rem 0"><strong>1º tempo:</strong> ${ht.home}–${ht.away}</p>` : '';
         document.getElementById('hero-back').innerHTML = `
             <div style="padding-top:1rem"><h3 style="margin-bottom:1rem">Detalhes do Jogo</h3>
             <p style="margin:0.5rem 0"><strong>Rodada:</strong> ${match.matchday || '-'}</p>
-            <p style="margin:0.5rem 0"><strong>Estádio:</strong> ${match.venue || (home.id === TEAM_ID ? 'Allianz Parque' : 'A definir')}</p>
+            <p style="margin:0.5rem 0"><strong>Estádio:</strong> ${venue}</p>
             <p style="margin:0.5rem 0"><strong>Competição:</strong> ${comp}</p>
             <p style="margin:0.5rem 0"><strong>Transmissão:</strong> ${match.broadcast || 'A confirmar'}</p>
             ${htScore}
@@ -168,7 +188,10 @@
 
         document.getElementById('next-matches').innerHTML = matches.map(m => {
             const isLive = m.status === 'IN_PLAY';
-            const venue = m.venue || (m.homeTeam.id === TEAM_ID ? 'Allianz Parque' : 'A definir');
+            const venue = m.venue || (m.homeTeam.id === TEAM_ID ? 'Allianz Parque' : (function() {
+                const stadiums = { 1776: 'Morumbi', 1777: 'Fonte Nova', 1770: 'Nilton Santos', 1779: 'Maracanã', 1783: 'Beira-Rio', 1766: 'Mineirão', 1780: 'Castelão', 1765: 'Arena MRV' };
+                return stadiums[m.homeTeam?.id] || 'A definir';
+            })());
             const ht = m.score?.halfTime || {};
             const htInfo = (ht.home != null) ? `<div class="match-extra-row"><span class="icon">⏱️</span> 1º tempo: ${ht.home}–${ht.away}</div>` : '';
 
