@@ -159,7 +159,7 @@ class handler(BaseHTTPRequestHandler):
 
             self.send_response(200)
             self.send_header('Content-Type', 'text/calendar; charset=utf-8')
-            self.send_header('Cache-Control', 'public, max-age=3600')
+            self.send_header('Cache-Control', 'public, max-age=900')
             self.end_headers()
             self.wfile.write('\r\n'.join(lines).encode('utf-8'))
 
