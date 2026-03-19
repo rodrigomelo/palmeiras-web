@@ -1,0 +1,21 @@
+# Environment
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Logs
+*.log
+*.err
+
+# OS
+.DS_Store
+
+# Version
+version.txt
+
+# Vercel
+.vercel/

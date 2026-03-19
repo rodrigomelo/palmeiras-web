@@ -1,0 +1,16 @@
+# Byte-compiled / optimized
+__pycache__/
+*.py[cod]
+
+# Environment
+.env
+
+# Logs
+*.log
+*.err
+
+# OS
+.DS_Store
+
+# Version
+version.txt
