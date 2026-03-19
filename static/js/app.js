@@ -1,14 +1,18 @@
 /**
- * Palmeiras Dashboard - Client Application
+ * Palmeiras Dashboard v3 — With Athena's design system
  *
- * API is always same-origin (/api/*) — no environment detection needed.
- * Works on Vercel (production) and vercel dev (local) without changes.
+ * Features:
+ * - Live match with estimated minute + auto-refresh
+ * - Color-coded results (win/draw/loss)
+ * - Animated transitions
+ * - Standings with Palmeiras highlighted
  */
 (function () {
     'use strict';
 
     const TEAM_ID = 1769;
     const BR_TZ = 'America/Sao_Paulo';
+    let liveInterval = null;
 
     // --- Helpers ---
     function formatDate(d) {
@@ -18,8 +22,21 @@
         return new Date(d).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: BR_TZ });
     }
     function formatComp(comp) {
-        const names = { BSA: 'Brasileirao', COPA_DO_BRASIL: 'Copa do Brasil', LIBERTADORES: 'Libertadores' };
+        const names = { BSA: 'Brasileirão', COPA_DO_BRASIL: 'Copa do Brasil', LIBERTADORES: 'Libertadores' };
         return names[comp?.code] || comp?.name || 'Campeonato';
+    }
+
+    // --- Minute Estimation ---
+    function estimateMinute(utcDate) {
+        const kickoff = new Date(utcDate);
+        const now = new Date();
+        const elapsedMin = Math.floor((now - kickoff) / 60000);
+
+        if (elapsedMin < 0) return null;
+        if (elapsedMin <= 45) return `~${elapsedMin}'`;
+        if (elapsedMin <= 60) return '~Intervalo';
+        if (elapsedMin <= 105) return `~${elapsedMin - 15}'`;
+        return '~Encerrando';
     }
 
     // --- UI States ---
@@ -57,7 +74,12 @@
                 document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
                 document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
                 btn.classList.add('active');
-                document.getElementById(btn.dataset.tab).classList.add('active');
+                const target = document.getElementById(btn.dataset.tab);
+                target.classList.add('active');
+                // Re-trigger animation
+                target.style.animation = 'none';
+                target.offsetHeight;
+                target.style.animation = '';
             });
         });
     }
@@ -76,27 +98,64 @@
         const dayOfWeek = dt.toLocaleDateString('pt-BR', { weekday: 'long', timeZone: BR_TZ });
         const isLive = match.status === 'IN_PLAY';
         const score = match.score?.fullTime || {};
-        const liveBadge = isLive ? '<span style="background:#ff4444;padding:2px 8px;border-radius:4px;font-size:0.75rem;margin-right:8px">AO VIVO</span>' : '';
+        const ht = match.score?.halfTime || {};
 
+        // Hero card live state
+        const heroCard = document.getElementById('hero-match');
+        heroCard.classList.toggle('live', isLive);
+
+        // Live badge with pulsing dot
+        const liveBadge = isLive ? '<span class="live-dot"></span>AO VIVO' : '';
+
+        // Minute estimation
+        const minute = isLive ? estimateMinute(match.utcDate) : null;
+
+        // Info bar
         document.getElementById('where-watch').textContent = match.broadcast || 'Rodada ' + (match.matchday || '-');
         document.getElementById('stadium-info').textContent = match.venue || (home.id === TEAM_ID ? 'Allianz Parque' : 'A definir');
 
-        document.getElementById('hero-front').innerHTML = `
-            <div class="hero-comp">${liveBadge}${comp}</div>
-            <div class="hero-teams">
-                <div class="hero-team"><img src="${home.crest || ''}" style="width:50px;height:50px" onerror="this.src='https://crests.football-data.org/1769.png'"><div class="hero-team-name">${home.name}</div></div>
-                <div class="hero-vs" style="font-size:${isLive ? '2rem' : '1.5rem'};color:${isLive ? '#ff4444' : 'inherit'}">${isLive ? score.home + ' x ' + score.away : 'X'}</div>
-                <div class="hero-team"><img src="${away.crest || ''}" style="width:50px;height:50px" onerror="this.src='https://crests.football-data.org/4364.png'"><div class="hero-team-name">${away.name}</div></div>
-            </div>
-            <div class="hero-date">${isLive ? 'JOGANDO AGORA' : formatDate(match.utcDate) + ' - ' + formatTime(match.utcDate)}<span style="display:block;font-size:0.85rem;opacity:0.8;margin-top:0.3rem;font-weight:400">${isLive ? '' : dayOfWeek}</span></div>`;
+        // Score display
+        let scoreHtml;
+        if (isLive) {
+            scoreHtml = `<div class="hero-score">${score.home ?? 0} × ${score.away ?? 0}</div>`;
+            if (minute) scoreHtml += `<div class="hero-minute">${minute}</div>`;
+        } else {
+            scoreHtml = `<div class="hero-vs">×</div>`;
+        }
 
+        document.getElementById('hero-front').innerHTML = `
+            <div class="hero-comp">${liveBadge ? liveBadge + ' · ' : ''}${comp}</div>
+            <div class="hero-teams">
+                <div class="hero-team">
+                    <img src="${home.crest || ''}" style="width:56px;height:56px" onerror="this.src='https://crests.football-data.org/1769.png'">
+                    <div class="hero-team-name">${home.shortName || home.name}</div>
+                </div>
+                ${scoreHtml}
+                <div class="hero-team">
+                    <img src="${away.crest || ''}" style="width:56px;height:56px" onerror="this.src='https://crests.football-data.org/4364.png'">
+                    <div class="hero-team-name">${away.shortName || away.name}</div>
+                </div>
+            </div>
+            <div class="hero-date">${isLive ? 'JOGANDO AGORA' : formatDate(match.utcDate) + ' · ' + formatTime(match.utcDate)}<span style="display:block;font-size:0.85rem;opacity:0.8;margin-top:0.3rem;font-weight:400">${isLive ? '' : dayOfWeek}</span></div>`;
+
+        // Back card with details
+        const htScore = (ht.home != null && ht.away != null) ? `<p style="margin:0.5rem 0"><strong>1º tempo:</strong> ${ht.home}–${ht.away}</p>` : '';
         document.getElementById('hero-back').innerHTML = `
             <div style="padding-top:1rem"><h3 style="margin-bottom:1rem">Detalhes do Jogo</h3>
             <p style="margin:0.5rem 0"><strong>Rodada:</strong> ${match.matchday || '-'}</p>
-            <p style="margin:0.5rem 0"><strong>Estadio:</strong> ${match.venue || (home.id === TEAM_ID ? 'Allianz Parque' : 'A definir')}</p>
-            <p style="margin:0.5rem 0"><strong>Competicao:</strong> ${comp}</p>
-            <p style="margin:0.5rem 0"><strong>Transmissao:</strong> ${match.broadcast || 'A confirmar'}</p>
+            <p style="margin:0.5rem 0"><strong>Estádio:</strong> ${match.venue || (home.id === TEAM_ID ? 'Allianz Parque' : 'A definir')}</p>
+            <p style="margin:0.5rem 0"><strong>Competição:</strong> ${comp}</p>
+            <p style="margin:0.5rem 0"><strong>Transmissão:</strong> ${match.broadcast || 'A confirmar'}</p>
+            ${htScore}
             ${match.stage && match.stage !== 'REGULAR_SEASON' ? `<p style="margin:0.5rem 0"><strong>Fase:</strong> ${match.stage}</p>` : ''}</div>`;
+
+        // Auto-refresh during live
+        if (isLive && !liveInterval) {
+            liveInterval = setInterval(() => loadHero(), 30000);
+        } else if (!isLive && liveInterval) {
+            clearInterval(liveInterval);
+            liveInterval = null;
+        }
     }
 
     // --- Matches ---
@@ -107,22 +166,36 @@
         const matches = data.matches || [];
         if (!matches.length) { showEmpty('next-matches', 'Nenhum jogo agendado'); return; }
 
-        document.getElementById('next-matches').innerHTML = matches.map(m => `
-            <div class="match-item">
-                <div class="match-extra"><p style="margin:0.2rem 0;font-size:0.8rem">🏟️ ${m.venue || (m.homeTeam.id === TEAM_ID ? 'Allianz Parque' : 'TBD')}</p><p style="margin:0.2rem 0;font-size:0.8rem">📺 ${m.broadcast || 'A confirmar'}</p><p style="margin:0.2rem 0;font-size:0.8rem">⚽ Rodada ${m.matchday || '-'}${m.stage && m.stage !== 'REGULAR_SEASON' ? ' — ' + m.stage : ''}</p></div>
-                <div class="match-header"><span>${formatDate(m.utcDate)} - ${formatTime(m.utcDate)}</span><span>${formatComp(m.competition)}</span></div>
-                <div class="match-teams"><span><img src="${m.homeTeam.crest}" style="width:20px;height:20px;vertical-align:middle;margin-right:4px">${m.homeTeam.name}</span><span style="color:var(--text-muted)">X</span><span>${m.awayTeam.name}<img src="${m.awayTeam.crest}" style="width:20px;height:20px;vertical-align:middle;margin-left:4px"></span></div>
-            </div>`).join('');
+        document.getElementById('next-matches').innerHTML = matches.map(m => {
+            const isLive = m.status === 'IN_PLAY';
+            const venue = m.venue || (m.homeTeam.id === TEAM_ID ? 'Allianz Parque' : 'TBD');
+            return `<div class="match-item">
+                <div class="match-extra">
+                    <p style="margin:0.2rem 0;font-size:0.8rem">🏟️ ${venue}</p>
+                    <p style="margin:0.2rem 0;font-size:0.8rem">📺 ${m.broadcast || 'A confirmar'}</p>
+                    <p style="margin:0.2rem 0;font-size:0.8rem">⚽ Rodada ${m.matchday || '-'}${m.stage && m.stage !== 'REGULAR_SEASON' ? ' · ' + m.stage : ''}</p>
+                </div>
+                <div class="match-header"><span>${isLive ? '<span class="live-dot"></span>AO VIVO · ' : ''}${formatDate(m.utcDate)} · ${formatTime(m.utcDate)}</span><span>${formatComp(m.competition)}</span></div>
+                <div class="match-teams">
+                    <span><img src="${m.homeTeam.crest}" style="width:20px;height:20px;vertical-align:middle;margin-right:4px">${m.homeTeam.shortName || m.homeTeam.name}</span>
+                    <span style="color:var(--text-muted)">×</span>
+                    <span>${m.awayTeam.shortName || m.awayTeam.name}<img src="${m.awayTeam.crest}" style="width:20px;height:20px;vertical-align:middle;margin-left:4px"></span>
+                </div>
+            </div>`;
+        }).join('');
 
         document.querySelectorAll('#next-matches .match-item').forEach(el => {
-            el.addEventListener('click', () => { const x = el.querySelector('.match-extra'); x.style.display = x.style.display === 'none' ? 'block' : 'none'; });
+            el.addEventListener('click', () => {
+                const extra = el.querySelector('.match-extra');
+                extra.style.display = extra.style.display === 'none' ? 'block' : 'none';
+            });
         });
     }
 
     // --- Results ---
     async function loadResults() {
         showSkeleton('recent-results');
-        const data = await api('matches?status=FINISHED&limit=5');
+        const data = await api('matches?status=FINISHED&limit=8');
         if (!data) { showError('recent-results', 'Erro ao carregar', 'loadResults'); return; }
         const matches = data.matches || [];
         if (!matches.length) { showEmpty('recent-results', 'Nenhum resultado'); return; }
@@ -131,19 +204,35 @@
             const isHome = m.homeTeam.id === TEAM_ID;
             const our = isHome ? m.score.fullTime.home : m.score.fullTime.away;
             const opp = isHome ? m.score.fullTime.away : m.score.fullTime.home;
-            const oppName = isHome ? m.awayTeam.name : m.homeTeam.name;
+            const oppName = isHome ? m.awayTeam.shortName || m.awayTeam.name : m.homeTeam.shortName || m.homeTeam.name;
             const r = our > opp ? 'V' : our < opp ? 'D' : 'E';
-            const colors = { V: ['#d4edda', '#155724'], D: ['#f8d7da', '#721c24'], E: ['#fff3cd', '#856404'] };
-            const [bg, fg] = colors[r];
-            return `<div class="match-item">
-                <div class="match-extra"><p style="margin:0.2rem 0;font-size:0.8rem">🏟️ ${m.venue || 'TBD'}</p><p style="margin:0.2rem 0;font-size:0.8rem">📺 ${m.broadcast || 'A confirmar'}</p><p style="margin:0.2rem 0;font-size:0.8rem">⚽ Rodada ${m.matchday || '-'}${m.stage && m.stage !== 'REGULAR_SEASON' ? ' — ' + m.stage : ''}</p></div>
+            const resultClass = r === 'V' ? 'win' : r === 'D' ? 'loss' : 'draw';
+
+            const ht = m.score?.halfTime || {};
+            const htInfo = (ht.home != null) ? ` (1º: ${ht.home}–${ht.away})` : '';
+
+            return `<div class="match-item ${resultClass}">
+                <div class="match-extra">
+                    <p style="margin:0.2rem 0;font-size:0.8rem">🏟️ ${m.venue || 'TBD'}</p>
+                    <p style="margin:0.2rem 0;font-size:0.8rem">📺 ${m.broadcast || 'A confirmar'}</p>
+                    <p style="margin:0.2rem 0;font-size:0.8rem">⚽ Rodada ${m.matchday || '-'}${htInfo}</p>
+                </div>
                 <div class="match-header"><span>${formatDate(m.utcDate)}</span><span>${formatComp(m.competition)}</span></div>
-                <div class="match-teams"><span>${isHome ? '🟢' : '⚪'} ${oppName}</span><span style="display:flex;align-items:center;gap:0.5rem"><span style="padding:0.2rem 0.5rem;border-radius:4px;font-size:0.75rem;font-weight:600;background:${bg};color:${fg}">${r}</span><span style="font-weight:700">${our} - ${opp}</span></span></div>
+                <div class="match-teams">
+                    <span>${isHome ? '🟢' : '⚪'} ${oppName}</span>
+                    <span style="display:flex;align-items:center;gap:0.5rem">
+                        <span class="result-badge ${resultClass}">${r}</span>
+                        <span style="font-weight:700;font-size:1.1rem">${our} – ${opp}</span>
+                    </span>
+                </div>
             </div>`;
         }).join('');
 
         document.querySelectorAll('#recent-results .match-item').forEach(el => {
-            el.addEventListener('click', () => { const x = el.querySelector('.match-extra'); x.style.display = x.style.display === 'none' ? 'block' : 'none'; });
+            el.addEventListener('click', () => {
+                const extra = el.querySelector('.match-extra');
+                extra.style.display = extra.style.display === 'none' ? 'block' : 'none';
+            });
         });
     }
 
@@ -154,16 +243,52 @@
         if (!data) { showError('standings', 'Erro ao carregar', 'loadStandings'); return; }
         const rows = data.standings || [];
         const team = rows.find(s => { const t = typeof s.team === 'string' ? JSON.parse(s.team) : s.team; return t.id === TEAM_ID; });
-        if (!team) { showEmpty('standings', 'Dados indisponiveis'); return; }
+        if (!team) { showEmpty('standings', 'Dados indisponíveis'); return; }
 
+        // Position badge with stats
         const gd = team.goals_for - team.goals_against;
         const avg = team.played_games > 0 ? (team.points / team.played_games).toFixed(2) : '0';
 
+        // Full table
+        const tableHtml = rows.map(s => {
+            const t = typeof s.team === 'string' ? JSON.parse(s.team) : s.team;
+            const isPalmeiras = t.id === TEAM_ID;
+            return `<div class="standings-row ${isPalmeiras ? 'palmeiras' : ''}">
+                <span class="pos">${s.position}</span>
+                <span class="team">${t.shortName || t.name}</span>
+                <span class="stats">
+                    <span>J${s.played_games}</span>
+                    <span style="color:var(--win)">V${s.won}</span>
+                    <span style="color:var(--draw)">E${s.drawn}</span>
+                    <span style="color:var(--loss)">D${s.lost}</span>
+                    <span>SG${(s.goals_for - s.goals_against) >= 0 ? '+' : ''}${s.goals_for - s.goals_against}</span>
+                </span>
+                <span class="pts">${s.points}</span>
+            </div>`;
+        }).join('');
+
         document.getElementById('standings').innerHTML = `
-            <div style="text-align:center"><div class="position-badge">${team.position}º</div>
-            <div class="stats-grid"><div class="stat-box"><div class="stat-value">${team.points}</div><div class="stat-label">Pontos</div></div><div class="stat-box"><div class="stat-value">${team.played_games}</div><div class="stat-label">Jogos</div></div><div class="stat-box"><div class="stat-value">${avg}</div><div class="stat-label">Pts/Jogo</div></div></div>
-            <div class="stats-grid" style="margin-top:0.5rem"><div class="stat-box"><div class="stat-value" style="color:#27ae60">${team.won}</div><div class="stat-label">Vitorias</div></div><div class="stat-box"><div class="stat-value" style="color:#f39c12">${team.drawn}</div><div class="stat-label">Empates</div></div><div class="stat-box"><div class="stat-value" style="color:#e74c3c">${team.lost}</div><div class="stat-label">Derrotas</div></div></div>
-            <div class="stats-grid" style="margin-top:0.5rem"><div class="stat-box"><div class="stat-value">${team.goals_for}</div><div class="stat-label">Gols Pro</div></div><div class="stat-box"><div class="stat-value">${team.goals_against}</div><div class="stat-label">Gols Contra</div></div><div class="stat-box"><div class="stat-value" style="color:${gd >= 0 ? '#27ae60' : '#e74c3c'}">${gd >= 0 ? '+' : ''}${gd}</div><div class="stat-label">Saldo</div></div></div></div>`;
+            <div style="text-align:center;margin-bottom:1.5rem">
+                <div class="position-badge">${team.position}º</div>
+                <div class="stats-grid">
+                    <div class="stat-box"><div class="stat-value">${team.points}</div><div class="stat-label">Pontos</div></div>
+                    <div class="stat-box"><div class="stat-value">${team.played_games}</div><div class="stat-label">Jogos</div></div>
+                    <div class="stat-box"><div class="stat-value">${avg}</div><div class="stat-label">Pts/Jogo</div></div>
+                </div>
+                <div class="stats-grid" style="margin-top:0.5rem">
+                    <div class="stat-box"><div class="stat-value" style="color:var(--win)">${team.won}</div><div class="stat-label">Vitórias</div></div>
+                    <div class="stat-box"><div class="stat-value" style="color:var(--draw)">${team.drawn}</div><div class="stat-label">Empates</div></div>
+                    <div class="stat-box"><div class="stat-value" style="color:var(--loss)">${team.lost}</div><div class="stat-label">Derrotas</div></div>
+                </div>
+                <div class="stats-grid" style="margin-top:0.5rem">
+                    <div class="stat-box"><div class="stat-value">${team.goals_for}</div><div class="stat-label">Gols Pro</div></div>
+                    <div class="stat-box"><div class="stat-value">${team.goals_against}</div><div class="stat-label">Gols Contra</div></div>
+                    <div class="stat-box"><div class="stat-value" style="color:${gd >= 0 ? 'var(--win)' : 'var(--loss)'}">${gd >= 0 ? '+' : ''}${gd}</div><div class="stat-label">Saldo</div></div>
+                </div>
+            </div>
+            <div style="border-top:1px solid var(--bg);padding-top:1rem">
+                ${tableHtml}
+            </div>`;
     }
 
     // --- Stats ---
@@ -186,7 +311,7 @@
         const pct = total ? Math.round(w / total * 100) : 0;
 
         document.getElementById('team-stats').innerHTML = [
-            ['Jogos', total], ['Vitorias', w], ['Empates', d], ['Derrotas', l],
+            ['Jogos', total], ['Vitórias', w], ['Empates', d], ['Derrotas', l],
             ['Gols Pro', gf], ['Gols Contra', ga], ['Saldo', gf - ga], ['Aproveitamento', pct + '%']
         ].map(([n, v]) => `<div class="stat-row"><span class="stat-name">${n}</span><span class="stat-number">${v}</span></div>`).join('');
     }
@@ -195,9 +320,12 @@
     async function loadNews() {
         showSkeleton('news-list');
         const data = await api('news');
-        if (!data || !Array.isArray(data) || !data.length) { showEmpty('news-list', 'Nenhuma noticia'); return; }
+        if (!data || !Array.isArray(data) || !data.length) { showEmpty('news-list', 'Nenhuma notícia'); return; }
         document.getElementById('news-list').innerHTML = data.slice(0, 8).map(n => `
-            <div class="news-item" onclick="window.open('${n.url}','_blank')"><div class="news-title">${n.title}</div><div class="news-meta"><span class="news-source">${n.source || 'ge.globo'}</span></div></div>`).join('');
+            <div class="news-item" onclick="window.open('${n.url}','_blank')">
+                <div class="news-title">${n.title}</div>
+                <div class="news-meta"><span class="news-source">${n.source || 'ge.globo'}</span></div>
+            </div>`).join('');
     }
 
     // --- Prediction ---
@@ -211,9 +339,15 @@
         const hw = isHome ? 45 : 30, dr = 28, aw = 100 - hw - dr;
 
         document.getElementById('prediction').innerHTML = `
-            <div class="prediction-card"><div style="font-size:1.1rem;font-weight:600;margin-bottom:0.5rem">${match.homeTeam.name} X ${match.awayTeam.name}</div>
-            <div class="prediction-probs"><div class="prob-box"><div class="prob-value">${hw}%</div><div class="prob-label">${isHome ? 'V' : 'D'}</div></div><div class="prob-box"><div class="prob-value">${dr}%</div><div class="prob-label">Empate</div></div><div class="prob-box"><div class="prob-value">${aw}%</div><div class="prob-label">${isHome ? 'D' : 'V'}</div></div></div>
-            <div style="margin-top:1rem;font-size:0.8rem;color:var(--text-muted)">* Palpite simples baseado em mando de campo</div></div>`;
+            <div class="prediction-card">
+                <div style="font-size:1.1rem;font-weight:600;margin-bottom:0.5rem">${match.homeTeam.shortName || match.homeTeam.name} × ${match.awayTeam.shortName || match.awayTeam.name}</div>
+                <div class="prediction-probs">
+                    <div class="prob-box"><div class="prob-value">${hw}%</div><div class="prob-label">${isHome ? 'Vitória' : 'Derrota'}</div></div>
+                    <div class="prob-box"><div class="prob-value">${dr}%</div><div class="prob-label">Empate</div></div>
+                    <div class="prob-box"><div class="prob-value">${aw}%</div><div class="prob-label">${isHome ? 'Derrota' : 'Vitória'}</div></div>
+                </div>
+                <div style="margin-top:1rem;font-size:0.8rem;color:var(--text-muted)">* Palpite simples baseado em mando de campo</div>
+            </div>`;
     }
 
     // --- Calendar ---
@@ -227,9 +361,10 @@
                 const dt = new Date(new Date(m.utcDate).getTime() - 3 * 3600000);
                 const s = dt.toISOString().replace(/[-:]/g, '').split('.')[0];
                 const e = new Date(dt.getTime() + 7200000).toISOString().replace(/[-:]/g, '').split('.')[0];
-                const h = m.homeTeam?.name || 'Home', a = m.awayTeam?.name || 'Away';
-                let sum = `${h} x ${a}`;
-                if (m.status === 'FINISHED') { const sc = m.score?.fullTime || {}; sum = `${h} ${sc.home ?? '-'} x ${sc.away ?? '-'} ${a}`; }
+                const h = m.homeTeam?.shortName || m.homeTeam?.name || 'Home';
+                const a = m.awayTeam?.shortName || m.awayTeam?.name || 'Away';
+                let sum = `${h} × ${a}`;
+                if (m.status === 'FINISHED') { const sc = m.score?.fullTime || {}; sum = `${h} ${sc.home ?? '-'} × ${sc.away ?? '-'} ${a}`; }
                 lines.push('BEGIN:VEVENT', `UID:p-${m.id}@palmeiras`, `DTSTAMP:${now}`, `DTSTART:${s}`, `DTEND:${e}`, `SUMMARY:${sum}`, 'END:VEVENT');
             });
             lines.push('END:VCALENDAR');

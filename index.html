@@ -13,9 +13,9 @@
         <div class="header-content">
             <div class="logo">
                 <svg viewBox="0 0 100 100" width="60" height="60">
-                    <circle cx="50" cy="50" r="48" fill="#01753B"/>
+                    <circle cx="50" cy="50" r="48" fill="#006B3F"/>
                     <circle cx="50" cy="50" r="42" fill="white"/>
-                    <circle cx="50" cy="50" r="38" fill="#01753B"/>
+                    <circle cx="50" cy="50" r="38" fill="#006B3F"/>
                     <path d="M50 22 L54 34 L67 34 L57 43 L61 55 L50 46 L39 55 L43 43 L33 34 L46 34 Z" fill="white"/>
                     <text x="50" y="72" text-anchor="middle" fill="white" font-size="12" font-weight="bold">SEP</text>
                 </svg>
@@ -30,6 +30,7 @@
     </header>
 
     <main class="container">
+        <!-- Hero -->
         <div class="hero-card" id="hero-match">
             <div class="hero-card-inner">
                 <div class="hero-card-front" id="hero-front"><div class="empty" style="color:white">Carregando...</div></div>
@@ -38,11 +39,13 @@
             <button class="hero-card-toggle" onclick="document.getElementById('hero-match').classList.toggle('flipped')">ℹ️</button>
         </div>
 
+        <!-- Info Bar -->
         <div class="info-bar">
-            <div class="info-card"><span class="info-icon">TV</span><div><div class="info-label">Transmissão</div><div class="info-value" id="where-watch">-</div></div></div>
-            <div class="info-card"><span class="info-icon">EST</span><div><div class="info-label">Estádio</div><div class="info-value" id="stadium-info">-</div></div></div>
+            <div class="info-card"><span class="info-icon">📺</span><div><div class="info-label">Transmissão</div><div class="info-value" id="where-watch">-</div></div></div>
+            <div class="info-card"><span class="info-icon">🏟️</span><div><div class="info-label">Estádio</div><div class="info-value" id="stadium-info">-</div></div></div>
         </div>
 
+        <!-- Tabs -->
         <div class="tabs">
             <button class="tab-btn active" data-tab="proximos">Próximos</button>
             <button class="tab-btn" data-tab="resultados">Resultados</button>
@@ -61,13 +64,13 @@
     </main>
 
     <footer class="footer">
-        <p>Dados: football-data.org | ge.globo</p>
+        <p>Dados: football-data.org | ge.globo | lance.com.br</p>
         <p id="last-updated" style="font-size:0.7rem;opacity:0.7;margin-top:0.25rem"></p>
         <div style="margin-top:1rem">
             <p style="font-size:0.75rem;margin-bottom:0.5rem;opacity:0.9">📅 <strong>Calendário</strong></p>
             <div style="display:flex;gap:0.5rem;flex-wrap:wrap;justify-content:center;margin-bottom:0.75rem">
-                <button onclick="downloadCalendar()" style="background:#065f46;color:white;padding:0.6rem 1.2rem;border-radius:6px;font-size:0.85rem;border:none;cursor:pointer">📥 Baixar</button>
-                <button onclick="copyCalendarUrl()" style="background:#047857;color:white;padding:0.6rem 1.2rem;border-radius:6px;font-size:0.85rem;border:none;cursor:pointer">🔗 Copiar Link</button>
+                <button onclick="downloadCalendar()" style="background:#006B3F;color:white;padding:0.6rem 1.2rem;border-radius:6px;font-size:0.85rem;border:none;cursor:pointer">📥 Baixar</button>
+                <button onclick="copyCalendarUrl()" style="background:#004D2C;color:white;padding:0.6rem 1.2rem;border-radius:6px;font-size:0.85rem;border:none;cursor:pointer">🔗 Copiar Link</button>
             </div>
         </div>
     </footer>
