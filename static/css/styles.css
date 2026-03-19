@@ -162,11 +162,14 @@ body {
 .match-header { display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.8rem; color: var(--text-muted); }
 .match-teams { display: flex; justify-content: space-between; align-items: center; font-weight: 500; }
 .match-extra {
-    display: none; padding: 0.75rem; background: var(--brand);
-    border-radius: 8px; margin-top: 0.75rem; color: white;
-    animation: slideDown 0.3s ease;
+    max-height: 0; overflow: hidden; padding: 0 0.75rem;
+    background: var(--brand); border-radius: 8px;
+    margin-top: 0.75rem; color: white;
+    transition: max-height 0.3s ease-out, padding 0.3s ease-out;
 }
-@keyframes slideDown { from { opacity: 0; max-height: 0; } to { opacity: 1; max-height: 200px; } }
+.match-extra.open {
+    max-height: 400px; padding: 0.75rem;
+}
 
 .result-badge {
     padding: 0.2rem 0.6rem; border-radius: 4px;
@@ -186,7 +189,12 @@ body {
     display: flex; align-items: center; padding: 0.6rem 0.75rem;
     border-bottom: 1px solid var(--bg); transition: background 0.2s;
 }
-.standings-row.palmeiras { background: var(--brand-light); border-radius: 8px; font-weight: 600; }
+.standings-row.palmeiras {
+    background: rgba(0, 107, 63, 0.15);
+    border-left: 3px solid var(--brand);
+    border-radius: 8px;
+    font-weight: 600;
+}
 .standings-row .pos { width: 30px; font-weight: 700; color: var(--brand); }
 .standings-row .team { flex: 1; font-size: 0.9rem; }
 .standings-row .stats { display: flex; gap: 1rem; font-size: 0.8rem; color: var(--text-secondary); }
@@ -251,4 +259,16 @@ body {
     .hero-score { font-size: 2.5rem; }
     .info-bar { flex-direction: column; }
     .standings-row .stats { gap: 0.5rem; }
+
+    /* Swipeable tabs on mobile */
+    .tabs {
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+        padding-bottom: 0.5rem;
+    }
+    .tabs::-webkit-scrollbar { display: none; }
+    .tab-btn { scroll-snap-align: start; white-space: nowrap; flex-shrink: 0; }
 }

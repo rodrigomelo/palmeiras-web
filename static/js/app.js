@@ -187,7 +187,7 @@
         document.querySelectorAll('#next-matches .match-item').forEach(el => {
             el.addEventListener('click', () => {
                 const extra = el.querySelector('.match-extra');
-                extra.style.display = extra.style.display === 'none' ? 'block' : 'none';
+                extra.classList.toggle('open');
             });
         });
     }
@@ -231,7 +231,7 @@
         document.querySelectorAll('#recent-results .match-item').forEach(el => {
             el.addEventListener('click', () => {
                 const extra = el.querySelector('.match-extra');
-                extra.style.display = extra.style.display === 'none' ? 'block' : 'none';
+                extra.classList.toggle('open');
             });
         });
     }
