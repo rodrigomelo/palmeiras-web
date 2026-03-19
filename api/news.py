@@ -1,14 +1,21 @@
 """
-GET /api/news
-
-Query params:
-  limit — max results (default 10)
+GET /api/news?limit=10
 """
 import json
+import os
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
-from db import get_supabase
+SUPABASE_URL = os.environ.get('SUPABASE_URL', '')
+SUPABASE_KEY = os.environ.get('SUPABASE_KEY', '')
+
+
+def get_supabase():
+    try:
+        from supabase import create_client
+        return create_client(SUPABASE_URL, SUPABASE_KEY)
+    except Exception:
+        return None
 
 
 class handler(BaseHTTPRequestHandler):
@@ -18,8 +25,7 @@ class handler(BaseHTTPRequestHandler):
 
         client = get_supabase()
         if not client:
-            self._respond(503, [])
-            return
+            return self._respond(503, [])
 
         try:
             result = client.table('news').select('*').order('collected_at', desc=True).limit(limit).execute()

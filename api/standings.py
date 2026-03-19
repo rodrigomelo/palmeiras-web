@@ -1,14 +1,21 @@
 """
-GET /api/standings
-
-Query params:
-  competition — code (default: BSA)
+GET /api/standings?competition=BSA
 """
 import json
+import os
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
-from db import get_supabase
+SUPABASE_URL = os.environ.get('SUPABASE_URL', '')
+SUPABASE_KEY = os.environ.get('SUPABASE_KEY', '')
+
+
+def get_supabase():
+    try:
+        from supabase import create_client
+        return create_client(SUPABASE_URL, SUPABASE_KEY)
+    except Exception:
+        return None
 
 
 class handler(BaseHTTPRequestHandler):
@@ -18,8 +25,7 @@ class handler(BaseHTTPRequestHandler):
 
         client = get_supabase()
         if not client:
-            self._respond(503, {'standings': [], 'error': 'not_connected'})
-            return
+            return self._respond(503, {'standings': [], 'error': 'not_connected'})
 
         try:
             result = client.table('standings').select('*').eq('competition', competition).order('position').execute()

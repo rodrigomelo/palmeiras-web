@@ -1,20 +1,34 @@
 """
-GET /api/matches
-
-Query params:
-  status    — FINISHED, SCHEDULED, TIMED, IN_PLAY (comma-separated)
-  limit     — max results (default 50)
-  from_date — YYYY-MM-DD filter
+GET /api/matches?status=FINISHED&limit=50
 """
 import json
+import os
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
-from db import get_supabase, parse_json
+SUPABASE_URL = os.environ.get('SUPABASE_URL', '')
+SUPABASE_KEY = os.environ.get('SUPABASE_KEY', '')
 
 
-def _transform(m):
+def get_supabase():
+    try:
+        from supabase import create_client
+        return create_client(SUPABASE_URL, SUPABASE_KEY)
+    except Exception:
+        return None
+
+
+def parse_json(val):
+    if isinstance(val, str):
+        try:
+            return json.loads(val)
+        except (json.JSONDecodeError, TypeError):
+            return {}
+    return val if isinstance(val, dict) else {}
+
+
+def transform(m):
     return {
         'id': m.get('external_id'),
         'utcDate': m.get('utc_date'),
@@ -24,12 +38,7 @@ def _transform(m):
         'homeTeam': parse_json(m.get('home_team', '{}')),
         'awayTeam': parse_json(m.get('away_team', '{}')),
         'competition': parse_json(m.get('competition', '{}')),
-        'score': {
-            'fullTime': {
-                'home': m.get('home_score'),
-                'away': m.get('away_score'),
-            }
-        },
+        'score': {'fullTime': {'home': m.get('home_score'), 'away': m.get('away_score')}},
     }
 
 
@@ -42,36 +51,27 @@ class handler(BaseHTTPRequestHandler):
 
         client = get_supabase()
         if not client:
-            self._respond(503, {'matches': [], 'error': 'not_connected'})
-            return
+            return self._respond(503, {'matches': [], 'error': 'not_connected'})
 
         try:
             query = client.table('matches').select('*')
-
             if status:
                 statuses = [s.strip().upper() for s in status.split(',')]
                 if len(statuses) == 1:
                     query = query.eq('status', statuses[0])
                 else:
                     query = query.in_('status', statuses)
-
                 if any(s in ('SCHEDULED', 'TIMED', 'IN_PLAY') for s in statuses) and not from_date:
                     from_date = datetime.now(timezone.utc).strftime('%Y-%m-%d')
-
             if from_date:
                 query = query.gte('utc_date', from_date)
 
-            fetch_limit = max(limit * 3, 50)
-            result = query.order('utc_date').limit(fetch_limit).execute()
+            result = query.order('utc_date').limit(max(limit * 3, 50)).execute()
             matches = result.data
-
-            has_finished = any(m.get('status') == 'FINISHED' for m in matches)
-            if has_finished:
+            if any(m.get('status') == 'FINISHED' for m in matches):
                 matches.sort(key=lambda x: x.get('utc_date', ''), reverse=True)
-
             matches = matches[:limit]
-            self._respond(200, {'matches': [_transform(m) for m in matches]})
-
+            self._respond(200, {'matches': [transform(m) for m in matches]})
         except Exception as e:
             self._respond(500, {'matches': [], 'error': str(e)})
 
