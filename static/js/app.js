@@ -70,13 +70,13 @@
     // --- Tabs ---
     function initTabs() {
         document.querySelectorAll('.tab-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
                 document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
                 document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
                 btn.classList.add('active');
                 const target = document.getElementById(btn.dataset.tab);
                 target.classList.add('active');
-                // Re-trigger animation
                 target.style.animation = 'none';
                 target.offsetHeight;
                 target.style.animation = '';
@@ -168,18 +168,22 @@
 
         document.getElementById('next-matches').innerHTML = matches.map(m => {
             const isLive = m.status === 'IN_PLAY';
-            const venue = m.venue || (m.homeTeam.id === TEAM_ID ? 'Allianz Parque' : 'TBD');
+            const venue = m.venue || (m.homeTeam.id === TEAM_ID ? 'Allianz Parque' : 'A definir');
+            const ht = m.score?.halfTime || {};
+            const htInfo = (ht.home != null) ? `<div class="match-extra-row"><span class="icon">⏱️</span> 1º tempo: ${ht.home}–${ht.away}</div>` : '';
+
             return `<div class="match-item">
                 <div class="match-extra">
-                    <p style="margin:0.2rem 0;font-size:0.8rem">🏟️ ${venue}</p>
-                    <p style="margin:0.2rem 0;font-size:0.8rem">📺 ${m.broadcast || 'A confirmar'}</p>
-                    <p style="margin:0.2rem 0;font-size:0.8rem">⚽ Rodada ${m.matchday || '-'}${m.stage && m.stage !== 'REGULAR_SEASON' ? ' · ' + m.stage : ''}</p>
+                    <div class="match-extra-row"><span class="icon">🏟️</span> ${venue}</div>
+                    <div class="match-extra-row"><span class="icon">📺</span> ${m.broadcast || 'A confirmar'}</div>
+                    <div class="match-extra-row"><span class="icon">🔢</span> Rodada ${m.matchday || '-'}${m.stage && m.stage !== 'REGULAR_SEASON' ? ' · ' + m.stage : ''}</div>
+                    ${htInfo}
                 </div>
                 <div class="match-header"><span>${isLive ? '<span class="live-dot"></span>AO VIVO · ' : ''}${formatDate(m.utcDate)} · ${formatTime(m.utcDate)}</span><span>${formatComp(m.competition)}</span></div>
                 <div class="match-teams">
-                    <span><img src="${m.homeTeam.crest}" style="width:20px;height:20px;vertical-align:middle;margin-right:4px">${m.homeTeam.shortName || m.homeTeam.name}</span>
+                    <span><img src="${m.homeTeam.crest}" style="width:22px;height:22px;vertical-align:middle;margin-right:4px">${m.homeTeam.shortName || m.homeTeam.name}</span>
                     <span style="color:var(--text-muted)">×</span>
-                    <span>${m.awayTeam.shortName || m.awayTeam.name}<img src="${m.awayTeam.crest}" style="width:20px;height:20px;vertical-align:middle;margin-left:4px"></span>
+                    <span>${m.awayTeam.shortName || m.awayTeam.name}<img src="${m.awayTeam.crest}" style="width:22px;height:22px;vertical-align:middle;margin-left:4px"></span>
                 </div>
             </div>`;
         }).join('');
@@ -209,19 +213,20 @@
             const resultClass = r === 'V' ? 'win' : r === 'D' ? 'loss' : 'draw';
 
             const ht = m.score?.halfTime || {};
-            const htInfo = (ht.home != null) ? ` (1º: ${ht.home}–${ht.away})` : '';
+            const htInfo = (ht.home != null) ? `<div class="match-extra-row"><span class="icon">⏱️</span> 1º tempo: ${ht.home}–${ht.away}</div>` : '';
 
             return `<div class="match-item ${resultClass}">
                 <div class="match-extra">
-                    <p style="margin:0.2rem 0;font-size:0.8rem">🏟️ ${m.venue || 'TBD'}</p>
-                    <p style="margin:0.2rem 0;font-size:0.8rem">📺 ${m.broadcast || 'A confirmar'}</p>
-                    <p style="margin:0.2rem 0;font-size:0.8rem">⚽ Rodada ${m.matchday || '-'}${htInfo}</p>
+                    <div class="match-extra-row"><span class="icon">🏟️</span> ${m.venue || 'A definir'}</div>
+                    <div class="match-extra-row"><span class="icon">📺</span> ${m.broadcast || 'A confirmar'}</div>
+                    <div class="match-extra-row"><span class="icon">🔢</span> Rodada ${m.matchday || '-'}</div>
+                    ${htInfo}
                 </div>
                 <div class="match-header"><span>${formatDate(m.utcDate)}</span><span>${formatComp(m.competition)}</span></div>
                 <div class="match-teams">
-                    <span>${isHome ? '🟢' : '⚪'} ${oppName}</span>
+                    <span>${isHome ? '🏠' : '✈️'} ${oppName}</span>
                     <span style="display:flex;align-items:center;gap:0.5rem">
-                        <span class="result-badge ${resultClass}">${r}</span>
+                        <span class="result-badge ${resultClass}">${r === 'V' ? '✅ V' : r === 'D' ? '❌ D' : '➖ E'}</span>
                         <span style="font-weight:700;font-size:1.1rem">${our} – ${opp}</span>
                     </span>
                 </div>
@@ -311,8 +316,8 @@
         const pct = total ? Math.round(w / total * 100) : 0;
 
         document.getElementById('team-stats').innerHTML = [
-            ['Jogos', total], ['Vitórias', w], ['Empates', d], ['Derrotas', l],
-            ['Gols Pro', gf], ['Gols Contra', ga], ['Saldo', gf - ga], ['Aproveitamento', pct + '%']
+            ['⚽ Jogos', total], ['✅ Vitórias', w], ['➖ Empates', d], ['❌ Derrotas', l],
+            ['🥅 Gols Pro', gf], ['🛡️ Gols Contra', ga], ['📊 Saldo', gf - ga], ['📈 Aproveitamento', pct + '%']
         ].map(([n, v]) => `<div class="stat-row"><span class="stat-name">${n}</span><span class="stat-number">${v}</span></div>`).join('');
     }
 
@@ -321,11 +326,13 @@
         showSkeleton('news-list');
         const data = await api('news');
         if (!data || !Array.isArray(data) || !data.length) { showEmpty('news-list', 'Nenhuma notícia'); return; }
-        document.getElementById('news-list').innerHTML = data.slice(0, 8).map(n => `
-            <div class="news-item" onclick="window.open('${n.url}','_blank')">
+        document.getElementById('news-list').innerHTML = data.slice(0, 8).map(n => {
+            const sourceIcon = n.source === 'lance.com.br' ? '🔵' : '🔴';
+            return `<div class="news-item" onclick="window.open('${n.url}','_blank')">
                 <div class="news-title">${n.title}</div>
-                <div class="news-meta"><span class="news-source">${n.source || 'ge.globo'}</span></div>
-            </div>`).join('');
+                <div class="news-meta">${sourceIcon} <span class="news-source">${n.source || 'ge.globo'}</span></div>
+            </div>`;
+        }).join('');
     }
 
     // --- Prediction ---
