@@ -196,11 +196,15 @@
             const htInfo = (ht.home != null) ? `<div class="match-extra-row"><span class="icon">⏱️</span> 1º tempo: ${ht.home}–${ht.away}</div>` : '';
 
             return `<div class="match-item">
-                <div class="match-extra">
-                    <div class="match-extra-row"><span class="icon">🏟️</span> ${venue}</div>
-                    <div class="match-extra-row"><span class="icon">📺</span> ${m.broadcast || 'A confirmar'}</div>
-                    <div class="match-extra-row"><span class="icon">🔢</span> Rodada ${m.matchday || '-'}${m.stage && m.stage !== 'REGULAR_SEASON' ? ' · ' + m.stage : ''}</div>
-                    ${htInfo}
+                <div class="match-extra-wrapper">
+                    <div class="match-extra-inner">
+                        <div class="match-extra">
+                            <div class="match-extra-row"><span class="icon">🏟️</span> ${venue}</div>
+                            <div class="match-extra-row"><span class="icon">📺</span> ${m.broadcast || 'A confirmar'}</div>
+                            <div class="match-extra-row"><span class="icon">🔢</span> Rodada ${m.matchday || '-'}${m.stage && m.stage !== 'REGULAR_SEASON' ? ' · ' + m.stage : ''}</div>
+                            ${htInfo}
+                        </div>
+                    </div>
                 </div>
                 <div class="match-header"><span>${isLive ? '<span class="live-dot"></span>AO VIVO · ' : ''}${formatDate(m.utcDate)} · ${formatTime(m.utcDate)}</span><span>${formatComp(m.competition)}</span></div>
                 <div class="match-teams">
@@ -213,8 +217,8 @@
 
         document.querySelectorAll('#next-matches .match-item').forEach(el => {
             el.addEventListener('click', () => {
-                const extra = el.querySelector('.match-extra');
-                extra.classList.toggle('open');
+                const wrapper = el.querySelector('.match-extra-wrapper');
+                wrapper.classList.toggle('open');
             });
         });
     }
@@ -239,11 +243,15 @@
             const htInfo = (ht.home != null) ? `<div class="match-extra-row"><span class="icon">⏱️</span> 1º tempo: ${ht.home}–${ht.away}</div>` : '';
 
             return `<div class="match-item ${resultClass}">
-                <div class="match-extra">
-                    <div class="match-extra-row"><span class="icon">🏟️</span> ${m.venue || 'A definir'}</div>
-                    <div class="match-extra-row"><span class="icon">📺</span> ${m.broadcast || 'A confirmar'}</div>
-                    <div class="match-extra-row"><span class="icon">🔢</span> Rodada ${m.matchday || '-'}</div>
-                    ${htInfo}
+                <div class="match-extra-wrapper">
+                    <div class="match-extra-inner">
+                        <div class="match-extra">
+                            <div class="match-extra-row"><span class="icon">🏟️</span> ${m.venue || 'A definir'}</div>
+                            <div class="match-extra-row"><span class="icon">📺</span> ${m.broadcast || 'A confirmar'}</div>
+                            <div class="match-extra-row"><span class="icon">🔢</span> Rodada ${m.matchday || '-'}</div>
+                            ${htInfo}
+                        </div>
+                    </div>
                 </div>
                 <div class="match-header"><span>${formatDate(m.utcDate)}</span><span>${formatComp(m.competition)}</span></div>
                 <div class="match-teams">
@@ -258,8 +266,8 @@
 
         document.querySelectorAll('#recent-results .match-item').forEach(el => {
             el.addEventListener('click', () => {
-                const extra = el.querySelector('.match-extra');
-                extra.classList.toggle('open');
+                const wrapper = el.querySelector('.match-extra-wrapper');
+                wrapper.classList.toggle('open');
             });
         });
     }
