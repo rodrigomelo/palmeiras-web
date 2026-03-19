@@ -1,8 +1,8 @@
 """
-Palmeiras Data Collector
+Palmeiras Data Collector v2
 
-Fetches matches, standings, and news from external APIs,
-then saves to Supabase. Run via cron or manually.
+Fetches matches, standings, news, and broadcast info from external APIs.
+Saves to Supabase. Run via cron or manually.
 
 Usage:
     cd collectors
@@ -12,6 +12,7 @@ Usage:
 """
 import os
 import json
+import re
 import requests
 from datetime import datetime, timezone
 from pathlib import Path
@@ -26,24 +27,34 @@ FOOTBALL_API_KEY = os.environ.get('FOOTBALL_API_KEY')
 TEAM_ID = 1769
 API_BASE = 'https://api.football-data.org/v4'
 HEADERS = {'X-Auth-Token': FOOTBALL_API_KEY} if FOOTBALL_API_KEY else {}
+PALMEIRAS_HOME = 'Allianz Parque'
+
+# Known broadcast partners for Brazilian football
+BROADCAST_MAP = {
+    'BSA': 'Premiere / Globo',
+    'COPA_DO_BRASIL': 'SporTV / Premiere',
+    'LIBERTADORES': 'ESPN / Star+',
+    'COPA_LIBERTADORES': 'ESPN / Star+',
+}
 
 
 def get_supabase():
     if not (SUPABASE_URL and SUPABASE_KEY):
-        print("  ❌ Missing SUPABASE_URL or SUPABASE_KEY")
+        print("  Missing SUPABASE_URL or SUPABASE_KEY")
         return None
     from supabase import create_client
     return create_client(SUPABASE_URL, SUPABASE_KEY)
 
 
 def collect_matches():
-    """Fetch all Palmeiras matches and upsert to Supabase."""
+    """Fetch all Palmeiras matches with enhanced data."""
     print("  Fetching matches...")
     client = get_supabase()
     if not client or not FOOTBALL_API_KEY:
         return
 
     try:
+        # Past + current matches
         resp = requests.get(f"{API_BASE}/teams/{TEAM_ID}/matches?limit=100", headers=HEADERS, timeout=30)
         resp.raise_for_status()
         matches = resp.json().get('matches', [])
@@ -56,30 +67,90 @@ def collect_matches():
                 if m['id'] not in existing:
                     matches.append(m)
 
+        # Also fetch from other competitions (Libertadores, Copa do Brasil)
+        for comp in [' Copa do Brasil', 'CL']:
+            try:
+                resp3 = requests.get(
+                    f"{API_BASE}/teams/{TEAM_ID}/matches?competitions={comp}&limit=50",
+                    headers=HEADERS, timeout=30
+                )
+                if resp3.status_code == 200:
+                    existing = {m['id'] for m in matches}
+                    for m in resp3.json().get('matches', []):
+                        if m['id'] not in existing:
+                            matches.append(m)
+            except Exception:
+                pass
+
         print(f"    Found {len(matches)} matches")
         now = datetime.now(timezone.utc).isoformat()
-        records = [{
-            'external_id': m['id'],
-            'home_team': json.dumps(m.get('homeTeam', {})),
-            'away_team': json.dumps(m.get('awayTeam', {})),
-            'home_score': m.get('score', {}).get('fullTime', {}).get('home'),
-            'away_score': m.get('score', {}).get('fullTime', {}).get('away'),
-            'utc_date': m.get('utcDate'),
-            'status': m.get('status'),
-            'competition': json.dumps(m.get('competition', {})),
-            'matchday': m.get('matchday'),
-            'venue': m.get('venue'),
-            'updated_at': now,
-        } for m in matches]
 
-        client.table('matches').upsert(records, on_conflict='external_id').execute()
-        print(f"    ✅ Saved {len(records)} matches")
+        records = []
+        for m in matches:
+            home = m.get('homeTeam', {})
+            away = m.get('awayTeam', {})
+            comp = m.get('competition', {})
+            score = m.get('score', {})
+            ft = score.get('fullTime', {})
+            ht = score.get('halfTime', {})
+
+            # Determine venue
+            venue = m.get('venue')
+            if not venue and home.get('id') == TEAM_ID:
+                venue = PALMEIRAS_HOME
+
+            # Broadcast from known map
+            broadcast = BROADCAST_MAP.get(comp.get('code'), '')
+
+            # Referees
+            referees = m.get('referees', [])
+
+            records.append({
+                'external_id': m['id'],
+                'home_team': json.dumps(home),
+                'away_team': json.dumps(away),
+                'home_score': ft.get('home'),
+                'away_score': ft.get('away'),
+                'utc_date': m.get('utcDate'),
+                'status': m.get('status'),
+                'competition': json.dumps(comp),
+                'matchday': m.get('matchday'),
+                'venue': venue,
+                'updated_at': now,
+            })
+
+            # Enhanced fields (requires schema migration)
+            try:
+                records[-1].update({
+                    'half_time_home': ht.get('home'),
+                    'half_time_away': ht.get('away'),
+                    'season': json.dumps(m.get('season', {})),
+                    'stage': m.get('stage', ''),
+                    'area': json.dumps(m.get('area', {})),
+                    'referees': json.dumps(referees),
+                    'broadcast': broadcast,
+                })
+            except Exception:
+                pass
+
+        try:
+            client.table('matches').upsert(records, on_conflict='external_id').execute()
+            print(f"    Saved {len(records)} matches")
+        except Exception as e:
+            # Fallback: save without enhanced fields
+            print(f"    Retrying without enhanced fields...")
+            for r in records:
+                for k in ['half_time_home', 'half_time_away', 'season', 'stage', 'area', 'referees', 'broadcast']:
+                    r.pop(k, None)
+            client.table('matches').upsert(records, on_conflict='external_id').execute()
+            print(f"    Saved {len(records)} matches (basic fields)")
+
     except Exception as e:
-        print(f"    ❌ {e}")
+        print(f"    Error: {e}")
 
 
 def collect_standings():
-    """Fetch league standings and save to Supabase."""
+    """Fetch league standings with form."""
     print("  Fetching standings...")
     client = get_supabase()
     if not client or not FOOTBALL_API_KEY:
@@ -88,6 +159,7 @@ def collect_standings():
     try:
         resp = requests.get(f"{API_BASE}/competitions/BSA/standings", headers=HEADERS, timeout=30)
         resp.raise_for_status()
+
         table = []
         for s in resp.json().get('standings', []):
             if s.get('type') == 'TOTAL':
@@ -99,7 +171,8 @@ def collect_standings():
 
         now = datetime.now(timezone.utc).isoformat()
         for entry in table:
-            client.table('standings').insert({
+            form = entry.get('form', '')
+            record = {
                 'competition': 'BSA',
                 'position': entry.get('position'),
                 'team': json.dumps(entry.get('team', {})),
@@ -112,15 +185,22 @@ def collect_standings():
                 'goal_difference': entry.get('goalDifference'),
                 'points': entry.get('points'),
                 'updated_at': now,
-            }).execute()
+            }
+            try:
+                record['form'] = form
+                client.table('standings').insert(record).execute()
+            except Exception:
+                record.pop('form', None)
+                client.table('standings').insert(record).execute()
 
-        print(f"    ✅ Saved {len(table)} standings")
+        print(f"    Saved {len(table)} standings")
+
     except Exception as e:
-        print(f"    ❌ {e}")
+        print(f"    Error: {e}")
 
 
 def collect_news():
-    """Fetch Palmeiras news from ge.globo."""
+    """Fetch Palmeiras news from multiple sources."""
     print("  Fetching news...")
     client = get_supabase()
     if not client:
@@ -129,20 +209,23 @@ def collect_news():
     try:
         from bs4 import BeautifulSoup
     except ImportError:
-        print("    ⚠️  beautifulsoup4 not installed, skipping")
+        print("    beautifulsoup4 not installed, skipping")
         return
 
+    news = []
+    now = datetime.now(timezone.utc).isoformat()
+
+    # Source 1: ge.globo
     try:
         resp = requests.get(
             "https://ge.globo.com/futebol/times/palmeiras/",
-            headers={"User-Agent": "Mozilla/5.0", "Accept-Language": "pt-BR,pt;q=0.9"},
+            headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36", "Accept-Language": "pt-BR,pt;q=0.9"},
             timeout=30,
         )
         resp.raise_for_status()
         soup = BeautifulSoup(resp.text, "html.parser")
-        articles = (soup.select("div.feed-post-body") or soup.select("article"))[:15]
+        articles = (soup.select("div.feed-post-body") or soup.select("article"))[:10]
 
-        news = []
         for a in articles:
             title = a.select_one("a.feed-post-link") or a.select_one("h2")
             link = a.select_one("a.feed-post-link")
@@ -153,21 +236,95 @@ def collect_news():
                     'url': link.get("href", ""),
                     'image': img.get("src", "") if img else "",
                     'source': 'ge.globo',
-                    'collected_at': datetime.now(timezone.utc).isoformat(),
+                    'collected_at': now,
                 })
-
-        client.table('news').delete().neq('id', '00000000-0000-0000-0000-000000000000').execute()
-        for item in news:
-            client.table('news').insert(item).execute()
-
-        print(f"    ✅ Saved {len(news)} news")
+        print(f"    ge.globo: {len(news)} articles")
     except Exception as e:
-        print(f"    ❌ {e}")
+        print(f"    ge.globo error: {e}")
+
+    # Source 2: lance.com.br
+    try:
+        resp = requests.get(
+            "https://www.lance.com.br/palmeiras",
+            headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36", "Accept-Language": "pt-BR,pt;q=0.9"},
+            timeout=30,
+        )
+        resp.raise_for_status()
+        soup = BeautifulSoup(resp.text, "html.parser")
+        articles = soup.select("article")[:5]
+
+        for a in articles:
+            title = a.select_one("h2, h3, .title")
+            link = a.select_one("a")
+            img = a.select_one("img")
+            if title and link:
+                href = link.get("href", "")
+                if href and not href.startswith("http"):
+                    href = "https://www.lance.com.br" + href
+                news.append({
+                    'title': title.get_text(strip=True),
+                    'url': href,
+                    'image': img.get("src", "") if img else "",
+                    'source': 'lance.com.br',
+                    'collected_at': now,
+                })
+        print(f"    lance.com.br: {len(news)} articles total")
+    except Exception as e:
+        print(f"    lance.com.br error: {e}")
+
+    # Save all news
+    if news:
+        try:
+            client.table('news').delete().neq('id', '00000000-0000-0000-0000-000000000000').execute()
+            for item in news:
+                client.table('news').insert(item).execute()
+            print(f"    Saved {len(news)} news articles")
+        except Exception as e:
+            print(f"    Error saving news: {e}")
+
+
+def collect_broadcast():
+    """Try to scrape broadcast info from Brazilian sports sites."""
+    print("  Fetching broadcast info...")
+    client = get_supabase()
+    if not client:
+        return
+
+    try:
+        from bs4 import BeautifulSoup
+    except ImportError:
+        return
+
+    # Get upcoming matches
+    try:
+        result = client.table('matches').select('*').in_('status', ['SCHEDULED', 'TIMED']).execute()
+        upcoming = result.data[:5]
+    except Exception:
+        return
+
+    for match in upcoming:
+        try:
+            ext_id = match.get('external_id')
+            home = json.loads(match.get('home_team', '{}'))
+            away = json.loads(match.get('away_team', '{}'))
+            comp = json.loads(match.get('competition', {}))
+            comp_code = comp.get('code', '')
+
+            # Use known broadcast map
+            broadcast = BROADCAST_MAP.get(comp_code, '')
+
+            if broadcast and ext_id:
+                client.table('matches').update({'broadcast': broadcast}).eq('external_id', ext_id).execute()
+        except Exception:
+            continue
+
+    print("    Broadcast info updated")
 
 
 if __name__ == '__main__':
-    print(f"🏆 Palmeiras Collector — {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+    print(f"Palmeiras Collector v2 — {datetime.now().strftime('%Y-%m-%d %H:%M')}")
     collect_matches()
     collect_standings()
     collect_news()
-    print("✅ Done!")
+    collect_broadcast()
+    print("Done!")

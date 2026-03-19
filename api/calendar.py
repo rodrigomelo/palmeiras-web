@@ -1,5 +1,7 @@
 """
 GET /api/calendar.ics — iCal feed for Palmeiras matches
+
+Includes: stadium, competition, matchday, stage, broadcast, scores.
 """
 import json
 import os
@@ -9,6 +11,7 @@ from http.server import BaseHTTPRequestHandler
 SUPABASE_URL = os.environ.get('SUPABASE_URL', '')
 SUPABASE_KEY = os.environ.get('SUPABASE_KEY', '')
 BR_TZ = timezone(timedelta(hours=-3))
+TEAM_ID = 1769
 
 
 def get_supabase():
@@ -28,6 +31,13 @@ def parse_json(val):
     return val if isinstance(val, dict) else {}
 
 
+def escape_ics(text):
+    """Escape text for ICS format."""
+    if not text:
+        return ''
+    return str(text).replace('\\', '\\\\').replace(';', '\\;').replace(',', '\\,').replace('\n', '\\n')
+
+
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         client = get_supabase()
@@ -36,12 +46,26 @@ class handler(BaseHTTPRequestHandler):
 
         try:
             result = client.table('matches').select('*').execute()
-            matches = sorted(result.data, key=lambda x: x.get('utc_date', ''), reverse=True)[:100]
+            matches = sorted(result.data, key=lambda x: x.get('utc_date', ''), reverse=True)[:150]
 
             lines = [
-                "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Palmeiras//Dashboard//EN",
-                "X-WR-CALNAME:Palmeiras - Jogos", "X-WR-TIMEZONE:America/Sao_Paulo",
-                "CALSCALE:GREGORIAN", "METHOD:PUBLISH",
+                "BEGIN:VCALENDAR",
+                "VERSION:2.0",
+                "PRODID:-//Palmeiras//Dashboard//EN",
+                "X-WR-CALNAME:Palmeiras - Jogos",
+                "X-WR-TIMEZONE:America/Sao_Paulo",
+                "CALSCALE:GREGORIAN",
+                "METHOD:PUBLISH",
+                # Timezone definition
+                "BEGIN:VTIMEZONE",
+                "TZID:America/Sao_Paulo",
+                "BEGIN:STANDARD",
+                "DTSTART:19700101T000000",
+                "TZOFFSETFROM:-0300",
+                "TZOFFSETTO:-0300",
+                "TZNAME:BRT",
+                "END:STANDARD",
+                "END:VTIMEZONE",
             ]
             now = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')
 
@@ -54,32 +78,91 @@ class handler(BaseHTTPRequestHandler):
                     dt_sp = dt.astimezone(BR_TZ)
                     start = dt_sp.strftime('%Y%m%dT%H%M%S')
                     end = (dt_sp + timedelta(hours=2)).strftime('%Y%m%dT%H%M%S')
+
                     home = parse_json(m.get('home_team', {}))
                     away = parse_json(m.get('away_team', {}))
+                    comp = parse_json(m.get('competition', {}))
                     hn = home.get('name', 'Home')
                     an = away.get('name', 'Away')
+                    is_home = home.get('id') == TEAM_ID
+
                     status = m.get('status', '')
-                    summary = f"{hn} x {an}"
+                    matchday = m.get('matchday', '')
+                    stage = m.get('stage', '')
+                    venue = m.get('venue', '') or ('Allianz Parque' if is_home else 'A definir')
+                    broadcast = m.get('broadcast', '')
+                    comp_name = comp.get('name', '')
+                    comp_code = comp.get('code', '')
+
+                    # Summary
                     if status == 'FINISHED':
-                        summary = f"{hn} {m.get('home_score', '-')} x {m.get('away_score', '-')} {an}"
+                        hg = m.get('home_score', '-')
+                        ag = m.get('away_score', '-')
+                        ht_h = m.get('half_time_home')
+                        ht_a = m.get('half_time_away')
+                        summary = f"🏆 {hn} {hg} x {ag} {an}"
+                    elif status == 'IN_PLAY':
+                        hg = m.get('home_score', '?')
+                        ag = m.get('away_score', '?')
+                        summary = f"🔴 AO VIVO: {hn} {hg} x {ag} {an}"
+                    else:
+                        summary = f"⚽ {hn} x {an}"
+
+                    # Description with all details
+                    desc_parts = []
+                    if comp_name:
+                        desc_parts.append(f"Competicao: {comp_name}")
+                    if matchday:
+                        desc_parts.append(f"Rodada: {matchday}")
+                    if stage and stage != 'REGULAR_SEASON':
+                        desc_parts.append(f"Fase: {stage}")
+                    if venue:
+                        desc_parts.append(f"Estadio: {venue}")
+                    if broadcast:
+                        desc_parts.append(f"Transmissao: {broadcast}")
+                    else:
+                        desc_parts.append("Transmissao: A confirmar")
+                    if status == 'FINISHED' and ht_h is not None:
+                        desc_parts.append(f"Placar 1o tempo: {ht_h} x {ht_a}")
+
+                    # Referees
+                    referees = parse_json(m.get('referees', '[]'))
+                    if referees and isinstance(referees, list):
+                        ref_names = [r.get('name', '') for r in referees if r.get('name')]
+                        if ref_names:
+                            desc_parts.append(f"Arbitros: {', '.join(ref_names)}")
+
+                    description = escape_ics('\\n'.join(desc_parts))
+
+                    # Location
+                    location = escape_ics(venue) if venue and venue != 'A definir' else ''
+
                     lines.extend([
                         "BEGIN:VEVENT",
                         f"UID:palmeiras-{m.get('external_id', '')}@dashboard",
                         f"DTSTAMP:{now}",
                         f"DTSTART;TZID=America/Sao_Paulo:{start}",
                         f"DTEND;TZID=America/Sao_Paulo:{end}",
-                        f"SUMMARY:{summary}",
-                        "END:VEVENT",
+                        f"SUMMARY:{escape_ics(summary)}",
+                        f"DESCRIPTION:{description}",
                     ])
+                    if location:
+                        lines.append(f"LOCATION:{location}")
+                    if comp_name:
+                        lines.append(f"CATEGORIES:{escape_ics(comp_name)}")
+                    lines.append("END:VEVENT")
+
                 except Exception:
                     continue
 
             lines.append("END:VCALENDAR")
+
             self.send_response(200)
-            self.send_header('Content-Type', 'text/calendar')
+            self.send_header('Content-Type', 'text/calendar; charset=utf-8')
             self.send_header('Cache-Control', 'public, max-age=3600')
             self.end_headers()
-            self.wfile.write('\r\n'.join(lines).encode())
+            self.wfile.write('\r\n'.join(lines).encode('utf-8'))
+
         except Exception as e:
             self._respond(500, f'Error: {e}')
 

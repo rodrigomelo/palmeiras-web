@@ -1,11 +1,11 @@
--- Palmeiras Data Schema for Supabase
+-- Palmeiras Data Schema v2 — Enhanced fields
 -- Run in Supabase SQL Editor
 
 BEGIN;
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- Matches
+-- Matches (enhanced)
 CREATE TABLE IF NOT EXISTS matches (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     external_id INTEGER UNIQUE,
@@ -13,11 +13,18 @@ CREATE TABLE IF NOT EXISTS matches (
     away_team JSONB,
     home_score INTEGER,
     away_score INTEGER,
+    half_time_home INTEGER,
+    half_time_away INTEGER,
     utc_date TIMESTAMPTZ,
     status VARCHAR(20),
     competition JSONB,
+    season JSONB,
     matchday INTEGER,
+    stage VARCHAR(100),
     venue VARCHAR(255),
+    area JSONB,
+    referees JSONB,
+    broadcast VARCHAR(255),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -36,6 +43,7 @@ CREATE TABLE IF NOT EXISTS standings (
     goals_against INTEGER,
     goal_difference INTEGER,
     points INTEGER,
+    form VARCHAR(10),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -58,7 +66,7 @@ CREATE INDEX IF NOT EXISTS idx_matches_date ON matches(utc_date);
 CREATE INDEX IF NOT EXISTS idx_standings_competition ON standings(competition);
 CREATE INDEX IF NOT EXISTS idx_news_collected ON news(collected_at DESC);
 
--- RLS (public read, authenticated write)
+-- RLS
 ALTER TABLE matches ENABLE ROW LEVEL SECURITY;
 ALTER TABLE standings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE news ENABLE ROW LEVEL SECURITY;
@@ -88,3 +96,13 @@ DO $$ BEGIN
 END $$;
 
 COMMIT;
+
+-- Migration for existing installations:
+-- ALTER TABLE matches ADD COLUMN IF NOT EXISTS half_time_home INTEGER;
+-- ALTER TABLE matches ADD COLUMN IF NOT EXISTS half_time_away INTEGER;
+-- ALTER TABLE matches ADD COLUMN IF NOT EXISTS season JSONB;
+-- ALTER TABLE matches ADD COLUMN IF NOT EXISTS stage VARCHAR(100);
+-- ALTER TABLE matches ADD COLUMN IF NOT EXISTS area JSONB;
+-- ALTER TABLE matches ADD COLUMN IF NOT EXISTS referees JSONB;
+-- ALTER TABLE matches ADD COLUMN IF NOT EXISTS broadcast VARCHAR(255);
+-- ALTER TABLE standings ADD COLUMN IF NOT EXISTS form VARCHAR(10);

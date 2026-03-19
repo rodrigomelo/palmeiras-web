@@ -34,11 +34,18 @@ def transform(m):
         'utcDate': m.get('utc_date'),
         'status': m.get('status'),
         'matchday': m.get('matchday'),
+        'stage': m.get('stage'),
         'venue': m.get('venue'),
+        'broadcast': m.get('broadcast'),
         'homeTeam': parse_json(m.get('home_team', '{}')),
         'awayTeam': parse_json(m.get('away_team', '{}')),
         'competition': parse_json(m.get('competition', '{}')),
-        'score': {'fullTime': {'home': m.get('home_score'), 'away': m.get('away_score')}},
+        'season': parse_json(m.get('season', '{}')),
+        'referees': parse_json(m.get('referees', '[]')),
+        'score': {
+            'fullTime': {'home': m.get('home_score'), 'away': m.get('away_score')},
+            'halfTime': {'home': m.get('half_time_home'), 'away': m.get('half_time_away')},
+        },
     }
 
 

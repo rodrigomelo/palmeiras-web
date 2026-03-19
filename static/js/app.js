@@ -78,8 +78,8 @@
         const score = match.score?.fullTime || {};
         const liveBadge = isLive ? '<span style="background:#ff4444;padding:2px 8px;border-radius:4px;font-size:0.75rem;margin-right:8px">AO VIVO</span>' : '';
 
-        document.getElementById('where-watch').textContent = 'Rodada ' + (match.matchday || '-');
-        document.getElementById('stadium-info').textContent = home.id === TEAM_ID ? 'Allianz Parque' : (match.venue || 'A definir');
+        document.getElementById('where-watch').textContent = match.broadcast || 'Rodada ' + (match.matchday || '-');
+        document.getElementById('stadium-info').textContent = match.venue || (home.id === TEAM_ID ? 'Allianz Parque' : 'A definir');
 
         document.getElementById('hero-front').innerHTML = `
             <div class="hero-comp">${liveBadge}${comp}</div>
@@ -93,8 +93,10 @@
         document.getElementById('hero-back').innerHTML = `
             <div style="padding-top:1rem"><h3 style="margin-bottom:1rem">Detalhes do Jogo</h3>
             <p style="margin:0.5rem 0"><strong>Rodada:</strong> ${match.matchday || '-'}</p>
-            <p style="margin:0.5rem 0"><strong>Estadio:</strong> ${home.id === TEAM_ID ? 'Allianz Parque' : (match.venue || 'A definir')}</p>
-            <p style="margin:0.5rem 0"><strong>Competicao:</strong> ${comp}</p></div>`;
+            <p style="margin:0.5rem 0"><strong>Estadio:</strong> ${match.venue || (home.id === TEAM_ID ? 'Allianz Parque' : 'A definir')}</p>
+            <p style="margin:0.5rem 0"><strong>Competicao:</strong> ${comp}</p>
+            <p style="margin:0.5rem 0"><strong>Transmissao:</strong> ${match.broadcast || 'A confirmar'}</p>
+            ${match.stage && match.stage !== 'REGULAR_SEASON' ? `<p style="margin:0.5rem 0"><strong>Fase:</strong> ${match.stage}</p>` : ''}</div>`;
     }
 
     // --- Matches ---
@@ -107,7 +109,7 @@
 
         document.getElementById('next-matches').innerHTML = matches.map(m => `
             <div class="match-item">
-                <div class="match-extra"><p style="margin:0.2rem 0;font-size:0.8rem">🏟️ ${m.venue || 'TBD'}</p><p style="margin:0.2rem 0;font-size:0.8rem">⚽ Rodada ${m.matchday || '-'}</p></div>
+                <div class="match-extra"><p style="margin:0.2rem 0;font-size:0.8rem">🏟️ ${m.venue || (m.homeTeam.id === TEAM_ID ? 'Allianz Parque' : 'TBD')}</p><p style="margin:0.2rem 0;font-size:0.8rem">📺 ${m.broadcast || 'A confirmar'}</p><p style="margin:0.2rem 0;font-size:0.8rem">⚽ Rodada ${m.matchday || '-'}${m.stage && m.stage !== 'REGULAR_SEASON' ? ' — ' + m.stage : ''}</p></div>
                 <div class="match-header"><span>${formatDate(m.utcDate)} - ${formatTime(m.utcDate)}</span><span>${formatComp(m.competition)}</span></div>
                 <div class="match-teams"><span><img src="${m.homeTeam.crest}" style="width:20px;height:20px;vertical-align:middle;margin-right:4px">${m.homeTeam.name}</span><span style="color:var(--text-muted)">X</span><span>${m.awayTeam.name}<img src="${m.awayTeam.crest}" style="width:20px;height:20px;vertical-align:middle;margin-left:4px"></span></div>
             </div>`).join('');
@@ -134,7 +136,7 @@
             const colors = { V: ['#d4edda', '#155724'], D: ['#f8d7da', '#721c24'], E: ['#fff3cd', '#856404'] };
             const [bg, fg] = colors[r];
             return `<div class="match-item">
-                <div class="match-extra"><p style="margin:0.2rem 0;font-size:0.8rem">🏟️ ${m.venue || 'TBD'}</p><p style="margin:0.2rem 0;font-size:0.8rem">⚽ Rodada ${m.matchday || '-'}</p></div>
+                <div class="match-extra"><p style="margin:0.2rem 0;font-size:0.8rem">🏟️ ${m.venue || 'TBD'}</p><p style="margin:0.2rem 0;font-size:0.8rem">📺 ${m.broadcast || 'A confirmar'}</p><p style="margin:0.2rem 0;font-size:0.8rem">⚽ Rodada ${m.matchday || '-'}${m.stage && m.stage !== 'REGULAR_SEASON' ? ' — ' + m.stage : ''}</p></div>
                 <div class="match-header"><span>${formatDate(m.utcDate)}</span><span>${formatComp(m.competition)}</span></div>
                 <div class="match-teams"><span>${isHome ? '🟢' : '⚪'} ${oppName}</span><span style="display:flex;align-items:center;gap:0.5rem"><span style="padding:0.2rem 0.5rem;border-radius:4px;font-size:0.75rem;font-weight:600;background:${bg};color:${fg}">${r}</span><span style="font-weight:700">${our} - ${opp}</span></span></div>
             </div>`;
