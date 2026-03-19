@@ -92,7 +92,10 @@ body {
 .hero-team { flex: 1; text-align: center; }
 .hero-team-name { font-size: 1rem; font-weight: 600; margin-top: 0.5rem; }
 .hero-vs { font-size: 1.5rem; font-weight: 700; opacity: 0.8; }
-.hero-score { font-size: 3.5rem; font-weight: 800; letter-spacing: 0.1em; }
+.hero-score {
+    font-size: 3rem; font-weight: 800; letter-spacing: 0.1em;
+    font-variant-numeric: tabular-nums;
+}
 .hero-date {
     margin-top: 1.5rem; padding-top: 1rem;
     border-top: 1px solid rgba(255,255,255,0.2);
@@ -183,6 +186,11 @@ body {
 .result-badge.win { background: rgba(0,107,63,0.15); color: var(--win); }
 .result-badge.loss { background: rgba(211,47,47,0.15); color: var(--loss); }
 .result-badge.draw { background: rgba(117,117,117,0.15); color: var(--draw); }
+.match-score {
+    font-size: 1.3rem; font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.05em;
+}
 
 /* Standings */
 .position-badge {

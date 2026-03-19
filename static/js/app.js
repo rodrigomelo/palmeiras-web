@@ -227,7 +227,7 @@
                     <span>${isHome ? '🏠' : '✈️'} ${oppName}</span>
                     <span style="display:flex;align-items:center;gap:0.5rem">
                         <span class="result-badge ${resultClass}">${r === 'V' ? '✅ V' : r === 'D' ? '❌ D' : '➖ E'}</span>
-                        <span style="font-weight:700;font-size:1.1rem">${our} – ${opp}</span>
+                        <span class="match-score">${our} – ${opp}</span>
                     </span>
                 </div>
             </div>`;
