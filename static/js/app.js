@@ -80,8 +80,71 @@
                 target.style.animation = 'none';
                 target.offsetHeight;
                 target.style.animation = '';
+                // Smooth scroll to tab content
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
             });
         });
+    }
+
+    // --- Scroll Spy ---
+    function initScrollSpy() {
+        const tabs = Array.from(document.querySelectorAll('.tab-btn'));
+        const tabIds = ['proximos', 'resultados', 'classificacao', 'estatisticas', 'news', 'palpites'];
+
+        // Map tab IDs to their index for ordering
+        const tabIndex = {};
+        tabIds.forEach((id, i) => tabIndex[id] = i);
+
+        let lastActive = null;
+
+        function setActive(id) {
+            if (id === lastActive) return;
+            lastActive = id;
+            tabs.forEach(btn => {
+                const isActive = btn.dataset.tab === id;
+                btn.classList.toggle('active', isActive);
+                const content = document.getElementById(btn.dataset.tab);
+                if (content) content.classList.toggle('active', isActive);
+            });
+        }
+
+        // Find the first visible (non-collapsed) tab content
+        function getVisibleTabId() {
+            for (const id of tabIds) {
+                const el = document.getElementById(id);
+                if (!el) continue;
+                const rect = el.getBoundingClientRect();
+                if (rect.height > 0) return id;
+            }
+            return tabIds[0];
+        }
+
+        // Scroll-based: detect which tab content block is currently in viewport center
+        function onScroll() {
+            const scrollY = window.scrollY;
+            const vh = window.innerHeight;
+            const center = scrollY + vh * 0.35;
+            let best = null, bestTop = -Infinity;
+
+            for (const id of tabIds) {
+                const el = document.getElementById(id);
+                if (!el) continue;
+                const rect = el.getBoundingClientRect();
+                // Only consider visible (expanded) tabs
+                if (rect.height === 0) continue;
+                const elTop = rect.top + scrollY;
+                if (elTop <= center && elTop > bestTop) {
+                    bestTop = elTop;
+                    best = id;
+                }
+            }
+
+            if (best) setActive(best);
+        }
+
+        window.addEventListener('scroll', onScroll, { passive: true });
+        // Initialize with the visible tab
+        setActive(getVisibleTabId());
     }
 
     // --- Hero ---
@@ -420,6 +483,7 @@
         const el = document.getElementById('last-updated');
         if (el) el.textContent = 'Atualizado: ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
         initTabs();
+        initScrollSpy();
         loadHero(); loadMatches(); loadResults(); loadStandings(); loadTeamStats(); loadNews(); loadPrediction();
     });
 })();

@@ -107,7 +107,12 @@ class handler(BaseHTTPRequestHandler):
                     comp_code = comp.get('code', '')
 
                     # Summary
-                    summary = f"⚽ {hn} x {an}"
+                    hg = m.get('home_score')
+                    ag = m.get('away_score')
+                    if status == 'FINISHED' and hg is not None and ag is not None:
+                        summary = f"⚽ {hn} {hg} x {ag} {an}"
+                    else:
+                        summary = f"⚽ {hn} x {an}"
 
                     # Description with all details
                     desc_parts = []
