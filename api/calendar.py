@@ -12,6 +12,12 @@ SUPABASE_URL = os.environ.get('SUPABASE_URL', '')
 SUPABASE_KEY = os.environ.get('SUPABASE_KEY', '')
 BR_TZ = timezone(timedelta(hours=-3))
 TEAM_ID = 1769
+# Known stadiums for away games (team_id → stadium)
+AWAY_STADIUMS = {
+    1776: 'Morumbi', 1777: 'Fonte Nova', 1770: 'Nilton Santos',
+    1779: 'Maracanã', 1783: 'Beira-Rio', 1766: 'Mineirão',
+    1780: 'Castelão', 1765: 'Arena MRV',
+}
 
 
 def get_supabase():
@@ -101,7 +107,12 @@ class handler(BaseHTTPRequestHandler):
                     status = m.get('status', '')
                     matchday = m.get('matchday', '')
                     stage = m.get('stage', '')
-                    venue = m.get('venue', '') or ('Allianz Parque' if is_home else 'A definir')
+                    venue = m.get('venue', '')
+                    if not venue:
+                        if is_home:
+                            venue = 'Allianz Parque'
+                        else:
+                            venue = AWAY_STADIUMS.get(home.get('id'), 'A definir')
                     broadcast = m.get('broadcast', '')
                     comp_name = comp.get('name', '')
                     comp_code = comp.get('code', '')

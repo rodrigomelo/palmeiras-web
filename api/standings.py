@@ -18,6 +18,34 @@ def get_supabase():
         return None
 
 
+def parse_json(val):
+    if isinstance(val, str):
+        try:
+            return json.loads(val)
+        except (json.JSONDecodeError, TypeError):
+            return {}
+    return val if isinstance(val, dict) else {}
+
+
+def transform(row):
+    team = parse_json(row.get('team', '{}'))
+    return {
+        'position': row.get('position'),
+        'teamName': team.get('name', ''),
+        'teamShort': team.get('shortName', team.get('name', '')),
+        'crest': team.get('crest', ''),
+        'playedGames': row.get('played_games'),
+        'won': row.get('won'),
+        'draw': row.get('drawn'),
+        'lost': row.get('lost'),
+        'goalsFor': row.get('goals_for'),
+        'goalsAgainst': row.get('goals_against'),
+        'goalDifference': row.get('goal_difference'),
+        'points': row.get('points'),
+        'teamId': team.get('id'),
+    }
+
+
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         params = parse_qs(urlparse(self.path).query)
@@ -29,7 +57,8 @@ class handler(BaseHTTPRequestHandler):
 
         try:
             result = client.table('standings').select('*').eq('competition', competition).order('position').execute()
-            self._respond(200, {'standings': result.data})
+            standings = [transform(r) for r in result.data]
+            self._respond(200, {'standings': standings})
         except Exception as e:
             self._respond(500, {'standings': [], 'error': str(e)})
 
