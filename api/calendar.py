@@ -107,18 +107,7 @@ class handler(BaseHTTPRequestHandler):
                     comp_code = comp.get('code', '')
 
                     # Summary
-                    if status == 'FINISHED':
-                        hg = m.get('home_score', '-')
-                        ag = m.get('away_score', '-')
-                        ht_h = m.get('half_time_home')
-                        ht_a = m.get('half_time_away')
-                        summary = f"🏆 {hn} {hg} x {ag} {an}"
-                    elif status == 'IN_PLAY':
-                        hg = m.get('home_score', '?')
-                        ag = m.get('away_score', '?')
-                        summary = f"🔴 AO VIVO: {hn} {hg} x {ag} {an}"
-                    else:
-                        summary = f"⚽ {hn} x {an}"
+                    summary = f"⚽ {hn} x {an}"
 
                     # Description with all details
                     desc_parts = []
