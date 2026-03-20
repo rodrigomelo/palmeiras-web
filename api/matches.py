@@ -46,6 +46,8 @@ def transform(m):
             'fullTime': {'home': m.get('home_score'), 'away': m.get('away_score')},
             'halfTime': {'home': m.get('half_time_home'), 'away': m.get('half_time_away')},
         },
+        'homeScore': m.get('home_score'),
+        'awayScore': m.get('away_score'),
     }
 
 

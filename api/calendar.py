@@ -123,8 +123,15 @@ class handler(BaseHTTPRequestHandler):
                         desc_parts.append(f"Transmissao: {broadcast}")
                     else:
                         desc_parts.append("Transmissao: A confirmar")
-                    if status == 'FINISHED' and ht_h is not None:
-                        desc_parts.append(f"Placar 1o tempo: {ht_h} x {ht_a}")
+                    if status == 'FINISHED':
+                        hg = m.get('home_score')
+                        ag = m.get('away_score')
+                        if hg is not None and ag is not None:
+                            desc_parts.append(f"Placar: {hg} x {ag}")
+                        ht_h = m.get('half_time_home')
+                        ht_a = m.get('half_time_away')
+                        if ht_h is not None and ht_a is not None:
+                            desc_parts.append(f"Placar 1o tempo: {ht_h} x {ht_a}")
 
                     # Referees
                     referees = parse_json(m.get('referees', '[]'))
