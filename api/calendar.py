@@ -31,11 +31,23 @@ def parse_json(val):
     return val if isinstance(val, dict) else {}
 
 
+def fold_line(line):
+    """Fold lines per RFC 5545 (max 75 bytes, CRLF+space for continuation)."""
+    if not line:
+        return ''
+    result = []
+    while len(line) > 75:
+        result.append(line[:75])
+        line = ' ' + line[75:]
+    result.append(line)
+    return '\r\n'.join(result)
+
+
 def escape_ics(text):
-    """Escape text for ICS format."""
+    """Escape text for ICS format (no line folding here, handled separately)."""
     if not text:
         return ''
-    return str(text).replace('\\', '\\\\').replace(';', '\\;').replace(',', '\\,').replace('\n', '\\n')
+    return str(text).replace('\\', '\\\\').replace(';', '\\;').replace(',', '\\,').replace('\r', '')
 
 
 class handler(BaseHTTPRequestHandler):
@@ -132,7 +144,7 @@ class handler(BaseHTTPRequestHandler):
                         if ref_names:
                             desc_parts.append(f"Arbitros: {', '.join(ref_names)}")
 
-                    description = escape_ics('\\n'.join(desc_parts))
+                    description = fold_line(escape_ics('\n'.join(desc_parts)))
 
                     # Location
                     location = escape_ics(venue) if venue and venue != 'A definir' else ''
