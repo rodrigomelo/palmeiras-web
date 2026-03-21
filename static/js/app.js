@@ -333,26 +333,25 @@
         const data = await api('standings?competition=BSA');
         if (!data) { showError('standings', 'Erro ao carregar', 'loadStandings'); return; }
         const rows = data.standings || [];
-        const team = rows.find(s => { const t = typeof s.team === 'string' ? JSON.parse(s.team) : s.team; return t.id === TEAM_ID; });
+        const team = rows.find(s => s.teamId === TEAM_ID);
         if (!team) { showEmpty('standings', 'Dados indisponíveis'); return; }
 
         // Position badge with stats
-        const gd = team.goals_for - team.goals_against;
-        const avg = team.played_games > 0 ? (team.points / team.played_games).toFixed(2) : '0';
+        const gd = team.goalDifference;
+        const avg = team.playedGames > 0 ? (team.points / team.playedGames).toFixed(2) : '0';
 
         // Full table
         const tableHtml = rows.map(s => {
-            const t = typeof s.team === 'string' ? JSON.parse(s.team) : s.team;
-            const isPalmeiras = t.id === TEAM_ID;
+            const isPalmeiras = s.teamId === TEAM_ID;
             return `<div class="standings-row ${isPalmeiras ? 'palmeiras' : ''}">
                 <span class="pos">${s.position}</span>
-                <span class="team">${t.shortName || t.name}</span>
+                <span class="team">${s.teamShort || s.teamName}</span>
                 <span class="stats">
-                    <span>J${s.played_games}</span>
+                    <span>J${s.playedGames}</span>
                     <span style="color:var(--win)">V${s.won}</span>
-                    <span style="color:var(--draw)">E${s.drawn}</span>
+                    <span style="color:var(--draw)">E${s.draw}</span>
                     <span style="color:var(--loss)">D${s.lost}</span>
-                    <span>SG${(s.goals_for - s.goals_against) >= 0 ? '+' : ''}${s.goals_for - s.goals_against}</span>
+                    <span>SG${s.goalDifference >= 0 ? '+' : ''}${s.goalDifference}</span>
                 </span>
                 <span class="pts">${s.points}</span>
             </div>`;
@@ -363,17 +362,17 @@
                 <div class="position-badge">${team.position}º</div>
                 <div class="stats-grid">
                     <div class="stat-box"><div class="stat-value">${team.points}</div><div class="stat-label">Pontos</div></div>
-                    <div class="stat-box"><div class="stat-value">${team.played_games}</div><div class="stat-label">Jogos</div></div>
+                    <div class="stat-box"><div class="stat-value">${team.playedGames}</div><div class="stat-label">Jogos</div></div>
                     <div class="stat-box"><div class="stat-value">${avg}</div><div class="stat-label">Pts/Jogo</div></div>
                 </div>
                 <div class="stats-grid" style="margin-top:0.5rem">
                     <div class="stat-box"><div class="stat-value" style="color:var(--win)">${team.won}</div><div class="stat-label">Vitórias</div></div>
-                    <div class="stat-box"><div class="stat-value" style="color:var(--draw)">${team.drawn}</div><div class="stat-label">Empates</div></div>
+                    <div class="stat-box"><div class="stat-value" style="color:var(--draw)">${team.draw}</div><div class="stat-label">Empates</div></div>
                     <div class="stat-box"><div class="stat-value" style="color:var(--loss)">${team.lost}</div><div class="stat-label">Derrotas</div></div>
                 </div>
                 <div class="stats-grid" style="margin-top:0.5rem">
-                    <div class="stat-box"><div class="stat-value">${team.goals_for}</div><div class="stat-label">Gols Pro</div></div>
-                    <div class="stat-box"><div class="stat-value">${team.goals_against}</div><div class="stat-label">Gols Contra</div></div>
+                    <div class="stat-box"><div class="stat-value">${team.goalsFor}</div><div class="stat-label">Gols Pro</div></div>
+                    <div class="stat-box"><div class="stat-value">${team.goalsAgainst}</div><div class="stat-label">Gols Contra</div></div>
                     <div class="stat-box"><div class="stat-value" style="color:${gd >= 0 ? 'var(--win)' : 'var(--loss)'}">${gd >= 0 ? '+' : ''}${gd}</div><div class="stat-label">Saldo</div></div>
                 </div>
             </div>
