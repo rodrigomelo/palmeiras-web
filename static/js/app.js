@@ -229,11 +229,10 @@
             const h = m.homeTeam?.id, a = m.awayTeam?.id;
             return (h === TEAM_ID && a === oppId) || (h === oppId && a === TEAM_ID);
         }) || [];
-        // Sort by date descending to get most recent H2H
         h2hMatches.sort((a, b) => new Date(b.utcDate) - new Date(a.utcDate));
         const h2hMatch = h2hMatches[0];
 
-        // Build H2H line
+        // Build H2H line only if real data exists
         let h2hLine = '';
         if (h2hMatch) {
             const h2hDate = new Date(h2hMatch.utcDate).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -241,8 +240,6 @@
             const oppScore = h2hMatch.homeTeam?.id === TEAM_ID ? h2hMatch.awayScore : h2hMatch.homeScore;
             const result = ourScore > oppScore ? 'Vitória do Verdão' : ourScore < oppScore ? 'Derrota' : 'Empate';
             h2hLine = `<p style="margin:0.4rem 0;font-size:0.85rem;opacity:0.95"><strong>Último confronto:</strong> ${ourScore}×${oppScore} (${result}) — ${h2hDate}</p>`;
-        } else {
-            h2hLine = `<p style="margin:0.4rem 0;font-size:0.85rem;opacity:0.95;font-style:italic">"O último encontro terminou 2x1 pro Verdão.<br>Mas a história não se repete."</p>`;
         }
 
         document.getElementById('hero-back').innerHTML = `
