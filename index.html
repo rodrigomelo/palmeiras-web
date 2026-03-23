@@ -32,14 +32,12 @@
 
     <main class="container">
         <!-- Hero -->
-        <div class="hero-card" id="hero-match" onclick="document.getElementById('hero-extra-wrapper').classList.toggle('open')">
-            <div class="hero-card-front" id="hero-front"><div class="empty" style="color:white">Carregando...</div></div>
-            <div class="hero-extra-wrapper" id="hero-extra-wrapper">
-                <div class="hero-extra-inner">
-                    <div class="hero-extra" id="hero-back"><div style="padding:1rem;color:white"></div></div>
-                </div>
+        <div class="hero-card" id="hero-match" onclick="document.getElementById('hero-match').classList.toggle('flipped')">
+            <div class="hero-card-inner">
+                <div class="hero-card-front" id="hero-front"><div class="empty" style="color:white">Carregando...</div></div>
+                <div class="hero-card-back" id="hero-back"><div style="padding:1rem;color:white"></div></div>
             </div>
-            <button class="hero-card-toggle" onclick="event.stopPropagation();document.getElementById('hero-extra-wrapper').classList.toggle('open')">ℹ️</button>
+            <button class="hero-card-toggle">ℹ️</button>
         </div>
 
         <!-- Info Bar -->
