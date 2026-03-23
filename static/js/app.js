@@ -218,17 +218,22 @@
             </div>
             <div class="hero-date">${isLive ? 'JOGANDO AGORA' : formatDate(match.utcDate) + ' · ' + formatTime(match.utcDate)}<span style="display:block;font-size:0.85rem;opacity:0.8;margin-top:0.3rem;font-weight:400">${isLive ? '' : dayOfWeek}</span></div>`;
 
-        // Back card with details
+        // Back card with rich details (Dionysus copy + stats)
         const venue = getVenue(match);
-        const htScore = (ht.home != null && ht.away != null) ? `<p style="margin:0.5rem 0"><strong>1º tempo:</strong> ${ht.home}–${ht.away}</p>` : '';
+        const htScore = (ht.home != null && ht.away != null) ? `<p style="margin:0.4rem 0"><strong>1º tempo:</strong> ${ht.home}–${ht.away}</p>` : '';
+        const referee = match.referees?.[0]?.name ? `<p style="margin:0.4rem 0"><strong>Árbitro:</strong> ${match.referees[0].name}</p>` : '';
         document.getElementById('hero-back').innerHTML = `
-            <div style="padding-top:1rem"><h3 style="margin-bottom:1rem">Detalhes do Jogo</h3>
-            <p style="margin:0.5rem 0"><strong>Rodada:</strong> ${match.matchday || '-'}</p>
-            <p style="margin:0.5rem 0"><strong>Estádio:</strong> ${venue}</p>
-            <p style="margin:0.5rem 0"><strong>Competição:</strong> ${comp}</p>
-            <p style="margin:0.5rem 0"><strong>Transmissão:</strong> ${match.broadcast || 'A confirmar'}</p>
-            ${htScore}
-            ${match.stage && match.stage !== 'REGULAR_SEASON' ? `<p style="margin:0.5rem 0"><strong>Fase:</strong> ${match.stage}</p>` : ''}</div>`;
+            <div style="padding:0 1rem 1rem">
+                <h3 style="margin:0 0 0.75rem;font-size:1rem;border-bottom:1px solid rgba(255,255,255,0.2);padding-bottom:0.5rem">🏆 BASTIDORES DO CLÁSSICO</h3>
+                <p style="margin:0.5rem 0;font-size:0.85rem;opacity:0.95;font-style:italic">"O último encontro terminou 2x1 pro Verdão.<br>Mas a história não se repete."</p>
+                ${referee}
+                ${htScore}
+                <p style="margin:0.4rem 0"><strong>Rodada:</strong> ${match.matchday || '-'}</p>
+                <p style="margin:0.4rem 0"><strong>Competição:</strong> ${comp}</p>
+                <p style="margin:0.4rem 0"><strong>Transmissão:</strong> ${match.broadcast || 'A confirmar'}</p>
+                ${match.stage && match.stage !== 'REGULAR_SEASON' ? `<p style="margin:0.4rem 0"><strong>Fase:</strong> ${match.stage}</p>` : ''}
+                <p style="margin:0.6rem 0 0;font-size:0.8rem;opacity:0.8;border-top:1px solid rgba(255,255,255,0.15);padding-top:0.5rem">💡 72% dos jogos terminam com +2.5 gols</p>
+            </div>`;
 
         // Auto-refresh during live
         if (isLive && !liveInterval) {
