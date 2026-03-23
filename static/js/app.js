@@ -224,11 +224,14 @@
         const referee = match.referees?.[0]?.name ? `<p style="margin:0.4rem 0"><strong>Árbitro:</strong> ${match.referees[0].name}</p>` : '';
         // Find last H2H match (finished) between Palmeiras and opponent
         const oppId = home.id === TEAM_ID ? away.id : home.id;
-        const h2hData = await api('matches?status=FINISHED&limit=30');
-        const h2hMatch = h2hData?.matches?.find(m => {
+        const h2hData = await api('matches?status=FINISHED&limit=50');
+        const h2hMatches = h2hData?.matches?.filter(m => {
             const h = m.homeTeam?.id, a = m.awayTeam?.id;
             return (h === TEAM_ID && a === oppId) || (h === oppId && a === TEAM_ID);
-        });
+        }) || [];
+        // Sort by date descending to get most recent H2H
+        h2hMatches.sort((a, b) => new Date(b.utcDate) - new Date(a.utcDate));
+        const h2hMatch = h2hMatches[0];
 
         // Build H2H line
         let h2hLine = '';
