@@ -81,7 +81,7 @@
                 target.offsetHeight;
                 target.style.animation = '';
                 // Smooth scroll to tab content
-                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                target.scrollIntoView({ behavior: 'auto', block: 'start' });
             });
         });
     }
