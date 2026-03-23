@@ -222,17 +222,36 @@
         const venue = getVenue(match);
         const htScore = (ht.home != null && ht.away != null) ? `<p style="margin:0.4rem 0"><strong>1º tempo:</strong> ${ht.home}–${ht.away}</p>` : '';
         const referee = match.referees?.[0]?.name ? `<p style="margin:0.4rem 0"><strong>Árbitro:</strong> ${match.referees[0].name}</p>` : '';
+        // Find last H2H match (finished) between Palmeiras and opponent
+        const oppId = home.id === TEAM_ID ? away.id : home.id;
+        const h2hData = await api('matches?status=FINISHED&limit=30');
+        const h2hMatch = h2hData?.matches?.find(m => {
+            const h = m.homeTeam?.id, a = m.awayTeam?.id;
+            return (h === TEAM_ID && a === oppId) || (h === oppId && a === TEAM_ID);
+        });
+
+        // Build H2H line
+        let h2hLine = '';
+        if (h2hMatch) {
+            const h2hDate = new Date(h2hMatch.utcDate).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
+            const ourScore = h2hMatch.homeTeam?.id === TEAM_ID ? h2hMatch.homeScore : h2hMatch.awayScore;
+            const oppScore = h2hMatch.homeTeam?.id === TEAM_ID ? h2hMatch.awayScore : h2hMatch.homeScore;
+            const result = ourScore > oppScore ? 'Vitória do Verdão' : ourScore < oppScore ? 'Derrota' : 'Empate';
+            h2hLine = `<p style="margin:0.4rem 0;font-size:0.85rem;opacity:0.95"><strong>Último confronto:</strong> ${ourScore}×${oppScore} (${result}) — ${h2hDate}</p>`;
+        } else {
+            h2hLine = `<p style="margin:0.4rem 0;font-size:0.85rem;opacity:0.95;font-style:italic">"O último encontro terminou 2x1 pro Verdão.<br>Mas a história não se repete."</p>`;
+        }
+
         document.getElementById('hero-back').innerHTML = `
             <div style="padding:0 1rem 1rem">
                 <h3 style="margin:0 0 0.75rem;font-size:1rem;border-bottom:1px solid rgba(255,255,255,0.2);padding-bottom:0.5rem">🏆 BASTIDORES DO CLÁSSICO</h3>
-                <p style="margin:0.5rem 0;font-size:0.85rem;opacity:0.95;font-style:italic">"O último encontro terminou 2x1 pro Verdão.<br>Mas a história não se repete."</p>
+                ${h2hLine}
                 ${referee}
                 ${htScore}
                 <p style="margin:0.4rem 0"><strong>Rodada:</strong> ${match.matchday || '-'}</p>
                 <p style="margin:0.4rem 0"><strong>Competição:</strong> ${comp}</p>
                 <p style="margin:0.4rem 0"><strong>Transmissão:</strong> ${match.broadcast || 'A confirmar'}</p>
                 ${match.stage && match.stage !== 'REGULAR_SEASON' ? `<p style="margin:0.4rem 0"><strong>Fase:</strong> ${match.stage}</p>` : ''}
-                <p style="margin:0.6rem 0 0;font-size:0.8rem;opacity:0.8;border-top:1px solid rgba(255,255,255,0.15);padding-top:0.5rem">💡 72% dos jogos terminam com +2.5 gols</p>
             </div>`;
 
         // Auto-refresh during live
