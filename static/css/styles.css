@@ -45,13 +45,14 @@ body {
 
 /* Hero Card */
 .hero-card {
-    background: linear-gradient(135deg, var(--brand), var(--brand-dark));
+    background: transparent;
     border-radius: var(--radius);
     color: white; text-align: center;
-    margin-bottom: 1.5rem; box-shadow: var(--shadow);
+    margin-bottom: 1.5rem;
     perspective: 1000px; min-height: 280px;
     transition: box-shadow 0.3s;
     cursor: pointer;
+    box-shadow: var(--shadow);
 }
 .hero-card.live {
     box-shadow: 0 0 0 3px var(--live), 0 4px 20px rgba(255,23,68,0.3);
@@ -70,11 +71,15 @@ body {
 .hero-card-front, .hero-card-back {
     position: absolute; width: 100%;
     backface-visibility: hidden; padding: 1.5rem;
+    border-radius: var(--radius);
+    box-sizing: border-box;
+}
+.hero-card-front {
+    background: linear-gradient(135deg, var(--brand), var(--brand-dark));
 }
 .hero-card-back {
     transform: rotateY(180deg);
     background: linear-gradient(135deg, var(--brand-dark), var(--brand));
-    border-radius: var(--radius);
 }
 
 .hero-comp {
