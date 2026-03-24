@@ -37,8 +37,12 @@
     const TEAM_CRESTS = {
         1769: 'https://crests.football-data.org/1769.png', // Palmeiras
     };
+    const BROKEN_CRESTS = new Set([
+        'https://ssl.gstatic.com/lingonautique/paulista_2024/palmeiras.png',
+    ]);
     function getCrest(team) {
-        if (team?.crest) return team.crest;
+        const crest = team?.crest;
+        if (crest && !BROKEN_CRESTS.has(crest)) return crest;
         if (team?.id && TEAM_CRESTS[team.id]) return TEAM_CRESTS[team.id];
         return 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="18" fill="#ccc"/><text x="20" y="25" text-anchor="middle" fill="#666" font-size="14">?</text></svg>');
     }
