@@ -5,38 +5,82 @@ Agenda web para acompanhar o Palmeiras — jogos, classificação, notícias e c
 ## Architecture
 
 ```
-index.html          → Frontend (static)
-static/css/styles.css
-static/js/app.js
-api/                → Vercel serverless functions (production)
-  ├── matches.py
-  ├── standings.py
-  ├── news.py
-  └── calendar.py
-server.py           → Local dev server (same API, direct Supabase)
-collectors/         → Data collection scripts
+palmeiras-web/
+├── index.html                 → Frontend
+├── server.py                  → Local dev server (direct Supabase)
+├── vercel.json                → Vercel deployment config
+├── .env                       → Local credentials (not tracked)
+├── .env.example               → Template
+├── static/
+│   ├── css/styles.css         → Styles
+│   ├── js/
+│   │   ├── config.js          → Shared constants (TEAM_ID, stadiums, helpers)
+│   │   └── app.js             → Application logic
+│   ├── crests/*.png           → Cached team logos (22 teams)
+│   └── favicon.png
+├── api/                       → Vercel serverless functions
+│   ├── matches.py
+│   ├── standings.py
+│   ├── news.py
+│   └── calendar.py
+├── collectors/                → Data collection scripts
+│   ├── __init__.py            → Main collector (matches, standings, news, broadcast)
+│   ├── crest_manager.py       → Logo download & cache
+│   └── requirements.txt
+├── data/                      → Raw data
+├── docs/                      → Documentation
+└── supabase-schema.sql        → Database schema
 ```
 
-**Local and Vercel share the same Supabase database.** The API contracts are identical.
+## Data Flow
+
+```
+[football-data.org API] ──→ [Collector] ──→ [Supabase] ──→ [API] ──→ [Frontend]
+[ge.globo scraping]     ──→                                         
+[lance.com.br scraping] ──→                                         
+```
+
+- **Collector** writes to Supabase
+- **Local server** (`server.py`) reads from Supabase directly
+- **Vercel API** reads from Supabase via env vars
+- **Both APIs** return identical JSON contracts
+- **Single Supabase instance** shared across all environments
 
 ## Quick Start
 
 ### Local Development
 
 ```bash
+cd palmeiras-web
+
 # Ensure .env has credentials
 cp .env.example .env
 # Edit .env with SUPABASE_URL and SUPABASE_KEY
 
-# Start local server
-python3 server.py
+# Start local server (use homebrew Python, not system Python)
+/opt/homebrew/bin/python3 server.py
 open http://localhost:5001
 ```
 
-### Vercel (Production)
+> **Note:** The system Python 3.9 (from Xcode) doesn't have `supabase` installed.
+> Always use `/opt/homebrew/bin/python3` or install supabase for the system Python.
+
+### Run the Collector
 
 ```bash
-# Deploy
+cd palmeiras-web
+/opt/homebrew/bin/python3 -c "
+from collectors import collect_matches, collect_standings, collect_news, apply_broadcast_info
+collect_matches()
+collect_standings()
+collect_news()
+apply_broadcast_info()
+"
+```
+
+### Deploy to Vercel
+
+```bash
 npx vercel --prod
 
 # Environment variables (set once)
@@ -67,12 +111,23 @@ npx vercel env add SUPABASE_KEY development
 
 ## Database
 
-Supabase tables: `matches`, `standings`, `news`, `team_stats`.
+Supabase tables: `matches`, `standings`, `news`.
 Schema in `supabase-schema.sql`.
+
+## Crest Cache
+
+Team logos are cached locally in `static/crests/{team_id}.png`.
+
+- **`crest_manager.py`** downloads logos from football-data.org on first run
+- Already cached logos are skipped (file exists check)
+- Teams without logos show a placeholder SVG
+- Known broken URLs (e.g., gstatic) are replaced with `crests.football-data.org`
+- Run the collector to cache new team logos automatically
 
 ## Stack
 
 - **Frontend:** Vanilla HTML/CSS/JS
 - **API:** Python (Vercel serverless / local HTTP server)
 - **Database:** Supabase (PostgreSQL)
+- **Data:** football-data.org + web scraping (ge.globo, lance.com.br)
 - **Deploy:** Vercel

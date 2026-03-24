@@ -2,177 +2,168 @@
 
 ## Overview
 
-Palmeiras project consists of two repos:
-- `palmeiras-web` — Frontend (JS), API (Python), Collectors (Python)
-- `palmeiras-data` — Collector logic lives inside `palmeiras-web/collectors/`
+Palmeiras Agenda uses a single Supabase database shared across:
+- **Collector** — writes data (matches, standings, news)
+- **Local server** (`server.py`) — reads data for development
+- **Vercel API** (`api/*.py`) — reads data for production
 
----
+All three connect to the same Supabase instance. API contracts are identical.
 
 ## Pipeline Flow
 
 ```
-[Football-Data API] ──────────────────────────────┐
-[ge.globo scraping]  ────────────────────────────┤
-[lance.com.br scraping] ──────────────────────────┤
-                                                    ↓
-                                     [Collector: collectors/__init__.py]
-                                     Python — transform to snake_case
-                                     ⚠️ NO validation layer (CURRENTLY)
-                                                    ↓
-                                        [Supabase: matches, standings, news]
-                                        ⚠️ JSON strings in nested fields
-                                        ⚠️ standings/news: delete + insert (no upsert)
-                                                    ↓
-                                     [API: api/standings.py, matches.py]
-                                     Python — camelCase transform
-                                                    ↓
-                                          [Frontend JS — consume]
+[football-data.org API] ──┐
+[ge.globo scraping]     ──┤
+[lance.com.br scraping] ──┤
+                           ↓
+              [Collector: collectors/__init__.py]
+              Python — fetch, transform, cache crests
+                           ↓
+              [Supabase: matches, standings, news]
+              • matches: upsert on external_id
+              • standings: build first, then replace
+              • news: keep existing if scraper fails
+                           ↓
+              [API: api/*.py (Vercel) | server.py (local)]
+              Python — camelCase transform, same contracts
+                           ↓
+              [Frontend: static/js/app.js]
+              Vanilla JS — render, no framework
 ```
 
----
+## Data Sources
 
-## Data Criticidade Table
+| Source | Data | Method |
+|--------|------|--------|
+| football-data.org | Matches, standings | REST API |
+| ge.globo | News | HTML scraping (BeautifulSoup) |
+| lance.com.br | News | HTML scraping (BeautifulSoup) |
 
-| Criticidade | Data | Impact if Missing |
-|-------------|------|-------------------|
-| 🔴 Alta | Match score, status | App is useless |
-| 🔴 Alta | Standings position, points | Core feature broken |
-| 🟡 Média | Broadcast, referee | Degraded but functional |
-| 🟢 Baixa | Team crest, form | Fallback acceptable |
+## Competition Codes
 
----
+| Code | Competition |
+|------|-------------|
+| `BSA` | Campeonato Brasileiro Série A |
+| `COPA` | Copa do Brasil |
+| `CLI` | Copa Libertadores |
+
+## Crest Management
+
+Team logos are cached in `static/crests/{team_id}.png`.
+
+```
+[football-data.org/crests] → [crest_manager.py] → [static/crests/*.png]
+                                                         ↓
+                                              [Supabase: local paths]
+                                                         ↓
+                                              [API returns /static/crests/ID.png]
+```
+
+- Downloads on first collector run, skips if already cached
+- Known broken URLs (gstatic) replaced with `crests.football-data.org`
+- Teams without logos get placeholder SVG on frontend
 
 ## API Contract
 
-### `/api/standings?competition=BSA`
+### `/api/matches`
 
-**Response:**
+```json
+{
+  "matches": [
+    {
+      "id": 554817,
+      "utcDate": "2026-03-22T00:00:00+00:00",
+      "status": "FINISHED",
+      "matchday": 8,
+      "stage": "REGULAR_SEASON",
+      "venue": "Allianz Parque",
+      "broadcast": "Premiere / Globo",
+      "homeTeam": { "id": 1769, "name": "SE Palmeiras", "shortName": "Palmeiras", "crest": "/static/crests/1769.png" },
+      "awayTeam": { "id": 1776, "name": "São Paulo FC", "shortName": "São Paulo", "crest": "/static/crests/1776.png" },
+      "competition": { "code": "BSA", "name": "Campeonato Brasileiro Série A" },
+      "score": {
+        "fullTime": { "home": 3, "away": 1 },
+        "halfTime": { "home": 1, "away": 0 }
+      }
+    }
+  ]
+}
+```
+
+### `/api/standings`
+
 ```json
 {
   "standings": [
     {
       "position": 1,
-      "teamName": "Palmeiras",
-      "teamShort": "PAL",
-      "crest": "https://...png",
-      "playedGames": 10,
-      "won": 7,
-      "draw": 2,
-      "lost": 1,
-      "goalsFor": 20,
-      "goalsAgainst": 8,
-      "goalDifference": 12,
-      "points": 23,
+      "teamName": "SE Palmeiras",
+      "teamShort": "Palmeiras",
+      "crest": "/static/crests/1769.png",
+      "playedGames": 8,
+      "won": 6, "draw": 1, "lost": 1,
+      "goalsFor": 17, "goalsAgainst": 8,
+      "goalDifference": 9,
+      "points": 19,
       "teamId": 1769
     }
   ]
 }
 ```
 
-### `/api/matches?status=FINISHED&limit=10`
+### `/api/news`
 
-**Response:**
 ```json
-{
-  "matches": [
-    {
-      "id": "12345",
-      "utcDate": "2026-03-15T19:00:00Z",
-      "status": "FINISHED",
-      "matchday": 12,
-      "stage": "REGULAR_SEASON",
-      "venue": "Allianz Parque",
-      "broadcast": "Premiere / Globo",
-      "homeTeam": { "id": 1769, "name": "Palmeiras", "shortName": "PAL", "crest": "..." },
-      "awayTeam": { "id": 1775, "name": "Corinthians", "shortName": "COR", "crest": "..." },
-      "competition": { "id": 71, "name": "Campeonato Brasileiro", "code": "BSA", "emblem": "..." },
-      "score": {
-        "fullTime": { "home": 2, "away": 1 },
-        "halfTime": { "home": 1, "away": 0 }
-      },
-      "homeScore": 2,
-      "awayScore": 1
-    }
-  ]
-}
+[
+  {
+    "id": "uuid",
+    "title": "News headline",
+    "url": "https://ge.globo.com/...",
+    "image": "https://...",
+    "source": "ge.globo",
+    "collected_at": "2026-03-24T21:03:09+00:00"
+  }
+]
 ```
 
----
-
-## DB → API Transform (Naming Conventions)
+## DB → API Transform
 
 | DB (snake_case) | API (camelCase) |
 |-----------------|-----------------|
+| `external_id` | `id` |
+| `utc_date` | `utcDate` |
+| `home_team` (JSON) | `homeTeam` (object) |
+| `away_team` (JSON) | `awayTeam` (object) |
+| `competition` (JSON) | `competition` (object) |
+| `home_score` | `homeScore` + `score.fullTime.home` |
+| `half_time_home` | `score.halfTime.home` |
 | `played_games` | `playedGames` |
-| `team` (JSON) | `teamName`, `teamShort`, `teamId`, `crest` |
-| `drawn` ⚠️ | `draw` |
+| `drawn` | `draw` |
+| `goals_for` | `goalsFor` |
+| `goals_against` | `goalsAgainst` |
+| `goal_difference` | `goalDifference` |
 
----
+## Known Limitations
 
-## Gaps Identified
+| Issue | Severity | Notes |
+|-------|----------|-------|
+| News scraper uses CSS selectors | 🟡 | Will break on site redesign |
+| No data history (standings/news) | 🟡 | Delete-then-insert pattern |
+| Copa do Brasil has limited crest coverage | 🟢 | Small teams may lack logos |
+| football-data.org free tier limits | 🟡 | Rate limited |
 
-| Gap | Severity | Impact |
-|-----|----------|--------|
-| Standings without history (delete + insert pattern) | 🔴 CRITICAL | RPO = 0, all history lost on each run |
-| News without archival | 🔴 CRITICAL | RPO = 0, articles lost on each run |
-| No schema validation | 🔴 CRITICAL | Silent failures, field mismatches |
-| No retry logic in collector | 🟡 MEDIUM | Data gaps if API source fails |
-| No persistent logging | 🟡 MEDIUM | Hard to audit failures |
-| JSON strings in DB (nested data) | 🟡 MEDIUM | Query complexity, parsing needed |
-| Python ↔ JS naming mismatch | 🟡 MEDIUM | Interface confusion, bugs |
-
----
-
-## Proposed Validation Layers
-
-```
-[Source API] → [Collector + Pydantic] → [Supabase] → [API Transform + Zod] → [Frontend + Zod]
-                 ✅                       ✅              ✅                       ✅
-```
-
-| Layer | Tool | Validates |
-|-------|------|----------|
-| Collector input | Pydantic | Raw data from external API |
-| API output | Zod | Response before serving |
-| Frontend input | Zod | API response before render |
-
----
-
-## Tech Stack
+## Stack
 
 | Component | Technology |
 |-----------|------------|
-| Collector | Python 3 |
-| External API | api.football-data.org (free tier) |
+| Frontend | Vanilla HTML/CSS/JS |
+| API | Python (Vercel serverless / http.server) |
 | Database | Supabase (PostgreSQL) |
-| API Server | Python (built-in http.server) |
-| Frontend | Vanilla JS |
+| Data sources | football-data.org, web scraping |
+| Deploy | Vercel |
+| Crest cache | Local PNG files in `static/crests/` |
 
 ---
 
-## Dependencies
-
-### Python (collector)
-- `requests`
-- `python-dotenv`
-- `supabase` (PostgreSQL client)
-
-### Frontend
-- Vanilla JS (no framework specified)
-
----
-
-## Next Steps
-
-1. **🔴 CRITICAL** — Change standings/news from delete+insert to upsert (preserve history)
-2. **🔴 CRITICAL** — Add Pydantic validation in collector
-3. **🟡 MEDIUM** — Add retry with exponential backoff
-4. **🟡 MEDIUM** — Add structured logging
-5. **🟡 MEDIUM** — Zod validation in API Transform (Apollo/Hefesto)
-6. **🟢 LOW** — Document design system (Athena)
-7. **🟢 LOW** — Create TEST_PLAN.md (Apollo)
-
----
-
-*Last updated: 2026-03-21*
-*Maintained by: Poseidon (Data Architect)*
+*Last updated: 2026-03-24*
+*Maintained by: Hefesto*
