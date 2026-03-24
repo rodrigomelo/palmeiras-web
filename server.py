@@ -175,7 +175,7 @@ def api_calendar(params):
         lines = [
             "BEGIN:VCALENDAR",
             "VERSION:2.0",
-            "PRODID:-//Palmeiras//Dashboard//EN",
+            "PRODID:-//Palmeiras//Agenda//EN",
             "X-WR-CALNAME:Palmeiras - Jogos",
             "X-WR-TIMEZONE:America/Sao_Paulo",
             "CALSCALE:GREGORIAN",
@@ -236,7 +236,7 @@ def api_calendar(params):
 
                 lines.extend([
                     "BEGIN:VEVENT",
-                    f"UID:palmeiras-{m.get('external_id', '')}@dashboard",
+                    f"UID:palmeiras-{m.get('external_id', '')}@agenda",
                     f"DTSTAMP:{now}",
                     f"DTSTART;TZID=America/Sao_Paulo:{start}",
                     f"DTEND;TZID=America/Sao_Paulo:{end}",

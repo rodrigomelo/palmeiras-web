@@ -1,5 +1,5 @@
 /**
- * Palmeiras Dashboard v3 — With Athena's design system
+ * Palmeiras Agenda v3 — With Athena's design system
  *
  * Features:
  * - Live match with estimated minute + auto-refresh

@@ -1,6 +1,6 @@
-# Palmeiras Dashboard
+# Palmeiras Agenda
 
-Dashboard web para acompanhar o Palmeiras — jogos, classificação, notícias e calendário.
+Agenda web para acompanhar o Palmeiras — jogos, classificação, notícias e calendário.
 
 ## Architecture
 

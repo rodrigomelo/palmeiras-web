@@ -1,5 +1,5 @@
 /**
- * Shared configuration for Palmeiras Dashboard.
+ * Shared configuration for Palmeiras Agenda.
  * Single source of truth for constants used across JS.
  */
 const CONFIG = {
