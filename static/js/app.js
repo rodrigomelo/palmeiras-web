@@ -140,12 +140,12 @@
             <div class="hero-teams">
                 <div class="hero-team">
                     <img src="${getCrest(home)}" style="width:56px;height:56px">
-                    <div class="hero-team-name">${escapeHtml(home.shortName || home.name)}</div>
+                    <div class="hero-team-name">${escapeHtml(CONFIG.teamName(home))}</div>
                 </div>
                 ${scoreHtml}
                 <div class="hero-team">
                     <img src="${getCrest(away)}" style="width:56px;height:56px">
-                    <div class="hero-team-name">${escapeHtml(away.shortName || away.name)}</div>
+                    <div class="hero-team-name">${escapeHtml(CONFIG.teamName(away))}</div>
                 </div>
             </div>
             <div class="hero-date">${isLive ? 'JOGANDO AGORA' : formatDate(match.utcDate) + ' · ' + formatTime(match.utcDate)}<span style="display:block;font-size:0.85rem;opacity:0.8;margin-top:0.3rem;font-weight:400">${isLive ? '' : dayOfWeek}</span></div>`;
@@ -192,9 +192,9 @@
                 </div>
                 <div class="match-header"><span>${isLive ? '<span class="live-dot"></span>AO VIVO · ' : ''}${formatDate(m.utcDate)} · ${formatTime(m.utcDate)}</span><span>${escapeHtml(formatComp(m.competition))}</span></div>
                 <div class="match-teams">
-                    <span><img src="${getCrest(m.homeTeam)}" style="width:22px;height:22px;vertical-align:middle;margin-right:4px">${escapeHtml(m.homeTeam.shortName || m.homeTeam.name)}</span>
+                    <span><img src="${getCrest(m.homeTeam)}" style="width:22px;height:22px;vertical-align:middle;margin-right:4px">${escapeHtml(CONFIG.teamName(m.homeTeam))}</span>
                     <span style="color:var(--text-muted)">×</span>
-                    <span>${escapeHtml(m.awayTeam.shortName || m.awayTeam.name)}<img src="${getCrest(m.awayTeam)}" style="width:22px;height:22px;vertical-align:middle;margin-left:4px"></span>
+                    <span>${escapeHtml(CONFIG.teamName(m.awayTeam))}<img src="${getCrest(m.awayTeam)}" style="width:22px;height:22px;vertical-align:middle;margin-left:4px"></span>
                 </div>
             </div>`;
         }).join('');
@@ -219,7 +219,7 @@
             const isHome = m.homeTeam.id === TEAM_ID;
             const our = isHome ? m.score.fullTime.home : m.score.fullTime.away;
             const opp = isHome ? m.score.fullTime.away : m.score.fullTime.home;
-            const oppName = isHome ? m.awayTeam.shortName || m.awayTeam.name : m.homeTeam.shortName || m.homeTeam.name;
+            const oppName = isHome ? CONFIG.teamName(m.awayTeam) : CONFIG.teamName(m.homeTeam);
             const r = our > opp ? 'V' : our < opp ? 'D' : 'E';
             const resultClass = r === 'V' ? 'win' : r === 'D' ? 'loss' : 'draw';
 
@@ -356,8 +356,8 @@
         const isHome = match.homeTeam.id === TEAM_ID;
         const hw = isHome ? 45 : 30, dr = 28, aw = 100 - hw - dr;
 
-        const homeName = escapeHtml(match.homeTeam.shortName || match.homeTeam.name);
-        const awayName = escapeHtml(match.awayTeam.shortName || match.awayTeam.name);
+        const homeName = escapeHtml(CONFIG.teamName(match.homeTeam));
+        const awayName = escapeHtml(CONFIG.teamName(match.awayTeam));
 
         document.getElementById('prediction').innerHTML = `
             <div class="prediction-card">

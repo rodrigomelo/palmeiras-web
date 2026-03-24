@@ -307,16 +307,27 @@ class Handler(SimpleHTTPRequestHandler):
 
 
 if __name__ == '__main__':
+    # Verify supabase is importable
+    try:
+        from supabase import create_client
+    except ImportError:
+        print("ERROR: 'supabase' package not installed.", file=sys.stderr)
+        print(f"  Python: {sys.executable} ({sys.version.split()[0]})", file=sys.stderr)
+        print(f"  Fix: /opt/homebrew/bin/python3 server.py", file=sys.stderr)
+        sys.exit(1)
+
     if not SUPABASE_URL or not SUPABASE_KEY:
         print("ERROR: SUPABASE_URL and SUPABASE_KEY must be set in .env", file=sys.stderr)
         sys.exit(1)
 
     print(f"Palmeiras Web running at http://localhost:{PORT}")
+    print(f"  Python: {sys.executable} ({sys.version.split()[0]})")
     print(f"  Supabase: {SUPABASE_URL[:40]}...")
     print(f"  API routes: {', '.join(API_ROUTES.keys())}")
     print(f"  Press Ctrl+C to stop")
 
     server = HTTPServer(('0.0.0.0', PORT), Handler)
+    server.allow_reuse_address = True
     try:
         server.serve_forever()
     except KeyboardInterrupt:

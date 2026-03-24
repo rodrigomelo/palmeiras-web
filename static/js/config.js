@@ -25,4 +25,10 @@ const CONFIG = {
         const awayId = match.awayTeam?.id === this.TEAM_ID ? match.homeTeam?.id : match.awayTeam?.id;
         return this.STADIUMS[awayId] || 'A definir';
     },
+
+    /** Best display name — prefer shortName if it's not a 3-letter code */
+    teamName(team) {
+        if (team?.shortName && team.shortName.length > 3) return team.shortName;
+        return team?.name || team?.shortName || '?';
+    },
 };
