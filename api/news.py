@@ -25,13 +25,13 @@ class handler(BaseHTTPRequestHandler):
 
         client = get_supabase()
         if not client:
-            return self._respond(503, [])
+            return self._respond(503, {'news': [], 'error': 'not_connected'})
 
         try:
             result = client.table('news').select('*').order('collected_at', desc=True).limit(limit).execute()
             self._respond(200, result.data)
         except Exception as e:
-            self._respond(500, [])
+            self._respond(500, {'news': [], 'error': str(e)})
 
     def _respond(self, status, data):
         self.send_response(status)

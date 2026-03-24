@@ -153,13 +153,13 @@ def api_news(params):
 
     client = get_client()
     if not client:
-        return 503, []
+        return 503, {'news': [], 'error': 'not_connected'}
 
     try:
         result = client.table('news').select('*').order('collected_at', desc=True).limit(limit).execute()
         return 200, result.data
-    except Exception:
-        return 500, []
+    except Exception as e:
+        return 500, {'news': [], 'error': str(e)}
 
 
 def api_calendar(params):

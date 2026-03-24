@@ -68,7 +68,7 @@ def collect_matches():
                     matches.append(m)
 
         # Also fetch from other competitions (Libertadores, Copa do Brasil)
-        for comp in [' Copa do Brasil', 'CL']:
+        for comp in ['CBC', 'CL']:
             try:
                 resp3 = requests.get(
                     f"{API_BASE}/teams/{TEAM_ID}/matches?competitions={comp}&limit=50",
