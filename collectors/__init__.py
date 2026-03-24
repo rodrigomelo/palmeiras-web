@@ -35,7 +35,9 @@ PALMEIRAS_HOME = 'Allianz Parque'
 # Known broadcast partners for Brazilian football
 BROADCAST_MAP = {
     'BSA': 'Premiere / Globo',
+    'COPA': 'SporTV / Premiere',
     'COPA_DO_BRASIL': 'SporTV / Premiere',
+    'CLI': 'ESPN / Star+',
     'LIBERTADORES': 'ESPN / Star+',
     'COPA_LIBERTADORES': 'ESPN / Star+',
 }
@@ -130,33 +132,20 @@ def collect_matches():
                 'matchday': m.get('matchday'),
                 'venue': venue,
                 'updated_at': now,
+                'half_time_home': ht.get('home'),
+                'half_time_away': ht.get('away'),
+                'season': json.dumps(m.get('season', {})),
+                'stage': m.get('stage', ''),
+                'area': json.dumps(m.get('area', {})),
+                'referees': json.dumps(referees),
+                'broadcast': broadcast,
             })
-
-            # Enhanced fields (requires schema migration)
-            try:
-                records[-1].update({
-                    'half_time_home': ht.get('home'),
-                    'half_time_away': ht.get('away'),
-                    'season': json.dumps(m.get('season', {})),
-                    'stage': m.get('stage', ''),
-                    'area': json.dumps(m.get('area', {})),
-                    'referees': json.dumps(referees),
-                    'broadcast': broadcast,
-                })
-            except Exception:
-                pass
 
         try:
             client.table('matches').upsert(records, on_conflict='external_id').execute()
             print(f"    Saved {len(records)} matches")
         except Exception as e:
-            # Fallback: save without enhanced fields
-            print(f"    Retrying without enhanced fields...")
-            for r in records:
-                for k in ['half_time_home', 'half_time_away', 'season', 'stage', 'area', 'referees', 'broadcast']:
-                    r.pop(k, None)
-            client.table('matches').upsert(records, on_conflict='external_id').execute()
-            print(f"    Saved {len(records)} matches (basic fields)")
+            print(f"    Error saving matches: {e}")
 
     except Exception as e:
         print(f"    Error: {e}")
@@ -189,8 +178,7 @@ def collect_standings():
         # Build all records first, then replace atomically
         records = []
         for entry in table:
-            form = entry.get('form', '')
-            record = {
+            records.append({
                 'competition': 'BSA',
                 'position': entry.get('position'),
                 'team': json.dumps(entry.get('team', {})),
@@ -202,23 +190,15 @@ def collect_standings():
                 'goals_against': entry.get('goalsAgainst'),
                 'goal_difference': entry.get('goalDifference'),
                 'points': entry.get('points'),
+                'form': entry.get('form', ''),
                 'updated_at': now,
-            }
-            try:
-                record['form'] = form
-            except Exception:
-                pass
-            records.append(record)
+            })
 
         # Delete old data only after we have new data ready
         client.table('standings').delete().neq('id', '00000000-0000-0000-0000-000000000000').execute()
 
         for record in records:
-            try:
-                client.table('standings').insert(record).execute()
-            except Exception:
-                record.pop('form', None)
-                client.table('standings').insert(record).execute()
+            client.table('standings').insert(record).execute()
 
         print(f"    Saved {len(records)} standings")
 
@@ -329,7 +309,7 @@ def apply_broadcast_info():
     for match in upcoming:
         try:
             ext_id = match.get('external_id')
-            comp = json.loads(match.get('competition', {}))
+            comp = json.loads(match.get('competition') or '{}')
             comp_code = comp.get('code', '')
 
             broadcast = BROADCAST_MAP.get(comp_code, '')

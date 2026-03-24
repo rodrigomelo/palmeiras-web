@@ -1,11 +1,5 @@
 /**
- * Palmeiras Agenda v3 — With Athena's design system
- *
- * Features:
- * - Live match with estimated minute + auto-refresh
- * - Color-coded results (win/draw/loss)
- * - Animated transitions
- * - Standings with Palmeiras highlighted
+ * Palmeiras Agenda v3
  */
 (function () {
     'use strict';
@@ -28,26 +22,8 @@
     function formatTime(d) {
         return new Date(d).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: BR_TZ });
     }
-    function formatComp(comp) {
-        const names = { BSA: 'Brasileirão', COPA: 'Copa do Brasil', COPA_DO_BRASIL: 'Copa do Brasil', CLI: 'Libertadores', LIBERTADORES: 'Libertadores' };
-        return names[comp?.code] || comp?.name || 'Campeonato';
-    }
 
-    /** Fallback crest for teams without one */
-    const TEAM_CRESTS = {
-        1769: 'https://crests.football-data.org/1769.png', // Palmeiras
-    };
-    const BROKEN_CRESTS = new Set([
-        'https://ssl.gstatic.com/lingonautique/paulista_2024/palmeiras.png',
-    ]);
-    function getCrest(team) {
-        const crest = team?.crest;
-        if (crest && !BROKEN_CRESTS.has(crest)) return crest;
-        if (team?.id && TEAM_CRESTS[team.id]) return TEAM_CRESTS[team.id];
-        return 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="18" fill="#ccc"/><text x="20" y="25" text-anchor="middle" fill="#666" font-size="14">?</text></svg>');
-    }
-
-    // --- Minute Estimation ---
+    // --- Minute Estimation (accounts for 15-min half-time break) ---
     function estimateMinute(utcDate) {
         const kickoff = new Date(utcDate);
         const now = new Date();
@@ -56,7 +32,7 @@
         if (elapsedMin < 0) return null;
         if (elapsedMin <= 45) return `~${elapsedMin}'`;
         if (elapsedMin <= 60) return '~Intervalo';
-        if (elapsedMin <= 105) return `~${elapsedMin - 15}'`;
+        if (elapsedMin <= 105) return `~${elapsedMin - 15}'`; // 15 min break offset
         return '~Encerrando';
     }
 
@@ -98,11 +74,16 @@
                 btn.classList.add('active');
                 const target = document.getElementById(btn.dataset.tab);
                 target.classList.add('active');
-                target.style.animation = 'none';
-                target.offsetHeight;
-                target.style.animation = '';
             });
         });
+    }
+
+    // --- Live interval cleanup ---
+    function startLiveRefresh() {
+        if (!liveInterval) liveInterval = setInterval(loadHero, 30000);
+    }
+    function stopLiveRefresh() {
+        if (liveInterval) { clearInterval(liveInterval); liveInterval = null; }
     }
 
     // --- Hero ---
@@ -114,19 +95,19 @@
         if (!match) { showEmpty('hero-front', 'Nenhum jogo agendado'); return; }
 
         const home = match.homeTeam, away = match.awayTeam;
-        const comp = formatComp(match.competition);
+        const comp = CONFIG.formatComp(match.competition);
         const dt = new Date(match.utcDate);
         const dayOfWeek = dt.toLocaleDateString('pt-BR', { weekday: 'long', timeZone: BR_TZ });
         const isLive = match.status === 'IN_PLAY';
         const score = match.score?.fullTime || {};
         const ht = match.score?.halfTime || {};
+        const venue = CONFIG.getVenue(match);
 
         const heroCard = document.getElementById('hero-match');
         heroCard.classList.toggle('live', isLive);
 
         const liveBadge = isLive ? '<span class="live-dot"></span>AO VIVO' : '';
         const minute = isLive ? estimateMinute(match.utcDate) : null;
-        const venue = CONFIG.getVenue(match);
 
         document.getElementById('where-watch').textContent = match.broadcast || 'Rodada ' + (match.matchday || '-');
         document.getElementById('stadium-info').textContent = venue;
@@ -143,18 +124,17 @@
             <div class="hero-comp">${liveBadge ? liveBadge + ' · ' : ''}${escapeHtml(comp)}</div>
             <div class="hero-teams">
                 <div class="hero-team">
-                    <img src="${getCrest(home)}" style="width:56px;height:56px">
+                    <img src="${CONFIG.getCrest(home)}" style="width:56px;height:56px">
                     <div class="hero-team-name">${escapeHtml(CONFIG.teamName(home))}</div>
                 </div>
                 ${scoreHtml}
                 <div class="hero-team">
-                    <img src="${getCrest(away)}" style="width:56px;height:56px">
+                    <img src="${CONFIG.getCrest(away)}" style="width:56px;height:56px">
                     <div class="hero-team-name">${escapeHtml(CONFIG.teamName(away))}</div>
                 </div>
             </div>
             <div class="hero-date">${isLive ? 'JOGANDO AGORA' : formatDate(match.utcDate) + ' · ' + formatTime(match.utcDate)}<span style="display:block;font-size:0.85rem;opacity:0.8;margin-top:0.3rem;font-weight:400">${isLive ? '' : dayOfWeek}</span></div>`;
 
-        // Back card with details
         const htScore = (ht.home != null && ht.away != null) ? `<p style="margin:0.5rem 0"><strong>1º tempo:</strong> ${ht.home}–${ht.away}</p>` : '';
         document.getElementById('hero-back').innerHTML = `
             <div style="padding-top:1rem"><h3 style="margin-bottom:1rem">Detalhes do Jogo</h3>
@@ -165,12 +145,7 @@
             ${htScore}
             ${match.stage && match.stage !== 'REGULAR_SEASON' ? `<p style="margin:0.5rem 0"><strong>Fase:</strong> ${escapeHtml(match.stage)}</p>` : ''}</div>`;
 
-        if (isLive && !liveInterval) {
-            liveInterval = setInterval(() => loadHero(), 30000);
-        } else if (!isLive && liveInterval) {
-            clearInterval(liveInterval);
-            liveInterval = null;
-        }
+        if (isLive) startLiveRefresh(); else stopLiveRefresh();
     }
 
     // --- Matches ---
@@ -194,20 +169,17 @@
                     <div class="match-extra-row"><span class="icon">🔢</span> Rodada ${m.matchday || '-'}${m.stage && m.stage !== 'REGULAR_SEASON' ? ' · ' + escapeHtml(m.stage) : ''}</div>
                     ${htInfo}
                 </div>
-                <div class="match-header"><span>${isLive ? '<span class="live-dot"></span>AO VIVO · ' : ''}${formatDate(m.utcDate)} · ${formatTime(m.utcDate)}</span><span>${escapeHtml(formatComp(m.competition))}</span></div>
+                <div class="match-header"><span>${isLive ? '<span class="live-dot"></span>AO VIVO · ' : ''}${formatDate(m.utcDate)} · ${formatTime(m.utcDate)}</span><span>${escapeHtml(CONFIG.formatComp(m.competition))}</span></div>
                 <div class="match-teams">
-                    <span><img src="${getCrest(m.homeTeam)}" style="width:22px;height:22px;vertical-align:middle;margin-right:4px">${escapeHtml(CONFIG.teamName(m.homeTeam))}</span>
+                    <span><img src="${CONFIG.getCrest(m.homeTeam)}" style="width:22px;height:22px;vertical-align:middle;margin-right:4px">${escapeHtml(CONFIG.teamName(m.homeTeam))}</span>
                     <span style="color:var(--text-muted)">×</span>
-                    <span>${escapeHtml(CONFIG.teamName(m.awayTeam))}<img src="${getCrest(m.awayTeam)}" style="width:22px;height:22px;vertical-align:middle;margin-left:4px"></span>
+                    <span>${escapeHtml(CONFIG.teamName(m.awayTeam))}<img src="${CONFIG.getCrest(m.awayTeam)}" style="width:22px;height:22px;vertical-align:middle;margin-left:4px"></span>
                 </div>
             </div>`;
         }).join('');
 
         document.querySelectorAll('#next-matches .match-item').forEach(el => {
-            el.addEventListener('click', () => {
-                const extra = el.querySelector('.match-extra');
-                extra.classList.toggle('open');
-            });
+            el.addEventListener('click', () => el.querySelector('.match-extra').classList.toggle('open'));
         });
     }
 
@@ -226,7 +198,6 @@
             const oppName = isHome ? CONFIG.teamName(m.awayTeam) : CONFIG.teamName(m.homeTeam);
             const r = our > opp ? 'V' : our < opp ? 'D' : 'E';
             const resultClass = r === 'V' ? 'win' : r === 'D' ? 'loss' : 'draw';
-
             const ht = m.score?.halfTime || {};
             const htInfo = (ht.home != null) ? `<div class="match-extra-row"><span class="icon">⏱️</span> 1º tempo: ${ht.home}–${ht.away}</div>` : '';
 
@@ -237,7 +208,7 @@
                     <div class="match-extra-row"><span class="icon">🔢</span> Rodada ${m.matchday || '-'}</div>
                     ${htInfo}
                 </div>
-                <div class="match-header"><span>${formatDate(m.utcDate)}</span><span>${escapeHtml(formatComp(m.competition))}</span></div>
+                <div class="match-header"><span>${formatDate(m.utcDate)}</span><span>${escapeHtml(CONFIG.formatComp(m.competition))}</span></div>
                 <div class="match-teams">
                     <span>${isHome ? '🏠' : '✈️'} ${escapeHtml(oppName)}</span>
                     <span style="display:flex;align-items:center;gap:0.5rem">
@@ -249,10 +220,7 @@
         }).join('');
 
         document.querySelectorAll('#recent-results .match-item').forEach(el => {
-            el.addEventListener('click', () => {
-                const extra = el.querySelector('.match-extra');
-                extra.classList.toggle('open');
-            });
+            el.addEventListener('click', () => el.querySelector('.match-extra').classList.toggle('open'));
         });
     }
 
@@ -303,9 +271,7 @@
                     <div class="stat-box"><div class="stat-value" style="color:${gd >= 0 ? 'var(--win)' : 'var(--loss)'}">${gd >= 0 ? '+' : ''}${gd}</div><div class="stat-label">Saldo</div></div>
                 </div>
             </div>
-            <div style="border-top:1px solid var(--bg);padding-top:1rem">
-                ${tableHtml}
-            </div>`;
+            <div style="border-top:1px solid var(--bg);padding-top:1rem">${tableHtml}</div>`;
     }
 
     // --- Stats ---
@@ -337,8 +303,10 @@
     async function loadNews() {
         showSkeleton('news-list');
         const data = await api('news');
-        if (!data || !Array.isArray(data) || !data.length) { showEmpty('news-list', 'Nenhuma notícia'); return; }
-        document.getElementById('news-list').innerHTML = data.slice(0, 8).map(n => {
+        // Handle both raw list and {news: [...]} response shapes
+        const items = Array.isArray(data) ? data : (data?.news || []);
+        if (!items.length) { showEmpty('news-list', 'Nenhuma notícia'); return; }
+        document.getElementById('news-list').innerHTML = items.slice(0, 8).map(n => {
             const sourceIcon = n.source === 'lance.com.br' ? '🔵' : '🔴';
             const safeUrl = escapeHtml(n.url || '#');
             const safeTitle = escapeHtml(n.title);
@@ -360,12 +328,9 @@
         const isHome = match.homeTeam.id === TEAM_ID;
         const hw = isHome ? 45 : 30, dr = 28, aw = 100 - hw - dr;
 
-        const homeName = escapeHtml(CONFIG.teamName(match.homeTeam));
-        const awayName = escapeHtml(CONFIG.teamName(match.awayTeam));
-
         document.getElementById('prediction').innerHTML = `
             <div class="prediction-card">
-                <div style="font-size:1.1rem;font-weight:600;margin-bottom:0.5rem">${homeName} × ${awayName}</div>
+                <div style="font-size:1.1rem;font-weight:600;margin-bottom:0.5rem">${escapeHtml(CONFIG.teamName(match.homeTeam))} × ${escapeHtml(CONFIG.teamName(match.awayTeam))}</div>
                 <div class="prediction-probs">
                     <div class="prob-box"><div class="prob-value">${hw}%</div><div class="prob-label">${isHome ? 'Vitória' : 'Derrota'}</div></div>
                     <div class="prob-box"><div class="prob-value">${dr}%</div><div class="prob-label">Empate</div></div>
@@ -380,8 +345,7 @@
         try {
             const res = await fetch('/api/calendar.ics');
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const ics = await res.text();
-            const blob = new Blob([ics], { type: 'text/calendar' });
+            const blob = new Blob([await res.text()], { type: 'text/calendar' });
             const a = document.createElement('a');
             a.href = URL.createObjectURL(blob);
             a.download = 'palmeiras.ics';

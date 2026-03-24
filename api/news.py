@@ -29,7 +29,7 @@ class handler(BaseHTTPRequestHandler):
 
         try:
             result = client.table('news').select('*').order('collected_at', desc=True).limit(limit).execute()
-            self._respond(200, result.data)
+            self._respond(200, {'news': result.data})
         except Exception as e:
             self._respond(500, {'news': [], 'error': str(e)})
 

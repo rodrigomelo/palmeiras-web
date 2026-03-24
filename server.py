@@ -11,7 +11,6 @@ Usage:
 import json
 import os
 import sys
-import mimetypes
 from datetime import datetime, timezone, timedelta
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
@@ -25,7 +24,7 @@ if env_path.exists():
             line = line.strip()
             if '=' in line and not line.startswith('#'):
                 key, val = line.split('=', 1)
-                os.environ.setdefault(key.strip(), val.strip())
+                os.environ.setdefault(key.strip(), val.strip().strip('"').strip("'"))
 
 SUPABASE_URL = os.environ.get('SUPABASE_URL', '')
 SUPABASE_KEY = os.environ.get('SUPABASE_KEY', '')
@@ -56,7 +55,7 @@ def parse_json(val):
             return json.loads(val)
         except (json.JSONDecodeError, TypeError):
             return {}
-    return val if isinstance(val, dict) else {}
+    return val if isinstance(val, (dict, list)) else {}
 
 
 # --- API Handlers ---
@@ -157,7 +156,7 @@ def api_news(params):
 
     try:
         result = client.table('news').select('*').order('collected_at', desc=True).limit(limit).execute()
-        return 200, result.data
+        return 200, {'news': result.data}
     except Exception as e:
         return 500, {'news': [], 'error': str(e)}
 
@@ -320,7 +319,7 @@ if __name__ == '__main__':
         print("ERROR: SUPABASE_URL and SUPABASE_KEY must be set in .env", file=sys.stderr)
         sys.exit(1)
 
-    print(f"Palmeiras Web running at http://localhost:{PORT}")
+    print(f"Palmeiras Agenda running at http://localhost:{PORT}")
     print(f"  Python: {sys.executable} ({sys.version.split()[0]})")
     print(f"  Supabase: {SUPABASE_URL[:40]}...")
     print(f"  API routes: {', '.join(API_ROUTES.keys())}")

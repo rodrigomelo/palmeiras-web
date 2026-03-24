@@ -160,7 +160,6 @@ body {
     max-height: 10000px;
     opacity: 1;
 }
-@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 
 /* Match Items */
 .match-item {
@@ -175,7 +174,6 @@ body {
 
 .match-header { display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.8rem; color: var(--text-muted); }
 .match-teams { display: flex; justify-content: space-between; align-items: center; font-weight: 500; }
-.match-item { cursor: pointer; }
 .match-extra {
     max-height: 0; overflow: hidden; padding: 0 0.75rem;
     background: var(--brand); border-radius: 8px;
