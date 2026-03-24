@@ -29,8 +29,18 @@
         return new Date(d).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: BR_TZ });
     }
     function formatComp(comp) {
-        const names = { BSA: 'Brasileirão', COPA_DO_BRASIL: 'Copa do Brasil', LIBERTADORES: 'Libertadores' };
+        const names = { BSA: 'Brasileirão', COPA: 'Copa do Brasil', COPA_DO_BRASIL: 'Copa do Brasil', CLI: 'Libertadores', LIBERTADORES: 'Libertadores' };
         return names[comp?.code] || comp?.name || 'Campeonato';
+    }
+
+    /** Fallback crest for teams without one */
+    const TEAM_CRESTS = {
+        1769: 'https://crests.football-data.org/1769.png', // Palmeiras
+    };
+    function getCrest(team) {
+        if (team?.crest) return team.crest;
+        if (team?.id && TEAM_CRESTS[team.id]) return TEAM_CRESTS[team.id];
+        return 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="18" fill="#ccc"/><text x="20" y="25" text-anchor="middle" fill="#666" font-size="14">?</text></svg>');
     }
 
     // --- Minute Estimation ---
@@ -129,12 +139,12 @@
             <div class="hero-comp">${liveBadge ? liveBadge + ' · ' : ''}${escapeHtml(comp)}</div>
             <div class="hero-teams">
                 <div class="hero-team">
-                    <img src="${escapeHtml(home.crest || '')}" style="width:56px;height:56px" onerror="this.src='https://crests.football-data.org/1769.png'">
+                    <img src="${getCrest(home)}" style="width:56px;height:56px">
                     <div class="hero-team-name">${escapeHtml(home.shortName || home.name)}</div>
                 </div>
                 ${scoreHtml}
                 <div class="hero-team">
-                    <img src="${escapeHtml(away.crest || '')}" style="width:56px;height:56px" onerror="this.src='https://crests.football-data.org/4364.png'">
+                    <img src="${getCrest(away)}" style="width:56px;height:56px">
                     <div class="hero-team-name">${escapeHtml(away.shortName || away.name)}</div>
                 </div>
             </div>
@@ -182,9 +192,9 @@
                 </div>
                 <div class="match-header"><span>${isLive ? '<span class="live-dot"></span>AO VIVO · ' : ''}${formatDate(m.utcDate)} · ${formatTime(m.utcDate)}</span><span>${escapeHtml(formatComp(m.competition))}</span></div>
                 <div class="match-teams">
-                    <span><img src="${escapeHtml(m.homeTeam.crest)}" style="width:22px;height:22px;vertical-align:middle;margin-right:4px">${escapeHtml(m.homeTeam.shortName || m.homeTeam.name)}</span>
+                    <span><img src="${getCrest(m.homeTeam)}" style="width:22px;height:22px;vertical-align:middle;margin-right:4px">${escapeHtml(m.homeTeam.shortName || m.homeTeam.name)}</span>
                     <span style="color:var(--text-muted)">×</span>
-                    <span>${escapeHtml(m.awayTeam.shortName || m.awayTeam.name)}<img src="${escapeHtml(m.awayTeam.crest)}" style="width:22px;height:22px;vertical-align:middle;margin-left:4px"></span>
+                    <span>${escapeHtml(m.awayTeam.shortName || m.awayTeam.name)}<img src="${getCrest(m.awayTeam)}" style="width:22px;height:22px;vertical-align:middle;margin-left:4px"></span>
                 </div>
             </div>`;
         }).join('');

@@ -12,7 +12,6 @@ Usage:
 """
 import os
 import json
-import re
 import requests
 from datetime import datetime, timezone
 from pathlib import Path
@@ -166,10 +165,15 @@ def collect_standings():
                 table = s.get('table', [])
                 break
 
-        print(f"    Found {len(table)} teams")
-        client.table('standings').delete().neq('id', '00000000-0000-0000-0000-000000000000').execute()
+        if not table:
+            print("    No standings data found")
+            return
 
+        print(f"    Found {len(table)} teams")
         now = datetime.now(timezone.utc).isoformat()
+
+        # Build all records first, then replace atomically
+        records = []
         for entry in table:
             form = entry.get('form', '')
             record = {
@@ -188,12 +192,21 @@ def collect_standings():
             }
             try:
                 record['form'] = form
+            except Exception:
+                pass
+            records.append(record)
+
+        # Delete old data only after we have new data ready
+        client.table('standings').delete().neq('id', '00000000-0000-0000-0000-000000000000').execute()
+
+        for record in records:
+            try:
                 client.table('standings').insert(record).execute()
             except Exception:
                 record.pop('form', None)
                 client.table('standings').insert(record).execute()
 
-        print(f"    Saved {len(table)} standings")
+        print(f"    Saved {len(records)} standings")
 
     except Exception as e:
         print(f"    Error: {e}")
@@ -272,7 +285,7 @@ def collect_news():
     except Exception as e:
         print(f"    lance.com.br error: {e}")
 
-    # Save all news
+    # Save all news only if we got results
     if news:
         try:
             client.table('news').delete().neq('id', '00000000-0000-0000-0000-000000000000').execute()
@@ -281,44 +294,38 @@ def collect_news():
             print(f"    Saved {len(news)} news articles")
         except Exception as e:
             print(f"    Error saving news: {e}")
+    else:
+        print("    No news collected, keeping existing data")
 
 
-def collect_broadcast():
-    """Try to scrape broadcast info from Brazilian sports sites."""
-    print("  Fetching broadcast info...")
+def apply_broadcast_info():
+    """Apply known broadcast partners to upcoming matches based on competition code."""
+    print("  Applying broadcast info...")
     client = get_supabase()
     if not client:
         return
 
-    try:
-        from bs4 import BeautifulSoup
-    except ImportError:
-        return
-
-    # Get upcoming matches
     try:
         result = client.table('matches').select('*').in_('status', ['SCHEDULED', 'TIMED']).execute()
         upcoming = result.data[:5]
     except Exception:
         return
 
+    updated = 0
     for match in upcoming:
         try:
             ext_id = match.get('external_id')
-            home = json.loads(match.get('home_team', '{}'))
-            away = json.loads(match.get('away_team', '{}'))
             comp = json.loads(match.get('competition', {}))
             comp_code = comp.get('code', '')
 
-            # Use known broadcast map
             broadcast = BROADCAST_MAP.get(comp_code, '')
-
             if broadcast and ext_id:
                 client.table('matches').update({'broadcast': broadcast}).eq('external_id', ext_id).execute()
+                updated += 1
         except Exception:
             continue
 
-    print("    Broadcast info updated")
+    print(f"    Updated {updated} matches")
 
 
 if __name__ == '__main__':
@@ -326,5 +333,5 @@ if __name__ == '__main__':
     collect_matches()
     collect_standings()
     collect_news()
-    collect_broadcast()
+    apply_broadcast_info()
     print("Done!")
