@@ -271,7 +271,13 @@
         const matches = data.matches || [];
         if (!matches.length) { showEmpty('next-matches', 'Nenhum jogo agendado'); return; }
 
-        document.getElementById('next-matches').innerHTML = matches.map(m => {
+        // Skip first match (already shown in hero card)
+        const upcomingMatches = matches.slice(1);
+        if (!upcomingMatches.length) {
+            document.getElementById('next-matches').innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:1rem">Nenhum outro jogo agendado</p>';
+            return;
+        }
+        document.getElementById('next-matches').innerHTML = upcomingMatches.map(m => {
             const isLive = m.status === 'IN_PLAY';
             const venue = m.venue || (m.homeTeam.id === TEAM_ID ? 'Allianz Parque' : (function() {
                 const stadiums = { 1776: 'Morumbi', 1777: 'Fonte Nova', 1770: 'Nilton Santos', 1779: 'Maracanã', 1783: 'Beira-Rio', 1766: 'Mineirão', 1780: 'Castelão', 1765: 'Arena MRV' };
