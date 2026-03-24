@@ -17,6 +17,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from dotenv import load_dotenv
+try:
+    from collectors.crest_manager import get_or_download_crest
+except ImportError:
+    from crest_manager import get_or_download_crest
 
 load_dotenv(Path(__file__).parent.parent / '.env')
 
@@ -92,6 +96,16 @@ def collect_matches():
             score = m.get('score', {})
             ft = score.get('fullTime', {})
             ht = score.get('halfTime', {})
+
+            # Cache team crests locally
+            for team in (home, away):
+                tid = team.get('id')
+                if tid:
+                    local_crest = get_or_download_crest(tid, team.get('crest', ''))
+                    if local_crest:
+                        team['crest'] = local_crest
+                    elif tid:  # No crest available
+                        team['crest'] = None
 
             # Determine venue
             venue = m.get('venue')
