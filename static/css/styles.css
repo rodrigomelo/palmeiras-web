@@ -29,10 +29,9 @@ body {
 /* Header */
 .header {
     background: linear-gradient(135deg, var(--brand), var(--brand-dark));
-    padding: 2rem 1.5rem;
-    text-align: center;
+    padding: 1.5rem;
 }
-.header-content { display: flex; align-items: center; justify-content: center; gap: 1rem; }
+.header-content { display: flex; align-items: center; gap: 1rem; }
 .logo {
     width: 80px; height: 80px;
     background: white; border-radius: 50%;
