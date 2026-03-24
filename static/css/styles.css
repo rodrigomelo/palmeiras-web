@@ -50,10 +50,8 @@ body {
     border-radius: var(--radius);
     color: white; text-align: center;
     margin-bottom: 1.5rem; box-shadow: var(--shadow);
-    perspective: 1000px;
+    perspective: 1000px; min-height: 280px;
     transition: box-shadow 0.3s;
-    cursor: pointer;
-    display: flex; flex-direction: column;
 }
 .hero-card.live {
     box-shadow: 0 0 0 3px var(--live), 0 4px 20px rgba(255,23,68,0.3);
@@ -63,23 +61,27 @@ body {
     0%, 100% { box-shadow: 0 0 0 3px var(--live), 0 4px 20px rgba(255,23,68,0.3); }
     50% { box-shadow: 0 0 0 6px var(--live), 0 4px 30px rgba(255,23,68,0.5); }
 }
+
 .hero-card-inner {
-    position: relative; width: 100%; flex: 1;
+    position: relative; width: 100%; height: 100%;
     transition: transform 0.6s; transform-style: preserve-3d;
-    min-height: 260px;
 }
 .hero-card.flipped .hero-card-inner { transform: rotateY(180deg); }
 .hero-card-front, .hero-card-back {
-    position: absolute; width: 100%; height: 100%;
+    position: absolute; width: 100%;
     backface-visibility: hidden; padding: 1.5rem;
-    box-sizing: border-box;
 }
 .hero-card-back {
     transform: rotateY(180deg);
     background: linear-gradient(135deg, var(--brand-dark), var(--brand));
     border-radius: var(--radius);
 }
-.hero-card-toggle { display: none; }
+.hero-card-toggle {
+    position: absolute; bottom: 10px; right: 10px;
+    background: rgba(255,255,255,0.2); border: none;
+    color: white; padding: 8px 12px; border-radius: 20px;
+    cursor: pointer; font-size: 0.8rem; z-index: 10;
+}
 
 .hero-comp {
     display: inline-block; background: rgba(255,255,255,0.2);

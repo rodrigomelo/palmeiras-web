@@ -80,6 +80,8 @@
                 target.style.animation = 'none';
                 target.offsetHeight;
                 target.style.animation = '';
+                // Smooth scroll to tab content
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
             });
         });
     }
@@ -218,41 +220,17 @@
             </div>
             <div class="hero-date">${isLive ? 'JOGANDO AGORA' : formatDate(match.utcDate) + ' · ' + formatTime(match.utcDate)}<span style="display:block;font-size:0.85rem;opacity:0.8;margin-top:0.3rem;font-weight:400">${isLive ? '' : dayOfWeek}</span></div>`;
 
-        // Back card with rich details (Dionysus copy + stats)
+        // Back card with details
         const venue = getVenue(match);
-        const htScore = (ht.home != null && ht.away != null) ? `<p style="margin:0.4rem 0"><strong>1º tempo:</strong> ${ht.home}–${ht.away}</p>` : '';
-        const referee = match.referees?.[0]?.name ? `<p style="margin:0.4rem 0"><strong>Árbitro:</strong> ${match.referees[0].name}</p>` : '';
-        // Find last H2H match (finished) between Palmeiras and opponent
-        const oppId = home.id === TEAM_ID ? away.id : home.id;
-        const h2hData = await api('matches?status=FINISHED&limit=50');
-        const h2hMatches = h2hData?.matches?.filter(m => {
-            const h = m.homeTeam?.id, a = m.awayTeam?.id;
-            return (h === TEAM_ID && a === oppId) || (h === oppId && a === TEAM_ID);
-        }) || [];
-        h2hMatches.sort((a, b) => new Date(b.utcDate) - new Date(a.utcDate));
-        const h2hMatch = h2hMatches[0];
-
-        // Build H2H line only if real data exists
-        let h2hLine = '';
-        if (h2hMatch) {
-            const h2hDate = new Date(h2hMatch.utcDate).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
-            const ourScore = h2hMatch.homeTeam?.id === TEAM_ID ? h2hMatch.homeScore : h2hMatch.awayScore;
-            const oppScore = h2hMatch.homeTeam?.id === TEAM_ID ? h2hMatch.awayScore : h2hMatch.homeScore;
-            const result = ourScore > oppScore ? 'Vitória do Verdão' : ourScore < oppScore ? 'Derrota' : 'Empate';
-            h2hLine = `<p style="margin:0.4rem 0;font-size:0.85rem;opacity:0.95"><strong>Último confronto:</strong> ${ourScore}×${oppScore} (${result}) — ${h2hDate}</p>`;
-        }
-
+        const htScore = (ht.home != null && ht.away != null) ? `<p style="margin:0.5rem 0"><strong>1º tempo:</strong> ${ht.home}–${ht.away}</p>` : '';
         document.getElementById('hero-back').innerHTML = `
-            <div style="padding:0 1rem 1rem">
-                <h3 style="margin:0 0 0.75rem;font-size:1rem;border-bottom:1px solid rgba(255,255,255,0.2);padding-bottom:0.5rem">🏆 BASTIDORES DO CLÁSSICO</h3>
-                ${h2hLine}
-                ${referee}
-                ${htScore}
-                <p style="margin:0.4rem 0"><strong>Rodada:</strong> ${match.matchday || '-'}</p>
-                <p style="margin:0.4rem 0"><strong>Competição:</strong> ${comp}</p>
-                <p style="margin:0.4rem 0"><strong>Transmissão:</strong> ${match.broadcast || 'A confirmar'}</p>
-                ${match.stage && match.stage !== 'REGULAR_SEASON' ? `<p style="margin:0.4rem 0"><strong>Fase:</strong> ${match.stage}</p>` : ''}
-            </div>`;
+            <div style="padding-top:1rem"><h3 style="margin-bottom:1rem">Detalhes do Jogo</h3>
+            <p style="margin:0.5rem 0"><strong>Rodada:</strong> ${match.matchday || '-'}</p>
+            <p style="margin:0.5rem 0"><strong>Estádio:</strong> ${venue}</p>
+            <p style="margin:0.5rem 0"><strong>Competição:</strong> ${comp}</p>
+            <p style="margin:0.5rem 0"><strong>Transmissão:</strong> ${match.broadcast || 'A confirmar'}</p>
+            ${htScore}
+            ${match.stage && match.stage !== 'REGULAR_SEASON' ? `<p style="margin:0.5rem 0"><strong>Fase:</strong> ${match.stage}</p>` : ''}</div>`;
 
         // Auto-refresh during live
         if (isLive && !liveInterval) {
@@ -271,13 +249,7 @@
         const matches = data.matches || [];
         if (!matches.length) { showEmpty('next-matches', 'Nenhum jogo agendado'); return; }
 
-        // Skip first match (already shown in hero card)
-        const upcomingMatches = matches.slice(1);
-        if (!upcomingMatches.length) {
-            document.getElementById('next-matches').innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:1rem">Nenhum outro jogo agendado</p>';
-            return;
-        }
-        document.getElementById('next-matches').innerHTML = upcomingMatches.map(m => {
+        document.getElementById('next-matches').innerHTML = matches.map(m => {
             const isLive = m.status === 'IN_PLAY';
             const venue = m.venue || (m.homeTeam.id === TEAM_ID ? 'Allianz Parque' : (function() {
                 const stadiums = { 1776: 'Morumbi', 1777: 'Fonte Nova', 1770: 'Nilton Santos', 1779: 'Maracanã', 1783: 'Beira-Rio', 1766: 'Mineirão', 1780: 'Castelão', 1765: 'Arena MRV' };
