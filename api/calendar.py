@@ -70,7 +70,7 @@ class handler(BaseHTTPRequestHandler):
                 "BEGIN:VCALENDAR",
                 "VERSION:2.0",
                 "PRODID:-//Palmeiras//Agenda//EN",
-                "X-WR-CALNAME:Palmeiras - Jogos",
+                "X-WR-CALNAME:Palmeiras Agenda",
                 "X-WR-TIMEZONE:America/Sao_Paulo",
                 "CALSCALE:GREGORIAN",
                 "METHOD:PUBLISH",
