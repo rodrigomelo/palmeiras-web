@@ -259,7 +259,7 @@ def collect_news():
         resp.raise_for_status()
         soup = BeautifulSoup(resp.text, "html.parser")
         articles = soup.select("article")[:5]
-
+        lance_count = 0
         for a in articles:
             title = a.select_one("h2, h3, .title")
             link = a.select_one("a")
@@ -275,9 +275,70 @@ def collect_news():
                     'source': 'lance.com.br',
                     'collected_at': now,
                 })
-        print(f"    lance.com.br: {len(news)} articles total")
+                lance_count += 1
+        print(f"    lance.com.br: {lance_count} articles")
     except Exception as e:
         print(f"    lance.com.br error: {e}")
+
+    # Source 3: Gazeta Esportiva
+    try:
+        resp = requests.get(
+            "https://www.gazetaesportiva.com/futebol/times/palmeiras/",
+            headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36", "Accept-Language": "pt-BR,pt;q=0.9"},
+            timeout=30,
+        )
+        resp.raise_for_status()
+        soup = BeautifulSoup(resp.text, "html.parser")
+        articles = soup.select("article")[:5]
+        gazeta_count = 0
+        for a in articles:
+            title = a.select_one("h2, h3, .title, a")
+            link = a.select_one("a")
+            if title and link:
+                href = link.get("href", "")
+                if href and not href.startswith("http"):
+                    href = "https://www.gazetaesportiva.com" + href
+                news.append({
+                    'title': title.get_text(strip=True),
+                    'url': href,
+                    'image': "",
+                    'source': 'gazetaesportiva.com',
+                    'collected_at': now,
+                })
+                gazeta_count += 1
+        print(f"    gazetaesportiva.com: {gazeta_count} articles")
+    except Exception as e:
+        print(f"    gazetaesportiva.com error: {e}")
+
+    # Source 4: UOL Esporte
+    try:
+        resp = requests.get(
+            "https://www.uol.com.br/esporte/futebol/times/palmeiras/",
+            headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36", "Accept-Language": "pt-BR,pt;q=0.9"},
+            timeout=30,
+        )
+        resp.raise_for_status()
+        soup = BeautifulSoup(resp.text, "html.parser")
+        articles = soup.select("article, .tileItem")[:5]
+        uol_count = 0
+        for a in articles:
+            title = a.select_one("h2, h3, .title, a")
+            link = a.select_one("a")
+            if title and link:
+                href = link.get("href", "")
+                if href and not href.startswith("http"):
+                    href = "https://www.uol.com.br" + href
+                news.append({
+                    'title': title.get_text(strip=True),
+                    'url': href,
+                    'image': "",
+                    'source': 'uol.com.br',
+                    'collected_at': now,
+                })
+                uol_count += 1
+        print(f"    uol.com.br: {uol_count} articles")
+    except Exception as e:
+        print(f"    uol.com.br error: {e}")
 
     # Save all news only if we got results
     if news:

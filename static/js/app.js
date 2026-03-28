@@ -1,5 +1,5 @@
 /**
- * Palmeiras Agenda v4
+ * Palmeiras Agenda v5
  */
 (function () {
     'use strict';
@@ -8,6 +8,23 @@
     const BR_TZ = CONFIG.BR_TZ;
     let liveInterval = null;
     let performanceChart = null;
+
+    // --- Competition Codes ---
+    const COMP_MAP = {
+        BSA: ['BSA'],
+        CLI: ['CLI', 'LIBERTADORES', 'COPA_LIBERTADORES'],
+        COPA: ['COPA', 'COPA_DO_BRASIL'],
+    };
+
+    function getCompCode(comp) {
+        return comp?.code || '';
+    }
+
+    function matchCompetition(match, comp) {
+        if (comp === 'all') return true;
+        const code = getCompCode(match.competition);
+        return (COMP_MAP[comp] || []).includes(code);
+    }
 
     // --- Helpers ---
     function escapeHtml(str) {
@@ -20,11 +37,11 @@
     function formatDate(d) {
         return new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: BR_TZ });
     }
+
     function formatTime(d) {
         return new Date(d).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: BR_TZ });
     }
 
-    // --- Minute Estimation (accounts for 15-min half-time break) ---
     function estimateMinute(utcDate) {
         const kickoff = new Date(utcDate);
         const now = new Date();
@@ -33,36 +50,32 @@
         if (elapsedMin < 0) return null;
         if (elapsedMin <= 45) return `~${elapsedMin}'`;
         if (elapsedMin <= 60) return '~Intervalo';
-        if (elapsedMin <= 105) return `~${elapsedMin - 15}'`; // 15 min break offset
+        if (elapsedMin <= 105) return `~${elapsedMin - 15}'`;
         return '~Encerrando';
     }
 
-    // --- Dark Mode ---
+    // --- Theme ---
     function initTheme() {
         const saved = localStorage.getItem('theme');
         const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        const theme = saved || (prefersDark ? 'dark' : 'light');
-        applyTheme(theme);
+        applyTheme(saved || (prefersDark ? 'dark' : 'light'));
     }
 
     function applyTheme(theme) {
+        const toggle = document.getElementById('themeToggle');
         if (theme === 'dark') {
             document.body.classList.add('dark');
-            document.getElementById('themeToggle').textContent = '☀️';
+            if (toggle) toggle.textContent = '☀️';
         } else {
             document.body.classList.remove('dark');
-            document.getElementById('themeToggle').textContent = '🌙';
+            if (toggle) toggle.textContent = '🌙';
         }
         localStorage.setItem('theme', theme);
-        // Re-render chart with updated colors if it exists
-        if (performanceChart) {
-            updateChartColors();
-        }
+        if (performanceChart) updateChartColors();
     }
 
     window.toggleTheme = function () {
-        const current = document.body.classList.contains('dark') ? 'dark' : 'light';
-        applyTheme(current === 'dark' ? 'light' : 'dark');
+        applyTheme(document.body.classList.contains('dark') ? 'light' : 'dark');
     };
 
     function updateChartColors() {
@@ -70,10 +83,10 @@
         const isDark = document.body.classList.contains('dark');
         const textColor = isDark ? '#B0B0B0' : '#666666';
         const gridColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)';
-        performanceChart.options.scales.x.ticks.color = textColor;
-        performanceChart.options.scales.x.grid.color = gridColor;
-        performanceChart.options.scales.y.ticks.color = textColor;
-        performanceChart.options.scales.y.grid.color = gridColor;
+        ['x', 'y'].forEach(axis => {
+            performanceChart.options.scales[axis].ticks.color = textColor;
+            performanceChart.options.scales[axis].grid.color = gridColor;
+        });
         performanceChart.options.plugins.legend.labels.color = textColor;
         performanceChart.update('none');
     }
@@ -81,17 +94,24 @@
     // --- UI States ---
     function showSkeleton(id, type) {
         const el = document.getElementById(id);
+        if (!el) return;
         if (type === 'hero') {
             el.innerHTML = '<div style="padding:2rem"><div class="skeleton-line" style="height:24px;width:50%;margin:0 auto 1rem"></div><div style="display:flex;justify-content:space-around;margin:1rem 0"><div class="skeleton-line" style="width:80px;height:80px;border-radius:50%"></div><div class="skeleton-line" style="width:60px;height:40px"></div><div class="skeleton-line" style="width:80px;height:80px;border-radius:50%"></div></div></div>';
         } else {
             el.innerHTML = '<div class="skeleton-card"><div class="skeleton-line short"></div><div class="skeleton-line medium"></div></div>'.repeat(3);
         }
     }
+
     function showError(id, msg, fn) {
-        document.getElementById(id).innerHTML = `<div class="error-state"><div class="error-icon">⚠️</div><div class="error-message">${escapeHtml(msg)}</div>${fn ? `<button class="retry-btn" onclick="${fn}()">Tentar novamente</button>` : ''}</div>`;
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.innerHTML = `<div class="error-state"><div class="error-icon">⚠️</div><div class="error-message">${escapeHtml(msg)}</div>${fn ? `<button class="retry-btn" onclick="${fn}()">Tentar novamente</button>` : ''}</div>`;
     }
+
     function showEmpty(id, msg) {
-        document.getElementById(id).innerHTML = `<div class="empty">${escapeHtml(msg)}</div>`;
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.innerHTML = `<div class="empty">${escapeHtml(msg)}</div>`;
     }
 
     // --- API ---
@@ -114,9 +134,7 @@
                 document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
                 document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
                 btn.classList.add('active');
-                const target = document.getElementById(btn.dataset.tab);
-                target.classList.add('active');
-                // Lazy load performance chart when tab is opened
+                document.getElementById(btn.dataset.tab)?.classList.add('active');
                 if (btn.dataset.tab === 'estatisticas' && !performanceChart) {
                     renderPerformanceChart();
                 }
@@ -124,10 +142,11 @@
         });
     }
 
-    // --- Live interval cleanup ---
+    // --- Live Refresh ---
     function startLiveRefresh() {
         if (!liveInterval) liveInterval = setInterval(loadHero, 30000);
     }
+
     function stopLiveRefresh() {
         if (liveInterval) { clearInterval(liveInterval); liveInterval = null; }
     }
@@ -150,13 +169,15 @@
         const venue = CONFIG.getVenue(match);
 
         const heroCard = document.getElementById('hero-match');
-        heroCard.classList.toggle('live', isLive);
+        heroCard?.classList.toggle('live', isLive);
 
         const liveBadge = isLive ? '<span class="live-dot"></span>AO VIVO' : '';
         const minute = isLive ? estimateMinute(match.utcDate) : null;
 
-        document.getElementById('where-watch').textContent = match.broadcast || 'Rodada ' + (match.matchday || '-');
-        document.getElementById('stadium-info').textContent = venue;
+        const infoWatch = document.getElementById('where-watch');
+        const infoStadium = document.getElementById('stadium-info');
+        if (infoWatch) infoWatch.textContent = match.broadcast || 'Rodada ' + (match.matchday || '-');
+        if (infoStadium) infoStadium.textContent = venue;
 
         let scoreHtml;
         if (isLive) {
@@ -170,12 +191,12 @@
             <div class="hero-comp">${liveBadge ? liveBadge + ' · ' : ''}${escapeHtml(comp)}</div>
             <div class="hero-teams">
                 <div class="hero-team">
-                    <img src="${CONFIG.getCrest(home)}" style="width:56px;height:56px">
+                    <img src="${CONFIG.getCrest(home)}" style="width:56px;height:56px" alt="${escapeHtml(CONFIG.teamName(home))}">
                     <div class="hero-team-name">${escapeHtml(CONFIG.teamName(home))}</div>
                 </div>
                 ${scoreHtml}
                 <div class="hero-team">
-                    <img src="${CONFIG.getCrest(away)}" style="width:56px;height:56px">
+                    <img src="${CONFIG.getCrest(away)}" style="width:56px;height:56px" alt="${escapeHtml(CONFIG.teamName(away))}">
                     <div class="hero-team-name">${escapeHtml(CONFIG.teamName(away))}</div>
                 </div>
             </div>
@@ -194,7 +215,7 @@
         if (isLive) startLiveRefresh(); else stopLiveRefresh();
     }
 
-    // --- Build match HTML ---
+    // --- Match HTML Builder ---
     function buildMatchHtml(m, isLive) {
         const venue = CONFIG.getVenue(m);
         const ht = m.score?.halfTime || {};
@@ -208,16 +229,11 @@
             </div>
             <div class="match-header"><span>${isLive ? '<span class="live-dot"></span>AO VIVO · ' : ''}${formatDate(m.utcDate)} · ${formatTime(m.utcDate)}</span><span>${escapeHtml(CONFIG.formatComp(m.competition))}</span></div>
             <div class="match-teams">
-                <span><img src="${CONFIG.getCrest(m.homeTeam)}" style="width:22px;height:22px;vertical-align:middle;margin-right:4px">${escapeHtml(CONFIG.teamName(m.homeTeam))}</span>
+                <span><img src="${CONFIG.getCrest(m.homeTeam)}" style="width:22px;height:22px;vertical-align:middle;margin-right:4px" alt="">${escapeHtml(CONFIG.teamName(m.homeTeam))}</span>
                 <span style="color:var(--text-muted)">×</span>
-                <span>${escapeHtml(CONFIG.teamName(m.awayTeam))}<img src="${CONFIG.getCrest(m.awayTeam)}" style="width:22px;height:22px;vertical-align:middle;margin-left:4px"></span>
+                <span>${escapeHtml(CONFIG.teamName(m.awayTeam))}<img src="${CONFIG.getCrest(m.awayTeam)}" style="width:22px;height:22px;vertical-align:middle;margin-left:4px" alt=""></span>
             </div>
         </div>`;
-    }
-
-    // --- Competition filter for matches ---
-    function getCompCode(comp) {
-        return comp?.code || '';
     }
 
     // --- Matches ---
@@ -228,28 +244,18 @@
         const data = await api('matches?status=SCHEDULED,TIMED,IN_PLAY&limit=20');
         if (!data) { showError('next-matches', 'Erro ao carregar', 'loadMatches'); return; }
         const allMatches = data.matches || [];
-        // Skip first match (already shown in hero card)
-        _allMatches = allMatches.slice(1);
+        _allMatches = allMatches.slice(1); // Skip first (shown in hero)
         applyMatchFilter('all');
     }
 
-    window.filterMatches = function(comp, btn) {
-        // Update active button
+    window.filterMatches = function (comp, btn) {
         document.querySelectorAll('#proximos .comp-filter').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         applyMatchFilter(comp);
     };
 
     function applyMatchFilter(comp) {
-        const filtered = comp === 'all' ? _allMatches : _allMatches.filter(m => {
-            const code = getCompCode(m.competition);
-            // Map competition codes
-            if (comp === 'BSA') return code === 'BSA';
-            if (comp === 'CLI') return ['CLI', 'LIBERTADORES', 'COPA_LIBERTADORES'].includes(code);
-            if (comp === 'COPA') return ['COPA', 'COPA_DO_BRASIL'].includes(code);
-            return true;
-        });
-
+        const filtered = _allMatches.filter(m => matchCompetition(m, comp));
         if (!filtered.length) {
             showEmpty('next-matches', 'Nenhum jogo para esta competição');
             return;
@@ -269,21 +275,14 @@
         applyResultFilter('all');
     }
 
-    window.filterResults = function(comp, btn) {
+    window.filterResults = function (comp, btn) {
         document.querySelectorAll('#resultados .comp-filter').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         applyResultFilter(comp);
     };
 
     function applyResultFilter(comp) {
-        const filtered = comp === 'all' ? _allResults : _allResults.filter(m => {
-            const code = getCompCode(m.competition);
-            if (comp === 'BSA') return code === 'BSA';
-            if (comp === 'CLI') return ['CLI', 'LIBERTADORES', 'COPA_LIBERTADORES'].includes(code);
-            if (comp === 'COPA') return ['COPA', 'COPA_DO_BRASIL'].includes(code);
-            return true;
-        });
-
+        const filtered = _allResults.filter(m => matchCompetition(m, comp));
         if (!filtered.length) {
             showEmpty('recent-results', 'Nenhum resultado para esta competição');
             return;
@@ -374,132 +373,236 @@
             <div style="border-top:1px solid var(--bg);padding-top:1rem">${tableHtml}</div>`;
     }
 
-    // --- Performance Chart ---
+    // --- Performance Chart + Stats ---
     async function renderPerformanceChart() {
         const container = document.getElementById('team-stats');
         if (!container) return;
 
-        container.innerHTML = `
-            <div class="chart-container">
-                <canvas id="performanceCanvas"></canvas>
-            </div>
-            <div style="text-align:center;margin-top:0.75rem;font-size:0.8rem;color:var(--text-muted)">Evolução de pontos por rodada — Brasileirão</div>
-        `;
-
         const data = await api('matches?status=FINISHED&limit=38');
         if (!data || !data.matches?.length) {
-            document.getElementById('performanceCanvas').parentElement.innerHTML += '<div class="empty" style="padding:1rem">Sem dados suficientes</div>';
+            container.innerHTML = '<div class="empty" style="padding:2rem">Sem dados suficientes</div>';
             return;
         }
 
-        const matches = data.matches
+        const allMatches = data.matches;
+        const bsaMatches = allMatches
             .filter(m => m.competition?.code === 'BSA')
             .sort((a, b) => new Date(a.utcDate) - new Date(b.utcDate));
 
-        if (matches.length < 3) {
-            document.getElementById('performanceCanvas').parentElement.innerHTML += '<div class="empty" style="padding:1rem">Mínimo 3 jogos do Brasileirão necessários</div>';
-            return;
-        }
+        // Comprehensive stats across ALL competitions
+        let wins = 0, draws = 0, losses = 0, goalsFor = 0, goalsAgainst = 0;
+        let homeWins = 0, homeDraws = 0, homeLosses = 0, homeGF = 0, homeGA = 0;
+        let awayWins = 0, awayDraws = 0, awayLosses = 0, awayGF = 0, awayGA = 0;
+        const form = [];
 
-        const labels = [];
-        const pontos = [];
-        const acumulada = [];
-        let pts = 0;
-
-        matches.forEach((m, i) => {
+        allMatches.forEach(m => {
             const isHome = m.homeTeam.id === TEAM_ID;
             const our = isHome ? m.score.fullTime.home : m.score.fullTime.away;
             const opp = isHome ? m.score.fullTime.away : m.score.fullTime.home;
-            const r = our > opp ? 3 : our < opp ? 0 : 1;
-            pts += r;
-            pontos.push(r);
-            acumulada.push(pts);
-            const oppName = isHome ? CONFIG.teamName(m.awayTeam) : CONFIG.teamName(m.homeTeam);
-            labels.push(`R${m.matchday || i + 1}`);
+
+            goalsFor += our;
+            goalsAgainst += opp;
+
+            let result;
+            if (our > opp) { wins++; result = 'V'; }
+            else if (our < opp) { losses++; result = 'D'; }
+            else { draws++; result = 'E'; }
+
+            if (isHome) {
+                homeGF += our; homeGA += opp;
+                if (our > opp) homeWins++; else if (our < opp) homeLosses++; else homeDraws++;
+            } else {
+                awayGF += our; awayGA += opp;
+                if (our > opp) awayWins++; else if (our < opp) awayLosses++; else awayDraws++;
+            }
+
+            form.push({
+                result,
+                opp: isHome ? CONFIG.teamName(m.awayTeam) : CONFIG.teamName(m.homeTeam),
+                score: `${our}-${opp}`,
+                home: isHome,
+            });
         });
 
-        const isDark = document.body.classList.contains('dark');
-        const textColor = isDark ? '#B0B0B0' : '#666666';
-        const gridColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)';
+        const total = wins + draws + losses;
+        const avgGF = total ? (goalsFor / total).toFixed(1) : '0';
+        const avgGA = total ? (goalsAgainst / total).toFixed(1) : '0';
+        const pct = total ? Math.round(wins / total * 100) : 0;
+        const homeTotal = homeWins + homeDraws + homeLosses;
+        const awayTotal = awayWins + awayDraws + awayLosses;
+        const homePts = homeWins * 3 + homeDraws;
+        const awayPts = awayWins * 3 + awayDraws;
+        const lastFive = form.slice(-5).reverse();
 
-        const ctx = document.getElementById('performanceCanvas').getContext('2d');
-        performanceChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels,
-                datasets: [
-                    {
-                        label: 'Pontos por jogo',
-                        data: pontos,
-                        borderColor: 'rgba(0,107,63,0.5)',
-                        backgroundColor: 'rgba(0,107,63,0.1)',
-                        borderWidth: 1,
-                        pointRadius: 4,
-                        pointBackgroundColor: 'rgba(0,107,63,0.8)',
-                        tension: 0.3,
-                        yAxisID: 'y',
-                    },
-                    {
-                        label: 'Pontos acumulados',
-                        data: acumulada,
-                        borderColor: '#006B3F',
-                        backgroundColor: 'rgba(0,107,63,0.05)',
-                        borderWidth: 2,
-                        pointRadius: 3,
-                        pointBackgroundColor: '#006B3F',
-                        fill: true,
-                        tension: 0.3,
-                        yAxisID: 'y1',
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                interaction: { mode: 'index', intersect: false },
-                scales: {
-                    x: {
-                        ticks: { color: textColor, maxRotation: 0, font: { size: 10 } },
-                        grid: { color: gridColor },
-                    },
-                    y: {
-                        position: 'left',
-                        ticks: { color: textColor, stepSize: 1 },
-                        grid: { color: gridColor },
-                        title: { display: true, text: 'Pts/jogo', color: textColor, font: { size: 10 } },
-                        min: 0, max: 3,
-                    },
-                    y1: {
-                        position: 'right',
-                        ticks: { color: textColor },
-                        grid: { drawOnChartArea: false },
-                        title: { display: true, text: 'Acumulado', color: textColor, font: { size: 10 } },
-                    }
+        // Stats summary
+        let html = `
+        <div class="stats-summary">
+            <div class="stats-grid">
+                <div class="stat-box"><div class="stat-value">${total}</div><div class="stat-label">Jogos</div></div>
+                <div class="stat-box"><div class="stat-value" style="color:var(--win)">${wins}</div><div class="stat-label">Vitórias</div></div>
+                <div class="stat-box"><div class="stat-value" style="color:var(--draw)">${draws}</div><div class="stat-label">Empates</div></div>
+                <div class="stat-box"><div class="stat-value" style="color:var(--loss)">${losses}</div><div class="stat-label">Derrotas</div></div>
+                <div class="stat-box"><div class="stat-value">${goalsFor}</div><div class="stat-label">Gols Pro</div></div>
+                <div class="stat-box"><div class="stat-value">${goalsAgainst}</div><div class="stat-label">Gols Contra</div></div>
+            </div>
+        </div>
+        <div class="stats-row">
+            <div class="stats-col">
+                <div class="stats-col-title">🏠 Casa (${homeTotal}J)</div>
+                <div class="mini-stats">
+                    <span style="color:var(--win)">${homeWins}V</span>
+                    <span style="color:var(--draw)">${homeDraws}E</span>
+                    <span style="color:var(--loss)">${homeLosses}D</span>
+                    <span>${homeGF}/${homeGA}</span>
+                    <span style="font-weight:700">${homePts}pts</span>
+                </div>
+            </div>
+            <div class="stats-col">
+                <div class="stats-col-title">✈️ Fora (${awayTotal}J)</div>
+                <div class="mini-stats">
+                    <span style="color:var(--win)">${awayWins}V</span>
+                    <span style="color:var(--draw)">${awayDraws}E</span>
+                    <span style="color:var(--loss)">${awayLosses}D</span>
+                    <span>${awayGF}/${awayGA}</span>
+                    <span style="font-weight:700">${awayPts}pts</span>
+                </div>
+            </div>
+        </div>
+        <div class="stats-row">
+            <div class="stats-col">
+                <div class="stats-col-title">📊 Médias</div>
+                <div class="mini-stats">
+                    <span>${avgGF} gpj</span>
+                    <span>${avgGA} gcj</span>
+                    <span>${pct}% apr.</span>
+                </div>
+            </div>
+            <div class="stats-col">
+                <div class="stats-col-title">📋 Forma Recente</div>
+                <div class="form-guide">
+                    ${lastFive.map(f => `<span class="form-badge ${f.result === 'V' ? 'win' : f.result === 'D' ? 'loss' : 'draw'}" title="${f.home ? '🏠' : '✈️'} vs ${escapeHtml(f.opp)} (${f.score})">${f.result}</span>`).join('')}
+                </div>
+            </div>
+        </div>`;
+
+        // Chart section (Brasileirão only)
+        if (bsaMatches.length >= 3) {
+            const labels = [];
+            const pontos = [];
+            const acumulada = [];
+            let pts = 0;
+
+            bsaMatches.forEach((m, i) => {
+                const isHome = m.homeTeam.id === TEAM_ID;
+                const our = isHome ? m.score.fullTime.home : m.score.fullTime.away;
+                const opp = isHome ? m.score.fullTime.away : m.score.fullTime.home;
+                const r = our > opp ? 3 : our < opp ? 0 : 1;
+                pts += r;
+                pontos.push(r);
+                acumulada.push(pts);
+                labels.push(`R${m.matchday || i + 1}`);
+            });
+
+            html += `
+            <div class="chart-container">
+                <canvas id="performanceCanvas"></canvas>
+            </div>
+            <div style="text-align:center;margin-top:0.5rem;font-size:0.75rem;color:var(--text-muted)">Evolução de pontos por rodada — Brasileirão</div>`;
+
+            container.innerHTML = html;
+
+            const isDark = document.body.classList.contains('dark');
+            const textColor = isDark ? '#B0B0B0' : '#666666';
+            const gridColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)';
+
+            const ctx = document.getElementById('performanceCanvas')?.getContext('2d');
+            if (!ctx) return;
+
+            performanceChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [
+                        {
+                            label: 'Pontos por jogo',
+                            data: pontos,
+                            borderColor: 'rgba(0,107,63,0.5)',
+                            backgroundColor: 'rgba(0,107,63,0.1)',
+                            borderWidth: 1,
+                            pointRadius: 4,
+                            pointBackgroundColor: pontos.map(p => p === 3 ? '#006B3F' : p === 1 ? '#757575' : '#D32F2F'),
+                            tension: 0.3,
+                            yAxisID: 'y',
+                        },
+                        {
+                            label: 'Pontos acumulados',
+                            data: acumulada,
+                            borderColor: '#006B3F',
+                            backgroundColor: 'rgba(0,107,63,0.05)',
+                            borderWidth: 2,
+                            pointRadius: 3,
+                            pointBackgroundColor: '#006B3F',
+                            fill: true,
+                            tension: 0.3,
+                            yAxisID: 'y1',
+                        }
+                    ]
                 },
-                plugins: {
-                    legend: {
-                        labels: { color: textColor, font: { size: 11 } }
+                options: {
+                    responsive: true,
+                    interaction: { mode: 'index', intersect: false },
+                    scales: {
+                        x: {
+                            ticks: { color: textColor, maxRotation: 0, font: { size: 10 } },
+                            grid: { color: gridColor },
+                        },
+                        y: {
+                            position: 'left',
+                            ticks: { color: textColor, stepSize: 1 },
+                            grid: { color: gridColor },
+                            title: { display: true, text: 'Pts/jogo', color: textColor, font: { size: 10 } },
+                            min: 0, max: 3,
+                        },
+                        y1: {
+                            position: 'right',
+                            ticks: { color: textColor },
+                            grid: { drawOnChartArea: false },
+                            title: { display: true, text: 'Acumulado', color: textColor, font: { size: 10 } },
+                        }
                     },
-                    tooltip: {
-                        callbacks: {
-                            afterLabel: (item) => {
-                                if (item.datasetIndex === 0) {
-                                    const pts = item.raw;
-                                    return pts === 3 ? '✅ Vitória' : pts === 1 ? '➖ Empate' : '❌ Derrota';
+                    plugins: {
+                        legend: { labels: { color: textColor, font: { size: 11 } } },
+                        tooltip: {
+                            callbacks: {
+                                afterLabel: (item) => {
+                                    if (item.datasetIndex === 0) {
+                                        const p = item.raw;
+                                        return p === 3 ? '✅ Vitória' : p === 1 ? '➖ Empate' : '❌ Derrota';
+                                    }
+                                    return `Total: ${item.raw} pts`;
                                 }
-                                return `Total: ${item.raw} pts`;
                             }
                         }
                     }
                 }
-            }
-        });
+            });
+        } else {
+            html += '<div style="text-align:center;padding:1rem;font-size:0.85rem;color:var(--text-muted)">📈 Gráfico disponível com mínimo 3 jogos do Brasileirão</div>';
+            container.innerHTML = html;
+        }
     }
 
-    // --- Stats (fallback when chart can't render) ---
+    // --- Stats (legacy fallback) ---
     async function loadTeamStats() {
+        // Don't overwrite if chart is already rendered
+        if (document.getElementById('performanceCanvas')) return;
+        
         showSkeleton('team-stats');
         const data = await api('matches?status=FINISHED&limit=20');
         if (!data) { showError('team-stats', 'Erro ao carregar', 'loadTeamStats'); return; }
+        // Don't overwrite if chart was rendered while waiting for API
+        if (document.getElementById('performanceCanvas')) return;
+        
         const matches = data.matches || [];
         if (!matches.length) { showEmpty('team-stats', 'Nenhum dado'); return; }
 
@@ -524,17 +627,25 @@
     async function loadNews() {
         showSkeleton('news-list');
         const data = await api('news');
-        // Handle both raw list and {news: [...]} response shapes
         const items = Array.isArray(data) ? data : (data?.news || []);
         if (!items.length) { showEmpty('news-list', 'Nenhuma notícia'); return; }
-        document.getElementById('news-list').innerHTML = items.slice(0, 8).map(n => {
-            const sourceIcon = n.source === 'lance.com.br' ? '🔵' : '🔴';
+
+        const sourceIcons = {
+            'ge.globo': '🔴',
+            'lance.com.br': '🔵',
+            'gazetaesportiva.com': '🟡',
+            'uol.com.br': '🟠',
+        };
+
+        document.getElementById('news-list').innerHTML = items.slice(0, 12).map(n => {
+            const source = n.source || 'ge.globo';
+            const icon = sourceIcons[source] || '📰';
             const safeUrl = escapeHtml(n.url || '#');
             const safeTitle = escapeHtml(n.title);
-            const safeSource = escapeHtml(n.source || 'ge.globo');
-            return `<div class="news-item" onclick="window.open('${safeUrl}','_blank')">
+            const safeSource = escapeHtml(source);
+            return `<div class="news-item" onclick="window.open('${safeUrl}','_blank')" role="link" tabindex="0">
                 <div class="news-title">${safeTitle}</div>
-                <div class="news-meta">${sourceIcon} <span class="news-source">${safeSource}</span></div>
+                <div class="news-meta">${icon} <span class="news-source">${safeSource}</span></div>
             </div>`;
         }).join('');
     }
@@ -571,14 +682,21 @@
             a.href = URL.createObjectURL(blob);
             a.download = 'palmeiras.ics';
             a.click();
+            URL.revokeObjectURL(a.href);
         } catch (e) { alert('Erro: ' + e.message); }
     };
+
     window.copyCalendarUrl = async function () {
         const url = window.location.origin + '/api/calendar.ics';
-        try { await navigator.clipboard.writeText(url); alert('Link copiado!'); } catch { prompt('Copie:', url); }
+        try {
+            await navigator.clipboard.writeText(url);
+            alert('Link copiado!');
+        } catch {
+            prompt('Copie:', url);
+        }
     };
 
-    // --- Init ---
+    // --- Public API ---
     window.loadHero = loadHero;
     window.loadMatches = loadMatches;
     window.loadResults = loadResults;
@@ -587,11 +705,18 @@
     window.loadNews = loadNews;
     window.loadPrediction = loadPrediction;
 
+    // --- Init ---
     document.addEventListener('DOMContentLoaded', () => {
         initTheme();
         const el = document.getElementById('last-updated');
         if (el) el.textContent = 'Atualizado: ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
         initTabs();
-        loadHero(); loadMatches(); loadResults(); loadStandings(); loadTeamStats(); loadNews(); loadPrediction();
+        loadHero();
+        loadMatches();
+        loadResults();
+        loadStandings();
+        loadTeamStats();
+        loadNews();
+        loadPrediction();
     });
 })();

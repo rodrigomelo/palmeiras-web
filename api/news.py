@@ -21,7 +21,7 @@ def get_supabase():
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         params = parse_qs(urlparse(self.path).query)
-        limit = int(params.get('limit', ['10'])[0])
+        limit = min(int(params.get('limit', ['20'])[0]), 50)
 
         client = get_supabase()
         if not client:

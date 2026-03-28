@@ -11,7 +11,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
-    <button class="theme-toggle" id="themeToggle" title="Alternar tema" onclick="toggleTheme()">🌙</button>
+    <button class="theme-toggle" id="themeToggle" title="Alternar tema" aria-label="Alternar tema claro/escuro" onclick="toggleTheme()">🌙</button>
     <header class="header">
         <div class="header-content">
             <div class="logo">
@@ -52,7 +52,7 @@
             <button class="tab-btn active" data-tab="proximos">📅 Próximos</button>
             <button class="tab-btn" data-tab="resultados">🏆 Resultados</button>
             <button class="tab-btn" data-tab="classificacao">📊 Tabela</button>
-            <button class="tab-btn" data-tab="estatisticas">📈 Estatísticas</button>
+            <button class="tab-btn" data-tab="estatisticas">📊 Estatísticas da Temporada</button>
             <button class="tab-btn" data-tab="news">📰 Notícias</button>
             <button class="tab-btn" data-tab="palpites">🎯 Palpites</button>
         </div>
@@ -82,7 +82,7 @@
             </div>
         </div>
         <div id="classificacao" class="tab-content"><div class="card"><div class="card-title">📊 Classificação - Brasileirão <button onclick="loadStandings()" style="float:right;background:none;border:none;cursor:pointer">🔄</button></div><div id="standings"><div class="empty">Carregando...</div></div></div></div>
-        <div id="estatisticas" class="tab-content"><div class="card"><div class="card-title">📈 Estatísticas da Temporada</div><div id="team-stats"><div class="empty">Carregando...</div></div></div></div>
+        <div id="estatisticas" class="tab-content"><div class="card"><div class="card-title">📊 Estatísticas da Temporada</div><div id="team-stats"><div class="empty">Carregando...</div></div></div></div>
         <div id="news" class="tab-content"><div class="card"><div class="card-title">📰 Notícias Recentes</div><div id="news-list"><div class="empty">Carregando...</div></div></div></div>
         <div id="palpites" class="tab-content"><div class="card"><div class="card-title">🎯 Palpite do Próximo Jogo</div><div id="prediction"><div class="empty">Carregando...</div></div></div></div>
     </main>

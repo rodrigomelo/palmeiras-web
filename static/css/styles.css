@@ -327,6 +327,25 @@ body.dark .theme-toggle {
 .stat-name { font-weight: 500; }
 .stat-number { font-weight: 700; min-width: 40px; text-align: right; }
 
+/* Stats Summary */
+.stats-summary { margin-bottom: 1rem; }
+.stats-row { display: flex; gap: 1rem; margin-bottom: 0.75rem; }
+.stats-col { flex: 1; background: var(--bg); border-radius: 10px; padding: 0.75rem; }
+.stats-col-title { font-size: 0.8rem; font-weight: 700; color: var(--brand); margin-bottom: 0.5rem; }
+.mini-stats { display: flex; gap: 0.75rem; flex-wrap: wrap; font-size: 0.8rem; color: var(--text-secondary); }
+.mini-stats span { white-space: nowrap; }
+
+/* Form Guide */
+.form-guide { display: flex; gap: 0.4rem; }
+.form-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; border-radius: 8px;
+    font-size: 0.8rem; font-weight: 800; cursor: default;
+}
+.form-badge.win { background: rgba(0,107,63,0.15); color: var(--win); }
+.form-badge.loss { background: rgba(211,47,47,0.15); color: var(--loss); }
+.form-badge.draw { background: rgba(117,117,117,0.15); color: var(--draw); }
+
 /* Prediction */
 .prediction-card { text-align: center; padding: 1.5rem; }
 .prediction-probs { display: flex; justify-content: space-around; margin-top: 1rem; }
