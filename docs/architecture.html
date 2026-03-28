@@ -301,22 +301,18 @@ tr:hover { background: #1a1a1a; }
         <tr>
           <td><span class="badge blue">Local Dev</span></td>
           <td>127.0.0.1:5001</td>
-          <td>server.py (launchd)</td>
+          <td>server.py (launchd, auto-start)</td>
           <td>server.py → Supabase REST (urllib)</td>
-        </tr>
-        <tr>
-          <td><span class="badge purple">Vercel Dev</span></td>
-          <td>localhost:3000</td>
-          <td>vercel dev</td>
-          <td>api/*.py → Supabase REST (urllib)</td>
         </tr>
       </tbody>
     </table>
   </div>
 
   <div class="key-point" style="margin-top:1rem">
-    <strong>All three environments read from the SAME Supabase database.</strong><br>
-    Updates to Supabase (via collectors) are immediately available on the next API call from any environment.
+    <strong>Both environments read from the SAME Supabase database.</strong><br>
+    Updates to Supabase (via collectors) are immediately available on the next API call from either environment.<br><br>
+    <strong>Local dev uses <code>server.py</code> on port 5001</strong> — runs automatically via macOS launchd. Serves static files + API routes. No Vercel CLI needed.<br>
+    <strong><code>vercel dev</code> is only for debugging Vercel-specific issues</strong> before deploying — not for daily use.
   </div>
 </div>
 
