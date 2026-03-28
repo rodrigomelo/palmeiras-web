@@ -2,17 +2,21 @@
 GET /api/calendar.ics — iCal feed for Palmeiras matches
 
 Includes: stadium, competition, matchday, stage, broadcast, scores.
+Uses direct Supabase REST API — no supabase Python library needed.
 """
 import json
 import os
 from datetime import datetime, timezone, timedelta
 from http.server import BaseHTTPRequestHandler
+from urllib.parse import urlencode
+from urllib.request import Request, urlopen
+from urllib.error import HTTPError
 
 SUPABASE_URL = os.environ.get('SUPABASE_URL', '')
 SUPABASE_KEY = os.environ.get('SUPABASE_KEY', '')
 BR_TZ = timezone(timedelta(hours=-3))
 TEAM_ID = 1769
-# Known stadiums for away games (team_id → stadium)
+
 AWAY_STADIUMS = {
     1776: 'Morumbi', 1777: 'Fonte Nova', 1770: 'Nilton Santos',
     1779: 'Maracanã', 1783: 'Beira-Rio', 1766: 'Mineirão',
@@ -20,12 +24,16 @@ AWAY_STADIUMS = {
 }
 
 
-def get_supabase():
-    try:
-        from supabase import create_client
-        return create_client(SUPABASE_URL, SUPABASE_KEY)
-    except Exception:
-        return None
+def supabase_get(table, **params):
+    headers = {
+        'apikey': SUPABASE_KEY,
+        'Authorization': f'Bearer {SUPABASE_KEY}',
+    }
+    qs = urlencode(params)
+    url = f'{SUPABASE_URL}/rest/v1/{table}?{qs}'
+    req = Request(url, headers=headers)
+    with urlopen(req, timeout=10) as resp:
+        return json.loads(resp.read())
 
 
 def parse_json(val):
@@ -38,7 +46,6 @@ def parse_json(val):
 
 
 def fold_line(line):
-    """Fold lines per RFC 5545 (max 75 bytes, CRLF+space for continuation)."""
     if not line:
         return ''
     result = []
@@ -50,7 +57,6 @@ def fold_line(line):
 
 
 def escape_ics(text):
-    """Escape text for ICS format (no line folding here, handled separately)."""
     if not text:
         return ''
     return str(text).replace('\\', '\\\\').replace(';', '\\;').replace(',', '\\,').replace('\r', '')
@@ -58,13 +64,11 @@ def escape_ics(text):
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
-        client = get_supabase()
-        if not client:
+        if not SUPABASE_URL or not SUPABASE_KEY:
             return self._respond(503, 'No database')
 
         try:
-            result = client.table('matches').select('*').execute()
-            matches = sorted(result.data, key=lambda x: x.get('utc_date', ''), reverse=True)[:150]
+            matches = supabase_get('matches', select='*', order='utc_date.desc', limit='150')
 
             lines = [
                 "BEGIN:VCALENDAR",
@@ -74,7 +78,6 @@ class handler(BaseHTTPRequestHandler):
                 "X-WR-TIMEZONE:America/Sao_Paulo",
                 "CALSCALE:GREGORIAN",
                 "METHOD:PUBLISH",
-                # Timezone definition
                 "BEGIN:VTIMEZONE",
                 "TZID:America/Sao_Paulo",
                 "BEGIN:STANDARD",
@@ -97,9 +100,9 @@ class handler(BaseHTTPRequestHandler):
                     start = dt_sp.strftime('%Y%m%dT%H%M%S')
                     end = (dt_sp + timedelta(hours=2)).strftime('%Y%m%dT%H%M%S')
 
-                    home = parse_json(m.get('home_team', {}))
-                    away = parse_json(m.get('away_team', {}))
-                    comp = parse_json(m.get('competition', {}))
+                    home = parse_json(m.get('home_team', '{}'))
+                    away = parse_json(m.get('away_team', '{}'))
+                    comp = parse_json(m.get('competition', '{}'))
                     hn = home.get('name', 'Home')
                     an = away.get('name', 'Away')
                     is_home = home.get('id') == TEAM_ID
@@ -115,9 +118,7 @@ class handler(BaseHTTPRequestHandler):
                             venue = AWAY_STADIUMS.get(home.get('id'), 'A definir')
                     broadcast = m.get('broadcast', '')
                     comp_name = comp.get('name', '')
-                    comp_code = comp.get('code', '')
 
-                    # Summary
                     hg = m.get('home_score')
                     ag = m.get('away_score')
                     if status == 'FINISHED' and hg is not None and ag is not None:
@@ -125,7 +126,6 @@ class handler(BaseHTTPRequestHandler):
                     else:
                         summary = f"⚽ {hn} x {an}"
 
-                    # Description with all details
                     desc_parts = []
                     if comp_name:
                         desc_parts.append(f"Competicao: {comp_name}")
@@ -139,17 +139,13 @@ class handler(BaseHTTPRequestHandler):
                         desc_parts.append(f"Transmissao: {broadcast}")
                     else:
                         desc_parts.append("Transmissao: A confirmar")
-                    if status == 'FINISHED':
-                        hg = m.get('home_score')
-                        ag = m.get('away_score')
-                        if hg is not None and ag is not None:
-                            desc_parts.append(f"Placar: {hg} x {ag}")
+                    if status == 'FINISHED' and hg is not None and ag is not None:
+                        desc_parts.append(f"Placar: {hg} x {ag}")
                         ht_h = m.get('half_time_home')
                         ht_a = m.get('half_time_away')
                         if ht_h is not None and ht_a is not None:
                             desc_parts.append(f"Placar 1o tempo: {ht_h} x {ht_a}")
 
-                    # Referees
                     referees = parse_json(m.get('referees', '[]'))
                     if referees and isinstance(referees, list):
                         ref_names = [r.get('name', '') for r in referees if r.get('name')]
@@ -157,8 +153,6 @@ class handler(BaseHTTPRequestHandler):
                             desc_parts.append(f"Arbitros: {', '.join(ref_names)}")
 
                     description = fold_line(escape_ics('\n'.join(desc_parts)))
-
-                    # Location
                     location = escape_ics(venue) if venue and venue != 'A definir' else ''
 
                     lines.extend([
