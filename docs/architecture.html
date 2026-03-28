@@ -3,345 +3,228 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Palmeiras Web — Architecture Diagram</title>
+<title>Palmeiras Web — System Diagram</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0a0a; color: #e0e0e0; padding: 2rem; }
 h1 { text-align: center; color: #006B3F; font-size: 1.8rem; margin-bottom: 0.5rem; }
 h1 span { color: #fff; }
 .subtitle { text-align: center; color: #888; font-size: 0.9rem; margin-bottom: 2rem; }
-.diagram { max-width: 1000px; margin: 0 auto; }
+.diagram-container { max-width: 1100px; margin: 0 auto; overflow-x: auto; }
+svg text { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
 
-.layer { background: #141414; border: 1px solid #2a2a2a; border-radius: 12px; margin-bottom: 1.5rem; padding: 1.5rem; }
-.layer-title { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 2px; color: #006B3F; margin-bottom: 1rem; font-weight: 700; }
+.legend { max-width: 1100px; margin: 2rem auto 0; display: flex; gap: 2rem; flex-wrap: wrap; justify-content: center; }
+.legend-item { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; color: #888; }
+.legend-box { width: 16px; height: 16px; border-radius: 3px; }
 
-.nodes { display: flex; flex-wrap: wrap; gap: 1rem; justify-content: center; }
+.section { max-width: 1100px; margin: 2rem auto; }
+.section h2 { color: #006B3F; font-size: 1.1rem; margin-bottom: 1rem; }
+.section p { color: #bbb; font-size: 0.85rem; line-height: 1.6; margin-bottom: 0.5rem; }
+.section code { background: #1a1a1a; padding: 0.15rem 0.4rem; border-radius: 4px; color: #006B3F; font-size: 0.8rem; }
 
-.node { background: #1a1a1a; border: 1px solid #333; border-radius: 10px; padding: 1rem 1.25rem; min-width: 160px; text-align: center; }
-.node.green { border-color: #006B3F; }
-.node.blue { border-color: #2196F3; }
-.node.orange { border-color: #FF9800; }
-.node.purple { border-color: #9C27B0; }
-.node.red { border-color: #f44336; }
-.node.yellow { border-color: #FFC107; }
-
-.node-icon { font-size: 1.5rem; margin-bottom: 0.5rem; }
-.node-name { font-weight: 700; font-size: 0.9rem; color: #fff; margin-bottom: 0.25rem; }
-.node-desc { font-size: 0.75rem; color: #888; line-height: 1.4; }
-
-.arrow-row { display: flex; justify-content: center; margin: 0.5rem 0; }
-.arrow { color: #006B3F; font-size: 1.2rem; text-align: center; }
-.arrow-label { color: #666; font-size: 0.7rem; text-align: center; margin-top: 0.15rem; }
-
-.flow-section { margin-top: 2rem; }
-.flow-title { color: #fff; font-size: 1.1rem; margin-bottom: 1rem; text-align: center; font-weight: 700; }
-
-.flow-row { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem; flex-wrap: wrap; justify-content: center; }
-.flow-step { background: #1a1a1a; border: 1px solid #333; border-radius: 8px; padding: 0.6rem 1rem; font-size: 0.8rem; }
-.flow-step.active { border-color: #006B3F; color: #006B3F; font-weight: 600; }
-.flow-arrow { color: #555; font-size: 0.9rem; }
-
-.table-container { margin-top: 2rem; overflow-x: auto; }
-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
-th { background: #1a1a1a; color: #006B3F; padding: 0.75rem; text-align: left; border-bottom: 2px solid #006B3F; }
-td { padding: 0.75rem; border-bottom: 1px solid #222; }
-tr:hover { background: #1a1a1a; }
-
-.badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.7rem; font-weight: 600; }
-.badge.green { background: rgba(0,107,63,0.2); color: #006B3F; }
-.badge.blue { background: rgba(33,150,243,0.2); color: #2196F3; }
-.badge.orange { background: rgba(255,152,0,0.2); color: #FF9800; }
-.badge.purple { background: rgba(156,39,176,0.2); color: #9C27B0; }
-
-.footer { text-align: center; margin-top: 2rem; color: #555; font-size: 0.75rem; }
-.footer a { color: #006B3F; text-decoration: none; }
-
-.key-point { background: rgba(0,107,63,0.1); border-left: 3px solid #006B3F; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0 8px 8px 0; font-size: 0.85rem; }
+.footer { text-align: center; margin-top: 3rem; color: #555; font-size: 0.75rem; border-top: 1px solid #222; padding-top: 1.5rem; }
 </style>
 </head>
 <body>
 
-<h1>⚽ <span>Palmeiras Web</span> — Architecture</h1>
-<p class="subtitle">Last updated: March 28, 2026 • Single Vercel deployment • Direct Supabase REST API</p>
+<h1>⚽ <span>Palmeiras Web</span> — System Diagram</h1>
+<p class="subtitle">Architecture Overview • March 2026</p>
 
-<!-- LAYER 1: Data Sources -->
-<div class="diagram">
-<div class="layer">
-  <div class="layer-title">📡 Data Sources (External APIs)</div>
-  <div class="nodes">
-    <div class="node green">
-      <div class="node-icon">⚽</div>
-      <div class="node-name">football-data.org</div>
-      <div class="node-desc">Matches, standings, scores<br>Free tier — current season only</div>
-    </div>
-    <div class="node blue">
-      <div class="node-icon">📰</div>
-      <div class="node-name">ge.globo</div>
-      <div class="node-desc">Palmeiras news<br>Scraped via BeautifulSoup</div>
-    </div>
-    <div class="node orange">
-      <div class="node-icon">📰</div>
-      <div class="node-name">lance.com.br</div>
-      <div class="node-desc">Palmeiras news<br>Scraped via BeautifulSoup</div>
-    </div>
-    <div class="node yellow">
-      <div class="node-icon">📰</div>
-      <div class="node-name">gazetaesportiva.com</div>
-      <div class="node-desc">Palmeiras news<br>New source — added Mar 28</div>
-    </div>
-    <div class="node purple">
-      <div class="node-icon">📰</div>
-      <div class="node-name">uol.com.br</div>
-      <div class="node-desc">Palmeiras news<br>New source — added Mar 28</div>
-    </div>
-  </div>
+<div class="diagram-container">
+<svg viewBox="0 0 1060 780" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Arrow marker -->
+    <marker id="arrow" viewBox="0 0 10 7" refX="10" refY="3.5" markerWidth="10" markerHeight="7" orient="auto-start-reverse">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#555"/>
+    </marker>
+    <marker id="arrow-green" viewBox="0 0 10 7" refX="10" refY="3.5" markerWidth="10" markerHeight="7" orient="auto-start-reverse">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#006B3F"/>
+    </marker>
+    <!-- Glow filter -->
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="2" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- ====== LAYER LABELS ====== -->
+  <text x="20" y="50" fill="#555" font-size="11" font-weight="600" letter-spacing="2">DATA SOURCES</text>
+  <text x="20" y="270" fill="#555" font-size="11" font-weight="600" letter-spacing="2">STORAGE</text>
+  <text x="20" y="430" fill="#555" font-size="11" font-weight="600" letter-spacing="2">API LAYER</text>
+  <text x="20" y="610" fill="#555" font-size="11" font-weight="600" letter-spacing="2">FRONTEND</text>
+
+  <!-- ====== DATA SOURCES (y=60-230) ====== -->
+  <!-- football-data.org -->
+  <rect x="40" y="70" width="180" height="80" rx="8" fill="#0d1f15" stroke="#006B3F" stroke-width="1.5"/>
+  <text x="130" y="100" text-anchor="middle" fill="#006B3F" font-size="14" font-weight="700">⚽ football-data.org</text>
+  <text x="130" y="118" text-anchor="middle" fill="#888" font-size="10">Matches · Standings · Scores</text>
+  <text x="130" y="134" text-anchor="middle" fill="#555" font-size="9">REST API (key)</text>
+
+  <!-- ge.globo -->
+  <rect x="260" y="70" width="150" height="80" rx="8" fill="#0d1520" stroke="#2196F3" stroke-width="1.5"/>
+  <text x="335" y="100" text-anchor="middle" fill="#2196F3" font-size="14" font-weight="700">📰 ge.globo</text>
+  <text x="335" y="118" text-anchor="middle" fill="#888" font-size="10">News</text>
+  <text x="335" y="134" text-anchor="middle" fill="#555" font-size="9">BeautifulSoup</text>
+
+  <!-- lance.com.br -->
+  <rect x="450" y="70" width="150" height="80" rx="8" fill="#0d1520" stroke="#2196F3" stroke-width="1.5"/>
+  <text x="525" y="100" text-anchor="middle" fill="#2196F3" font-size="14" font-weight="700">📰 lance</text>
+  <text x="525" y="118" text-anchor="middle" fill="#888" font-size="10">News</text>
+  <text x="525" y="134" text-anchor="middle" fill="#555" font-size="9">BeautifulSoup</text>
+
+  <!-- gazetaesportiva -->
+  <rect x="640" y="70" width="170" height="80" rx="8" fill="#1a180d" stroke="#FF9800" stroke-width="1.5"/>
+  <text x="725" y="100" text-anchor="middle" fill="#FF9800" font-size="14" font-weight="700">📰 gazeta</text>
+  <text x="725" y="118" text-anchor="middle" fill="#888" font-size="10">News</text>
+  <text x="725" y="134" text-anchor="middle" fill="#555" font-size="9">BeautifulSoup</text>
+
+  <!-- uol -->
+  <rect x="850" y="70" width="170" height="80" rx="8" fill="#180d1a" stroke="#9C27B0" stroke-width="1.5"/>
+  <text x="935" y="100" text-anchor="middle" fill="#9C27B0" font-size="14" font-weight="700">📰 uol</text>
+  <text x="935" y="118" text-anchor="middle" fill="#888" font-size="10">News</text>
+  <text x="935" y="134" text-anchor="middle" fill="#555" font-size="9">BeautifulSoup</text>
+
+  <!-- ====== COLLECTORS (y=180-230) ====== -->
+  <rect x="150" y="185" width="760" height="45" rx="8" fill="#111" stroke="#333" stroke-width="1" stroke-dasharray="4,4"/>
+  <text x="530" y="212" text-anchor="middle" fill="#888" font-size="12" font-weight="600">⚙️ Collectors — Python scripts • Cron: hourly 12:00–23:59 BRT (launchd)</text>
+
+  <!-- Arrows: sources → collectors -->
+  <line x1="130" y1="150" x2="130" y2="185" stroke="#006B3F" stroke-width="1.5" marker-end="url(#arrow-green)"/>
+  <line x1="335" y1="150" x2="335" y2="185" stroke="#2196F3" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="525" y1="150" x2="525" y2="185" stroke="#2196F3" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="725" y1="150" x2="725" y2="185" stroke="#FF9800" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="935" y1="150" x2="935" y2="185" stroke="#9C27B0" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- ====== SUPABASE (y=290-400) ====== -->
+  <rect x="250" y="290" width="560" height="100" rx="12" fill="#0d1a12" stroke="#006B3F" stroke-width="2" filter="url(#glow)"/>
+  <text x="530" y="322" text-anchor="middle" fill="#006B3F" font-size="18" font-weight="800">🗄️ Supabase (PostgreSQL)</text>
+  <text x="530" y="345" text-anchor="middle" fill="#aaa" font-size="11">iclftjmlotjckawqblgf.supabase.co</text>
+  <!-- Tables inside -->
+  <rect x="280" y="358" width="140" height="22" rx="4" fill="#1a2e1f" stroke="#006B3F" stroke-width="0.5"/>
+  <text x="350" y="373" text-anchor="middle" fill="#006B3F" font-size="10" font-weight="600">📋 matches (44)</text>
+  <rect x="440" y="358" width="160" height="22" rx="4" fill="#1a2e1f" stroke="#006B3F" stroke-width="0.5"/>
+  <text x="520" y="373" text-anchor="middle" fill="#006B3F" font-size="10" font-weight="600">📊 standings (20)</text>
+  <rect x="620" y="358" width="160" height="22" rx="4" fill="#1a2e1f" stroke="#006B3F" stroke-width="0.5"/>
+  <text x="700" y="373" text-anchor="middle" fill="#006B3F" font-size="10" font-weight="600">📰 news (7+)</text>
+
+  <!-- Arrow: collectors → supabase -->
+  <line x1="530" y1="230" x2="530" y2="290" stroke="#006B3F" stroke-width="2" marker-end="url(#arrow-green)"/>
+  <text x="545" y="265" fill="#006B3F" font-size="9" font-weight="600">WRITE</text>
+
+  <!-- ====== API LAYER — PRODUCTION (y=450-570) ====== -->
+  <!-- Vercel box -->
+  <rect x="40" y="445" width="480" height="130" rx="12" fill="#111" stroke="#2196F3" stroke-width="1.5"/>
+  <text x="280" y="475" text-anchor="middle" fill="#2196F3" font-size="14" font-weight="700">⚡ Vercel Serverless (Production)</text>
+  <text x="280" y="492" text-anchor="middle" fill="#555" font-size="10">palmeiras-web.vercel.app</text>
+
+  <rect x="60" y="505" width="100" height="50" rx="6" fill="#0d1520" stroke="#2196F3" stroke-width="1"/>
+  <text x="110" y="528" text-anchor="middle" fill="#2196F3" font-size="10" font-weight="600">/api/</text>
+  <text x="110" y="543" text-anchor="middle" fill="#2196F3" font-size="10" font-weight="600">matches</text>
+
+  <rect x="175" y="505" width="100" height="50" rx="6" fill="#0d1520" stroke="#2196F3" stroke-width="1"/>
+  <text x="225" y="528" text-anchor="middle" fill="#2196F3" font-size="10" font-weight="600">/api/</text>
+  <text x="225" y="543" text-anchor="middle" fill="#2196F3" font-size="10" font-weight="600">standings</text>
+
+  <rect x="290" y="505" width="100" height="50" rx="6" fill="#0d1520" stroke="#2196F3" stroke-width="1"/>
+  <text x="340" y="528" text-anchor="middle" fill="#2196F3" font-size="10" font-weight="600">/api/</text>
+  <text x="340" y="543" text-anchor="middle" fill="#2196F3" font-size="10" font-weight="600">news</text>
+
+  <rect x="405" y="505" width="100" height="50" rx="6" fill="#0d1520" stroke="#2196F3" stroke-width="1"/>
+  <text x="455" y="528" text-anchor="middle" fill="#2196F3" font-size="10" font-weight="600">/api/</text>
+  <text x="455" y="543" text-anchor="middle" fill="#2196F3" font-size="10" font-weight="600">calendar.ics</text>
+
+  <!-- API LAYER — LOCAL -->
+  <rect x="560" y="445" width="460" height="130" rx="12" fill="#111" stroke="#FF9800" stroke-width="1.5"/>
+  <text x="790" y="475" text-anchor="middle" fill="#FF9800" font-size="14" font-weight="700">💻 Local Dev (Mac mini)</text>
+  <text x="790" y="492" text-anchor="middle" fill="#555" font-size="10">127.0.0.1:5001 — server.py (launchd)</text>
+
+  <rect x="580" y="505" width="130" height="50" rx="6" fill="#1a180d" stroke="#FF9800" stroke-width="1"/>
+  <text x="645" y="528" text-anchor="middle" fill="#FF9800" font-size="10" font-weight="600">Static files</text>
+  <text x="645" y="543" text-anchor="middle" fill="#FF9800" font-size="10" font-weight="600">HTML/CSS/JS</text>
+
+  <rect x="730" y="505" width="130" height="50" rx="6" fill="#1a180d" stroke="#FF9800" stroke-width="1"/>
+  <text x="795" y="528" text-anchor="middle" fill="#FF9800" font-size="10" font-weight="600">/api/* routes</text>
+  <text x="795" y="543" text-anchor="middle" fill="#FF9800" font-size="10" font-weight="600">→ Supabase REST</text>
+
+  <rect x="880" y="505" width="120" height="50" rx="6" fill="#1a180d" stroke="#FF9800" stroke-width="1"/>
+  <text x="940" y="528" text-anchor="middle" fill="#FF9800" font-size="10" font-weight="600">Collectors</text>
+  <text x="940" y="543" text-anchor="middle" fill="#FF9800" font-size="10" font-weight="600">cron + launchd</text>
+
+  <!-- Arrows: supabase → api layers -->
+  <line x1="420" y1="390" x2="280" y2="445" stroke="#006B3F" stroke-width="1.5" marker-end="url(#arrow-green)"/>
+  <text x="320" y="415" fill="#006B3F" font-size="9" font-weight="600">READ</text>
+  <line x1="640" y1="390" x2="790" y2="445" stroke="#006B3F" stroke-width="1.5" marker-end="url(#arrow-green)"/>
+  <text x="740" y="415" fill="#006B3F" font-size="9" font-weight="600">READ</text>
+
+  <!-- ====== FRONTEND (y=620-760) ====== -->
+  <rect x="100" y="620" width="860" height="140" rx="12" fill="#111" stroke="#9C27B0" stroke-width="1.5"/>
+  <text x="530" y="650" text-anchor="middle" fill="#9C27B0" font-size="14" font-weight="700">🎨 Frontend — Vanilla HTML / CSS / JS + Chart.js</text>
+
+  <!-- Tabs -->
+  <rect x="120" y="670" width="110" height="70" rx="6" fill="#1a0d1a" stroke="#9C27B0" stroke-width="1"/>
+  <text x="175" y="698" text-anchor="middle" fill="#9C27B0" font-size="11" font-weight="600">🃏 Hero</text>
+  <text x="175" y="716" text-anchor="middle" fill="#666" font-size="9">Next match</text>
+
+  <rect x="245" y="670" width="110" height="70" rx="6" fill="#1a0d1a" stroke="#9C27B0" stroke-width="1"/>
+  <text x="300" y="698" text-anchor="middle" fill="#9C27B0" font-size="11" font-weight="600">📅 Próximos</text>
+  <text x="300" y="716" text-anchor="middle" fill="#666" font-size="9">Filters · BSA/Lib/CB</text>
+
+  <rect x="370" y="670" width="110" height="70" rx="6" fill="#1a0d1a" stroke="#9C27B0" stroke-width="1"/>
+  <text x="425" y="698" text-anchor="middle" fill="#9C27B0" font-size="11" font-weight="600">🏆 Resultados</text>
+  <text x="425" y="716" text-anchor="middle" fill="#666" font-size="9">W/D/L badges</text>
+
+  <rect x="495" y="670" width="110" height="70" rx="6" fill="#1a0d1a" stroke="#9C27B0" stroke-width="1"/>
+  <text x="550" y="698" text-anchor="middle" fill="#9C27B0" font-size="11" font-weight="600">📊 Tabela</text>
+  <text x="550" y="716" text-anchor="middle" fill="#666" font-size="9">BSA standings</text>
+
+  <rect x="620" y="670" width="110" height="70" rx="6" fill="#1a0d1a" stroke="#9C27B0" stroke-width="1"/>
+  <text x="675" y="698" text-anchor="middle" fill="#9C27B0" font-size="11" font-weight="600">📈 Estatísticas</text>
+  <text x="675" y="716" text-anchor="middle" fill="#666" font-size="9">Chart · Form guide</text>
+
+  <rect x="745" y="670" width="100" height="70" rx="6" fill="#1a0d1a" stroke="#9C27B0" stroke-width="1"/>
+  <text x="795" y="698" text-anchor="middle" fill="#9C27B0" font-size="11" font-weight="600">📰 News</text>
+  <text x="795" y="716" text-anchor="middle" fill="#666" font-size="9">4 sources</text>
+
+  <rect x="860" y="670" width="80" height="70" rx="6" fill="#1a0d1a" stroke="#9C27B0" stroke-width="1"/>
+  <text x="900" y="698" text-anchor="middle" fill="#9C27B0" font-size="11" font-weight="600">📅 .ics</text>
+  <text x="900" y="716" text-anchor="middle" fill="#666" font-size="9">Calendar</text>
+
+  <!-- Arrows: api → frontend -->
+  <line x1="280" y1="575" x2="530" y2="620" stroke="#9C27B0" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="790" y1="575" x2="530" y2="620" stroke="#9C27B0" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="530" y="600" text-anchor="middle" fill="#666" font-size="9">/api/* JSON responses</text>
+
+  <!-- ====== USER ====== -->
+  <!-- Browser icons -->
+  <rect x="370" y="6" width="320" height="35" rx="8" fill="#0a0a0a" stroke="#444" stroke-width="1"/>
+  <text x="530" y="28" text-anchor="middle" fill="#888" font-size="12">🌐 User browser — palmeiras-web.vercel.app or 127.0.0.1:5001</text>
+  <line x1="530" y1="41" x2="530" y2="620" stroke="#333" stroke-width="0.5" stroke-dasharray="3,6"/>
+
+</svg>
 </div>
 
-<div class="arrow-row">
-  <div>
-    <div class="arrow">↓ ↓ ↓</div>
-    <div class="arrow-label">Collectors fetch & push to Supabase (cron: hourly 12:00–23:59 BRT)</div>
-  </div>
+<!-- Legend -->
+<div class="legend">
+  <div class="legend-item"><div class="legend-box" style="background:#006B3F"></div> Data / Supabase</div>
+  <div class="legend-item"><div class="legend-box" style="background:#2196F3"></div> Production (Vercel)</div>
+  <div class="legend-item"><div class="legend-box" style="background:#FF9800"></div> Local Dev (Mac mini)</div>
+  <div class="legend-item"><div class="legend-box" style="background:#9C27B0"></div> Frontend</div>
 </div>
 
-<!-- LAYER 2: Storage -->
-<div class="layer">
-  <div class="layer-title">🗄️ Storage — Supabase (PostgreSQL)</div>
-  <div class="nodes">
-    <div class="node green">
-      <div class="node-icon">📋</div>
-      <div class="node-name">matches</div>
-      <div class="node-desc">44 rows: scheduled, live, finished<br>home/away teams, scores, venue</div>
-    </div>
-    <div class="node green">
-      <div class="node-icon">📊</div>
-      <div class="node-name">standings</div>
-      <div class="node-desc">20 rows: BSA table<br>position, points, W/D/L, goals</div>
-    </div>
-    <div class="node green">
-      <div class="node-icon">📰</div>
-      <div class="node-name">news</div>
-      <div class="node-desc">7+ rows: articles<br>title, url, image, source</div>
-    </div>
-  </div>
-</div>
-
-<div class="arrow-row">
-  <div>
-    <div class="arrow">↓ ↓ ↓</div>
-    <div class="arrow-label">Direct REST API (urllib) — no Python supabase library</div>
-  </div>
-</div>
-
-<!-- LAYER 3: API -->
-<div class="layer">
-  <div class="layer-title">⚡ API — Vercel Serverless Functions (Python)</div>
-  <div class="nodes">
-    <div class="node blue">
-      <div class="node-icon">🏈</div>
-      <div class="node-name">/api/matches</div>
-      <div class="node-desc">Filter by status, date<br>Returns transformed JSON</div>
-    </div>
-    <div class="node blue">
-      <div class="node-icon">📊</div>
-      <div class="node-name">/api/standings</div>
-      <div class="node-desc">BSA table<br>Parsed team data from JSON</div>
-    </div>
-    <div class="node blue">
-      <div class="node-icon">📰</div>
-      <div class="node-name">/api/news</div>
-      <div class="node-desc">Latest articles<br>Sorted by date desc</div>
-    </div>
-    <div class="node blue">
-      <div class="node-icon">📅</div>
-      <div class="node-name">/api/calendar.ics</div>
-      <div class="node-desc">RFC 5545 iCal feed<br>All matches with details</div>
-    </div>
-  </div>
-</div>
-
-<div class="arrow-row">
-  <div>
-    <div class="arrow">↓ ↓ ↓</div>
-    <div class="arrow-label">Same domain — /api/* routes → no CORS needed</div>
-  </div>
-</div>
-
-<!-- LAYER 4: Frontend -->
-<div class="layer">
-  <div class="layer-title">🎨 Frontend — Static HTML/CSS/JS (Single Page App)</div>
-  <div class="nodes">
-    <div class="node purple">
-      <div class="node-icon">🃏</div>
-      <div class="node-name">Hero Card</div>
-      <div class="node-desc">Next match + flip for details<br>Live: pulsing border + AO VIVO</div>
-    </div>
-    <div class="node purple">
-      <div class="node-icon">📅</div>
-      <div class="node-name">Próximos</div>
-      <div class="node-desc">Upcoming matches (2nd+)<br>Competition filters</div>
-    </div>
-    <div class="node purple">
-      <div class="node-icon">🏆</div>
-      <div class="node-name">Resultados</div>
-      <div class="node-desc">Finished matches<br>W/D/L badges + scores</div>
-    </div>
-    <div class="node purple">
-      <div class="node-icon">📊</div>
-      <div class="node-name">Tabela</div>
-      <div class="node-desc">BSA standings<br>Palmeiras highlighted</div>
-    </div>
-    <div class="node purple">
-      <div class="node-icon">📈</div>
-      <div class="node-name">Estatísticas</div>
-      <div class="node-desc">Stats + form guide + chart<br>Home/away breakdown</div>
-    </div>
-    <div class="node purple">
-      <div class="node-icon">📰</div>
-      <div class="node-name">Notícias</div>
-      <div class="node-desc">4 sources, 12 articles<br>Source icons</div>
-    </div>
-  </div>
-</div>
-
-<!-- KEY QUESTION: Supabase updates -->
-<div class="flow-section">
-  <div class="flow-title">🔄 How Updates Flow</div>
-
-  <div class="key-point">
-    <strong>Yes — Supabase updates are reflected on BOTH local and production.</strong><br>
-    Both local (server.py) and Vercel (api/*.py) read from the same Supabase database. When collectors update Supabase, both servers serve the new data on the next API call.
-  </div>
-
-  <div class="flow-row">
-    <div class="flow-step active">🕐 Cron triggers collector</div>
-    <div class="flow-arrow">→</div>
-    <div class="flow-step">Collector fetches from APIs</div>
-    <div class="flow-arrow">→</div>
-    <div class="flow-step active">Writes to Supabase</div>
-    <div class="flow-arrow">→</div>
-    <div class="flow-step">Local server.py reads Supabase</div>
-    <div class="flow-arrow">+</div>
-    <div class="flow-step">Vercel api/*.py reads Supabase</div>
-    <div class="flow-arrow">→</div>
-    <div class="flow-step active">Frontend displays fresh data</div>
-  </div>
-</div>
-
-<!-- COLLECTORS DETAIL -->
-<div class="flow-section">
-  <div class="flow-title">⚙️ Collectors</div>
-
-  <div class="table-container">
-    <table>
-      <thead>
-        <tr>
-          <th>Collector</th>
-          <th>Source</th>
-          <th>Frequency</th>
-          <th>Writes To</th>
-          <th>Method</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><strong>palmeiras-collector</strong></td>
-          <td>football-data.org API</td>
-          <td><span class="badge green">Hourly</span> 12:00–23:59 BRT</td>
-          <td>matches, standings</td>
-          <td>REST API (API key)</td>
-        </tr>
-        <tr>
-          <td><strong>news scraper</strong></td>
-          <td>ge.globo + lance + gazetaesportiva + uol</td>
-          <td><span class="badge green">Hourly</span> with collector</td>
-          <td>news</td>
-          <td>BeautifulSoup scraping</td>
-        </tr>
-        <tr>
-          <td><strong>apifootball_collector</strong></td>
-          <td>API-Football (paid)</td>
-          <td><span class="badge orange">Every 4h</span></td>
-          <td>Libertadores standings</td>
-          <td>REST API (needs key)</td>
-        </tr>
-        <tr>
-          <td><strong>sofascore_collector</strong></td>
-          <td>SofaScore / FlashScore</td>
-          <td><span class="badge orange">Every 6h</span></td>
-          <td>Stats, xG</td>
-          <td>Selenium headless</td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-</div>
-
-<!-- DEPLOYMENT -->
-<div class="flow-section">
-  <div class="flow-title">🚀 Deployment</div>
-
-  <div class="table-container">
-    <table>
-      <thead>
-        <tr>
-          <th>Environment</th>
-          <th>URL</th>
-          <th>How it runs</th>
-          <th>API backend</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><span class="badge green">Production</span></td>
-          <td><a href="https://palmeiras-web.vercel.app" style="color:#006B3F">palmeiras-web.vercel.app</a></td>
-          <td>Vercel serverless</td>
-          <td>api/*.py → Supabase REST (urllib)</td>
-        </tr>
-        <tr>
-          <td><span class="badge blue">Local Dev</span></td>
-          <td>127.0.0.1:5001</td>
-          <td>server.py (launchd, auto-start)</td>
-          <td>server.py → Supabase REST (urllib)</td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-
-  <div class="key-point" style="margin-top:1rem">
-    <strong>Both environments read from the SAME Supabase database.</strong><br>
-    Updates to Supabase (via collectors) are immediately available on the next API call from either environment.<br><br>
-    <strong>Local dev uses <code>server.py</code> on port 5001</strong> — runs automatically via macOS launchd. Serves static files + API routes. No Vercel CLI needed.<br>
-    <strong><code>vercel dev</code> is only for debugging Vercel-specific issues</strong> before deploying — not for daily use.
-  </div>
-</div>
-
-<!-- TECH STACK -->
-<div class="flow-section">
-  <div class="flow-title">🛠️ Tech Stack</div>
-
-  <div class="table-container">
-    <table>
-      <thead>
-        <tr><th>Layer</th><th>Technology</th><th>Notes</th></tr>
-      </thead>
-      <tbody>
-        <tr><td>Frontend</td><td>Vanilla HTML/CSS/JS</td><td>Chart.js v4 for stats chart</td></tr>
-        <tr><td>API</td><td>Python 3 (BaseHTTPRequestHandler)</td><td>stdlib only — no Flask, no supabase lib</td></tr>
-        <tr><td>Database</td><td>Supabase (PostgreSQL)</td><td>Direct REST API via urllib</td></tr>
-        <tr><td>Hosting</td><td>Vercel (serverless)</td><td>Single project, same domain</td></tr>
-        <tr><td>Collectors</td><td>Python scripts + cron</td><td>BeautifulSoup + requests</td></tr>
-        <tr><td>Source</td><td><a href="https://github.com/rodrigomelo/palmeiras-web" style="color:#006B3F">github.com/rodrigomelo/palmeiras-web</a></td><td>main branch</td></tr>
-      </tbody>
-    </table>
-  </div>
+<!-- Key Points -->
+<div class="section">
+  <h2>🔑 Key Points</h2>
+  <p>✅ <strong>Single database, two servers.</strong> Both production (Vercel) and local (server.py) read from the same Supabase instance.</p>
+  <p>✅ <strong>Collectors write to Supabase.</strong> Cron runs on the Mac mini, fetches data, pushes to Supabase. Both servers serve fresh data on next request.</p>
+  <p>✅ <strong>No Python dependencies on Vercel.</strong> All <code>api/*.py</code> files use <code>urllib</code> (stdlib) for Supabase REST calls — no <code>supabase</code> library needed.</p>
+  <p>✅ <strong>Same domain, no CORS.</strong> Frontend and API are on the same URL — <code>/api/*</code> routes are relative.</p>
+  <p>✅ <strong>Local = server.py on port 5001.</strong> Managed by launchd, auto-starts on boot. Serves static files + API routes.</p>
 </div>
 
 <div class="footer">
-  <p>Palmeiras Agenda — Architecture Documentation</p>
-  <p>Hefesto 🔨 • March 2026</p>
+  <p>Palmeiras Web — System Diagram • Hefesto 🔨 • March 2026</p>
+  <p><a href="https://github.com/rodrigomelo/palmeiras-web" style="color:#006B3F">github.com/rodrigomelo/palmeiras-web</a></p>
 </div>
 
-</div>
 </body>
 </html>
