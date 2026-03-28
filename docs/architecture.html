@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Palmeiras Web — Architecture Diagram</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0a0a; color: #e0e0e0; padding: 2rem; }
+h1 { text-align: center; color: #006B3F; font-size: 1.8rem; margin-bottom: 0.5rem; }
+h1 span { color: #fff; }
+.subtitle { text-align: center; color: #888; font-size: 0.9rem; margin-bottom: 2rem; }
+.diagram { max-width: 1000px; margin: 0 auto; }
+
+.layer { background: #141414; border: 1px solid #2a2a2a; border-radius: 12px; margin-bottom: 1.5rem; padding: 1.5rem; }
+.layer-title { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 2px; color: #006B3F; margin-bottom: 1rem; font-weight: 700; }
+
+.nodes { display: flex; flex-wrap: wrap; gap: 1rem; justify-content: center; }
+
+.node { background: #1a1a1a; border: 1px solid #333; border-radius: 10px; padding: 1rem 1.25rem; min-width: 160px; text-align: center; }
+.node.green { border-color: #006B3F; }
+.node.blue { border-color: #2196F3; }
+.node.orange { border-color: #FF9800; }
+.node.purple { border-color: #9C27B0; }
+.node.red { border-color: #f44336; }
+.node.yellow { border-color: #FFC107; }
+
+.node-icon { font-size: 1.5rem; margin-bottom: 0.5rem; }
+.node-name { font-weight: 700; font-size: 0.9rem; color: #fff; margin-bottom: 0.25rem; }
+.node-desc { font-size: 0.75rem; color: #888; line-height: 1.4; }
+
+.arrow-row { display: flex; justify-content: center; margin: 0.5rem 0; }
+.arrow { color: #006B3F; font-size: 1.2rem; text-align: center; }
+.arrow-label { color: #666; font-size: 0.7rem; text-align: center; margin-top: 0.15rem; }
+
+.flow-section { margin-top: 2rem; }
+.flow-title { color: #fff; font-size: 1.1rem; margin-bottom: 1rem; text-align: center; font-weight: 700; }
+
+.flow-row { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem; flex-wrap: wrap; justify-content: center; }
+.flow-step { background: #1a1a1a; border: 1px solid #333; border-radius: 8px; padding: 0.6rem 1rem; font-size: 0.8rem; }
+.flow-step.active { border-color: #006B3F; color: #006B3F; font-weight: 600; }
+.flow-arrow { color: #555; font-size: 0.9rem; }
+
+.table-container { margin-top: 2rem; overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+th { background: #1a1a1a; color: #006B3F; padding: 0.75rem; text-align: left; border-bottom: 2px solid #006B3F; }
+td { padding: 0.75rem; border-bottom: 1px solid #222; }
+tr:hover { background: #1a1a1a; }
+
+.badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.7rem; font-weight: 600; }
+.badge.green { background: rgba(0,107,63,0.2); color: #006B3F; }
+.badge.blue { background: rgba(33,150,243,0.2); color: #2196F3; }
+.badge.orange { background: rgba(255,152,0,0.2); color: #FF9800; }
+.badge.purple { background: rgba(156,39,176,0.2); color: #9C27B0; }
+
+.footer { text-align: center; margin-top: 2rem; color: #555; font-size: 0.75rem; }
+.footer a { color: #006B3F; text-decoration: none; }
+
+.key-point { background: rgba(0,107,63,0.1); border-left: 3px solid #006B3F; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0 8px 8px 0; font-size: 0.85rem; }
+</style>
+</head>
+<body>
+
+<h1>⚽ <span>Palmeiras Web</span> — Architecture</h1>
+<p class="subtitle">Last updated: March 28, 2026 • Single Vercel deployment • Direct Supabase REST API</p>
+
+<!-- LAYER 1: Data Sources -->
+<div class="diagram">
+<div class="layer">
+  <div class="layer-title">📡 Data Sources (External APIs)</div>
+  <div class="nodes">
+    <div class="node green">
+      <div class="node-icon">⚽</div>
+      <div class="node-name">football-data.org</div>
+      <div class="node-desc">Matches, standings, scores<br>Free tier — current season only</div>
+    </div>
+    <div class="node blue">
+      <div class="node-icon">📰</div>
+      <div class="node-name">ge.globo</div>
+      <div class="node-desc">Palmeiras news<br>Scraped via BeautifulSoup</div>
+    </div>
+    <div class="node orange">
+      <div class="node-icon">📰</div>
+      <div class="node-name">lance.com.br</div>
+      <div class="node-desc">Palmeiras news<br>Scraped via BeautifulSoup</div>
+    </div>
+    <div class="node yellow">
+      <div class="node-icon">📰</div>
+      <div class="node-name">gazetaesportiva.com</div>
+      <div class="node-desc">Palmeiras news<br>New source — added Mar 28</div>
+    </div>
+    <div class="node purple">
+      <div class="node-icon">📰</div>
+      <div class="node-name">uol.com.br</div>
+      <div class="node-desc">Palmeiras news<br>New source — added Mar 28</div>
+    </div>
+  </div>
+</div>
+
+<div class="arrow-row">
+  <div>
+    <div class="arrow">↓ ↓ ↓</div>
+    <div class="arrow-label">Collectors fetch & push to Supabase (cron: hourly 12:00–23:59 BRT)</div>
+  </div>
+</div>
+
+<!-- LAYER 2: Storage -->
+<div class="layer">
+  <div class="layer-title">🗄️ Storage — Supabase (PostgreSQL)</div>
+  <div class="nodes">
+    <div class="node green">
+      <div class="node-icon">📋</div>
+      <div class="node-name">matches</div>
+      <div class="node-desc">44 rows: scheduled, live, finished<br>home/away teams, scores, venue</div>
+    </div>
+    <div class="node green">
+      <div class="node-icon">📊</div>
+      <div class="node-name">standings</div>
+      <div class="node-desc">20 rows: BSA table<br>position, points, W/D/L, goals</div>
+    </div>
+    <div class="node green">
+      <div class="node-icon">📰</div>
+      <div class="node-name">news</div>
+      <div class="node-desc">7+ rows: articles<br>title, url, image, source</div>
+    </div>
+  </div>
+</div>
+
+<div class="arrow-row">
+  <div>
+    <div class="arrow">↓ ↓ ↓</div>
+    <div class="arrow-label">Direct REST API (urllib) — no Python supabase library</div>
+  </div>
+</div>
+
+<!-- LAYER 3: API -->
+<div class="layer">
+  <div class="layer-title">⚡ API — Vercel Serverless Functions (Python)</div>
+  <div class="nodes">
+    <div class="node blue">
+      <div class="node-icon">🏈</div>
+      <div class="node-name">/api/matches</div>
+      <div class="node-desc">Filter by status, date<br>Returns transformed JSON</div>
+    </div>
+    <div class="node blue">
+      <div class="node-icon">📊</div>
+      <div class="node-name">/api/standings</div>
+      <div class="node-desc">BSA table<br>Parsed team data from JSON</div>
+    </div>
+    <div class="node blue">
+      <div class="node-icon">📰</div>
+      <div class="node-name">/api/news</div>
+      <div class="node-desc">Latest articles<br>Sorted by date desc</div>
+    </div>
+    <div class="node blue">
+      <div class="node-icon">📅</div>
+      <div class="node-name">/api/calendar.ics</div>
+      <div class="node-desc">RFC 5545 iCal feed<br>All matches with details</div>
+    </div>
+  </div>
+</div>
+
+<div class="arrow-row">
+  <div>
+    <div class="arrow">↓ ↓ ↓</div>
+    <div class="arrow-label">Same domain — /api/* routes → no CORS needed</div>
+  </div>
+</div>
+
+<!-- LAYER 4: Frontend -->
+<div class="layer">
+  <div class="layer-title">🎨 Frontend — Static HTML/CSS/JS (Single Page App)</div>
+  <div class="nodes">
+    <div class="node purple">
+      <div class="node-icon">🃏</div>
+      <div class="node-name">Hero Card</div>
+      <div class="node-desc">Next match + flip for details<br>Live: pulsing border + AO VIVO</div>
+    </div>
+    <div class="node purple">
+      <div class="node-icon">📅</div>
+      <div class="node-name">Próximos</div>
+      <div class="node-desc">Upcoming matches (2nd+)<br>Competition filters</div>
+    </div>
+    <div class="node purple">
+      <div class="node-icon">🏆</div>
+      <div class="node-name">Resultados</div>
+      <div class="node-desc">Finished matches<br>W/D/L badges + scores</div>
+    </div>
+    <div class="node purple">
+      <div class="node-icon">📊</div>
+      <div class="node-name">Tabela</div>
+      <div class="node-desc">BSA standings<br>Palmeiras highlighted</div>
+    </div>
+    <div class="node purple">
+      <div class="node-icon">📈</div>
+      <div class="node-name">Estatísticas</div>
+      <div class="node-desc">Stats + form guide + chart<br>Home/away breakdown</div>
+    </div>
+    <div class="node purple">
+      <div class="node-icon">📰</div>
+      <div class="node-name">Notícias</div>
+      <div class="node-desc">4 sources, 12 articles<br>Source icons</div>
+    </div>
+  </div>
+</div>
+
+<!-- KEY QUESTION: Supabase updates -->
+<div class="flow-section">
+  <div class="flow-title">🔄 How Updates Flow</div>
+
+  <div class="key-point">
+    <strong>Yes — Supabase updates are reflected on BOTH local and production.</strong><br>
+    Both local (server.py) and Vercel (api/*.py) read from the same Supabase database. When collectors update Supabase, both servers serve the new data on the next API call.
+  </div>
+
+  <div class="flow-row">
+    <div class="flow-step active">🕐 Cron triggers collector</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">Collector fetches from APIs</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step active">Writes to Supabase</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">Local server.py reads Supabase</div>
+    <div class="flow-arrow">+</div>
+    <div class="flow-step">Vercel api/*.py reads Supabase</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step active">Frontend displays fresh data</div>
+  </div>
+</div>
+
+<!-- COLLECTORS DETAIL -->
+<div class="flow-section">
+  <div class="flow-title">⚙️ Collectors</div>
+
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>Collector</th>
+          <th>Source</th>
+          <th>Frequency</th>
+          <th>Writes To</th>
+          <th>Method</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>palmeiras-collector</strong></td>
+          <td>football-data.org API</td>
+          <td><span class="badge green">Hourly</span> 12:00–23:59 BRT</td>
+          <td>matches, standings</td>
+          <td>REST API (API key)</td>
+        </tr>
+        <tr>
+          <td><strong>news scraper</strong></td>
+          <td>ge.globo + lance + gazetaesportiva + uol</td>
+          <td><span class="badge green">Hourly</span> with collector</td>
+          <td>news</td>
+          <td>BeautifulSoup scraping</td>
+        </tr>
+        <tr>
+          <td><strong>apifootball_collector</strong></td>
+          <td>API-Football (paid)</td>
+          <td><span class="badge orange">Every 4h</span></td>
+          <td>Libertadores standings</td>
+          <td>REST API (needs key)</td>
+        </tr>
+        <tr>
+          <td><strong>sofascore_collector</strong></td>
+          <td>SofaScore / FlashScore</td>
+          <td><span class="badge orange">Every 6h</span></td>
+          <td>Stats, xG</td>
+          <td>Selenium headless</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- DEPLOYMENT -->
+<div class="flow-section">
+  <div class="flow-title">🚀 Deployment</div>
+
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>Environment</th>
+          <th>URL</th>
+          <th>How it runs</th>
+          <th>API backend</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="badge green">Production</span></td>
+          <td><a href="https://palmeiras-web.vercel.app" style="color:#006B3F">palmeiras-web.vercel.app</a></td>
+          <td>Vercel serverless</td>
+          <td>api/*.py → Supabase REST (urllib)</td>
+        </tr>
+        <tr>
+          <td><span class="badge blue">Local Dev</span></td>
+          <td>127.0.0.1:5001</td>
+          <td>server.py (launchd)</td>
+          <td>server.py → Supabase REST (urllib)</td>
+        </tr>
+        <tr>
+          <td><span class="badge purple">Vercel Dev</span></td>
+          <td>localhost:3000</td>
+          <td>vercel dev</td>
+          <td>api/*.py → Supabase REST (urllib)</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="key-point" style="margin-top:1rem">
+    <strong>All three environments read from the SAME Supabase database.</strong><br>
+    Updates to Supabase (via collectors) are immediately available on the next API call from any environment.
+  </div>
+</div>
+
+<!-- TECH STACK -->
+<div class="flow-section">
+  <div class="flow-title">🛠️ Tech Stack</div>
+
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr><th>Layer</th><th>Technology</th><th>Notes</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Frontend</td><td>Vanilla HTML/CSS/JS</td><td>Chart.js v4 for stats chart</td></tr>
+        <tr><td>API</td><td>Python 3 (BaseHTTPRequestHandler)</td><td>stdlib only — no Flask, no supabase lib</td></tr>
+        <tr><td>Database</td><td>Supabase (PostgreSQL)</td><td>Direct REST API via urllib</td></tr>
+        <tr><td>Hosting</td><td>Vercel (serverless)</td><td>Single project, same domain</td></tr>
+        <tr><td>Collectors</td><td>Python scripts + cron</td><td>BeautifulSoup + requests</td></tr>
+        <tr><td>Source</td><td><a href="https://github.com/rodrigomelo/palmeiras-web" style="color:#006B3F">github.com/rodrigomelo/palmeiras-web</a></td><td>main branch</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="footer">
+  <p>Palmeiras Agenda — Architecture Documentation</p>
+  <p>Hefesto 🔨 • March 2026</p>
+</div>
+
+</div>
+</body>
+</html>
