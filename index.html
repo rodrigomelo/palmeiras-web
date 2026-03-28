@@ -8,8 +8,10 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lucide-static@latest/font/lucide.min.css">
     <link rel="icon" type="image/png" href="/static/favicon.png">
     <link rel="stylesheet" href="/static/css/styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
+    <button class="theme-toggle" id="themeToggle" title="Alternar tema" onclick="toggleTheme()">🌙</button>
     <header class="header">
         <div class="header-content">
             <div class="logo">
@@ -55,8 +57,30 @@
             <button class="tab-btn" data-tab="palpites">🎯 Palpites</button>
         </div>
 
-        <div id="proximos" class="tab-content active"><div class="card"><div class="card-title">📅 Próximos Jogos <button onclick="loadMatches()" style="float:right;background:none;border:none;cursor:pointer">🔄</button></div><div id="next-matches"><div class="empty">Carregando...</div></div></div></div>
-        <div id="resultados" class="tab-content"><div class="card"><div class="card-title">🏆 Resultados <button onclick="loadResults()" style="float:right;background:none;border:none;cursor:pointer">🔄</button></div><div id="recent-results"><div class="empty">Carregando...</div></div></div></div>
+        <div id="proximos" class="tab-content active">
+            <div class="card">
+                <div class="card-title">📅 Próximos Jogos <button onclick="loadMatches()" style="float:right;background:none;border:none;cursor:pointer">🔄</button></div>
+                <div class="comp-filters">
+                    <button class="comp-filter active" data-comp="all" onclick="filterMatches('all',this)">Todos</button>
+                    <button class="comp-filter" data-comp="BSA" onclick="filterMatches('BSA',this)">🇧🇷 Brasileirão</button>
+                    <button class="comp-filter" data-comp="CLI" onclick="filterMatches('CLI',this)">🏆 Libertadores</button>
+                    <button class="comp-filter" data-comp="COPA" onclick="filterMatches('COPA',this)">🥇 Copa do Brasil</button>
+                </div>
+                <div id="next-matches"><div class="empty">Carregando...</div></div>
+            </div>
+        </div>
+        <div id="resultados" class="tab-content">
+            <div class="card">
+                <div class="card-title">🏆 Resultados <button onclick="loadResults()" style="float:right;background:none;border:none;cursor:pointer">🔄</button></div>
+                <div class="comp-filters">
+                    <button class="comp-filter active" data-comp="all" onclick="filterResults('all',this)">Todos</button>
+                    <button class="comp-filter" data-comp="BSA" onclick="filterResults('BSA',this)">🇧🇷 Brasileirão</button>
+                    <button class="comp-filter" data-comp="CLI" onclick="filterResults('CLI',this)">🏆 Libertadores</button>
+                    <button class="comp-filter" data-comp="COPA" onclick="filterResults('COPA',this)">🥇 Copa do Brasil</button>
+                </div>
+                <div id="recent-results"><div class="empty">Carregando...</div></div>
+            </div>
+        </div>
         <div id="classificacao" class="tab-content"><div class="card"><div class="card-title">📊 Classificação - Brasileirão <button onclick="loadStandings()" style="float:right;background:none;border:none;cursor:pointer">🔄</button></div><div id="standings"><div class="empty">Carregando...</div></div></div></div>
         <div id="estatisticas" class="tab-content"><div class="card"><div class="card-title">📈 Estatísticas da Temporada</div><div id="team-stats"><div class="empty">Carregando...</div></div></div></div>
         <div id="news" class="tab-content"><div class="card"><div class="card-title">📰 Notícias Recentes</div><div id="news-list"><div class="empty">Carregando...</div></div></div></div>
@@ -64,7 +88,7 @@
     </main>
 
     <footer class="footer">
-        <p>📡 Dados: football-data.org | ge.globo | lance.com.br</p>
+        <p>📡 Fontes: football-data.org | ge.globo | lance.com.br | wikipedia.org | palmeiras.com.br | API-Football</p>
         <p id="last-updated" style="font-size:0.7rem;opacity:0.7;margin-top:0.25rem"></p>
         <div style="margin-top:1rem">
             <p style="font-size:0.75rem;margin-bottom:0.5rem;opacity:0.9">📅 <strong>Calendário</strong></p>

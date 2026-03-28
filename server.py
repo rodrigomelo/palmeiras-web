@@ -254,12 +254,50 @@ def api_calendar(params):
         return 500, f'Error: {e}', 'text/plain'
 
 
+def api_health(params):
+    """Health check: verifies Supabase connectivity and returns system status."""
+    import time
+    start = time.time()
+    client = get_client()
+    latency_ms = round((time.time() - start) * 1000)
+
+    health = {
+        'status': 'ok',
+        'timestamp': datetime.now(timezone.utc).isoformat(),
+        'services': {
+            'supabase': {
+                'status': 'unknown',
+                'latency_ms': latency_ms,
+            }
+        },
+        'version': '1.0.0',
+    }
+
+    if not client:
+        health['status'] = 'degraded'
+        health['services']['supabase']['status'] = 'disconnected'
+        return 503, health
+
+    try:
+        # Simple query to verify connection
+        client.table('matches').select('id').limit(1).execute()
+        health['services']['supabase']['status'] = 'connected'
+    except Exception as e:
+        health['status'] = 'degraded'
+        health['services']['supabase']['status'] = 'error'
+        health['services']['supabase']['error'] = str(e)[:100]
+        return 503, health
+
+    return 200, health
+
+
 # Route table: path prefix → handler function
 API_ROUTES = {
     '/api/matches': api_matches,
     '/api/standings': api_standings,
     '/api/news': api_news,
     '/api/calendar.ics': api_calendar,
+    '/api/health': api_health,
 }
 
 

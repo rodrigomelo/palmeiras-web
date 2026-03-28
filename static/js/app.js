@@ -1,5 +1,5 @@
 /**
- * Palmeiras Agenda v3
+ * Palmeiras Agenda v4
  */
 (function () {
     'use strict';
@@ -7,6 +7,7 @@
     const TEAM_ID = CONFIG.TEAM_ID;
     const BR_TZ = CONFIG.BR_TZ;
     let liveInterval = null;
+    let performanceChart = null;
 
     // --- Helpers ---
     function escapeHtml(str) {
@@ -34,6 +35,47 @@
         if (elapsedMin <= 60) return '~Intervalo';
         if (elapsedMin <= 105) return `~${elapsedMin - 15}'`; // 15 min break offset
         return '~Encerrando';
+    }
+
+    // --- Dark Mode ---
+    function initTheme() {
+        const saved = localStorage.getItem('theme');
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const theme = saved || (prefersDark ? 'dark' : 'light');
+        applyTheme(theme);
+    }
+
+    function applyTheme(theme) {
+        if (theme === 'dark') {
+            document.body.classList.add('dark');
+            document.getElementById('themeToggle').textContent = '☀️';
+        } else {
+            document.body.classList.remove('dark');
+            document.getElementById('themeToggle').textContent = '🌙';
+        }
+        localStorage.setItem('theme', theme);
+        // Re-render chart with updated colors if it exists
+        if (performanceChart) {
+            updateChartColors();
+        }
+    }
+
+    window.toggleTheme = function () {
+        const current = document.body.classList.contains('dark') ? 'dark' : 'light';
+        applyTheme(current === 'dark' ? 'light' : 'dark');
+    };
+
+    function updateChartColors() {
+        if (!performanceChart) return;
+        const isDark = document.body.classList.contains('dark');
+        const textColor = isDark ? '#B0B0B0' : '#666666';
+        const gridColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)';
+        performanceChart.options.scales.x.ticks.color = textColor;
+        performanceChart.options.scales.x.grid.color = gridColor;
+        performanceChart.options.scales.y.ticks.color = textColor;
+        performanceChart.options.scales.y.grid.color = gridColor;
+        performanceChart.options.plugins.legend.labels.color = textColor;
+        performanceChart.update('none');
     }
 
     // --- UI States ---
@@ -74,6 +116,10 @@
                 btn.classList.add('active');
                 const target = document.getElementById(btn.dataset.tab);
                 target.classList.add('active');
+                // Lazy load performance chart when tab is opened
+                if (btn.dataset.tab === 'estatisticas' && !performanceChart) {
+                    renderPerformanceChart();
+                }
             });
         });
     }
@@ -148,50 +194,101 @@
         if (isLive) startLiveRefresh(); else stopLiveRefresh();
     }
 
+    // --- Build match HTML ---
+    function buildMatchHtml(m, isLive) {
+        const venue = CONFIG.getVenue(m);
+        const ht = m.score?.halfTime || {};
+        const htInfo = (ht.home != null) ? `<div class="match-extra-row"><span class="icon">⏱️</span> 1º tempo: ${ht.home}–${ht.away}</div>` : '';
+        return `<div class="match-item">
+            <div class="match-extra">
+                <div class="match-extra-row"><span class="icon">🏟️</span> ${escapeHtml(venue)}</div>
+                <div class="match-extra-row"><span class="icon">📺</span> ${escapeHtml(m.broadcast || 'A confirmar')}</div>
+                <div class="match-extra-row"><span class="icon">🔢</span> Rodada ${m.matchday || '-'}${m.stage && m.stage !== 'REGULAR_SEASON' ? ' · ' + escapeHtml(m.stage) : ''}</div>
+                ${htInfo}
+            </div>
+            <div class="match-header"><span>${isLive ? '<span class="live-dot"></span>AO VIVO · ' : ''}${formatDate(m.utcDate)} · ${formatTime(m.utcDate)}</span><span>${escapeHtml(CONFIG.formatComp(m.competition))}</span></div>
+            <div class="match-teams">
+                <span><img src="${CONFIG.getCrest(m.homeTeam)}" style="width:22px;height:22px;vertical-align:middle;margin-right:4px">${escapeHtml(CONFIG.teamName(m.homeTeam))}</span>
+                <span style="color:var(--text-muted)">×</span>
+                <span>${escapeHtml(CONFIG.teamName(m.awayTeam))}<img src="${CONFIG.getCrest(m.awayTeam)}" style="width:22px;height:22px;vertical-align:middle;margin-left:4px"></span>
+            </div>
+        </div>`;
+    }
+
+    // --- Competition filter for matches ---
+    function getCompCode(comp) {
+        return comp?.code || '';
+    }
+
     // --- Matches ---
+    let _allMatches = [];
+
     async function loadMatches() {
         showSkeleton('next-matches');
-        const data = await api('matches?status=SCHEDULED,TIMED,IN_PLAY&limit=10');
+        const data = await api('matches?status=SCHEDULED,TIMED,IN_PLAY&limit=20');
         if (!data) { showError('next-matches', 'Erro ao carregar', 'loadMatches'); return; }
-        const matches = data.matches || [];
-        if (!matches.length) { showEmpty('next-matches', 'Nenhum jogo agendado'); return; }
+        const allMatches = data.matches || [];
+        // Skip first match (already shown in hero card)
+        _allMatches = allMatches.slice(1);
+        applyMatchFilter('all');
+    }
 
-        document.getElementById('next-matches').innerHTML = matches.map(m => {
-            const isLive = m.status === 'IN_PLAY';
-            const venue = CONFIG.getVenue(m);
-            const ht = m.score?.halfTime || {};
-            const htInfo = (ht.home != null) ? `<div class="match-extra-row"><span class="icon">⏱️</span> 1º tempo: ${ht.home}–${ht.away}</div>` : '';
+    window.filterMatches = function(comp, btn) {
+        // Update active button
+        document.querySelectorAll('#proximos .comp-filter').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        applyMatchFilter(comp);
+    };
 
-            return `<div class="match-item">
-                <div class="match-extra">
-                    <div class="match-extra-row"><span class="icon">🏟️</span> ${escapeHtml(venue)}</div>
-                    <div class="match-extra-row"><span class="icon">📺</span> ${escapeHtml(m.broadcast || 'A confirmar')}</div>
-                    <div class="match-extra-row"><span class="icon">🔢</span> Rodada ${m.matchday || '-'}${m.stage && m.stage !== 'REGULAR_SEASON' ? ' · ' + escapeHtml(m.stage) : ''}</div>
-                    ${htInfo}
-                </div>
-                <div class="match-header"><span>${isLive ? '<span class="live-dot"></span>AO VIVO · ' : ''}${formatDate(m.utcDate)} · ${formatTime(m.utcDate)}</span><span>${escapeHtml(CONFIG.formatComp(m.competition))}</span></div>
-                <div class="match-teams">
-                    <span><img src="${CONFIG.getCrest(m.homeTeam)}" style="width:22px;height:22px;vertical-align:middle;margin-right:4px">${escapeHtml(CONFIG.teamName(m.homeTeam))}</span>
-                    <span style="color:var(--text-muted)">×</span>
-                    <span>${escapeHtml(CONFIG.teamName(m.awayTeam))}<img src="${CONFIG.getCrest(m.awayTeam)}" style="width:22px;height:22px;vertical-align:middle;margin-left:4px"></span>
-                </div>
-            </div>`;
-        }).join('');
-
-        document.querySelectorAll('#next-matches .match-item').forEach(el => {
-            el.addEventListener('click', () => el.querySelector('.match-extra').classList.toggle('open'));
+    function applyMatchFilter(comp) {
+        const filtered = comp === 'all' ? _allMatches : _allMatches.filter(m => {
+            const code = getCompCode(m.competition);
+            // Map competition codes
+            if (comp === 'BSA') return code === 'BSA';
+            if (comp === 'CLI') return ['CLI', 'LIBERTADORES', 'COPA_LIBERTADORES'].includes(code);
+            if (comp === 'COPA') return ['COPA', 'COPA_DO_BRASIL'].includes(code);
+            return true;
         });
+
+        if (!filtered.length) {
+            showEmpty('next-matches', 'Nenhum jogo para esta competição');
+            return;
+        }
+        document.getElementById('next-matches').innerHTML = filtered.map(m => buildMatchHtml(m, m.status === 'IN_PLAY')).join('');
+        attachMatchListeners('next-matches');
     }
 
     // --- Results ---
+    let _allResults = [];
+
     async function loadResults() {
         showSkeleton('recent-results');
-        const data = await api('matches?status=FINISHED&limit=8');
+        const data = await api('matches?status=FINISHED&limit=20');
         if (!data) { showError('recent-results', 'Erro ao carregar', 'loadResults'); return; }
-        const matches = data.matches || [];
-        if (!matches.length) { showEmpty('recent-results', 'Nenhum resultado'); return; }
+        _allResults = data.matches || [];
+        applyResultFilter('all');
+    }
 
-        document.getElementById('recent-results').innerHTML = matches.map(m => {
+    window.filterResults = function(comp, btn) {
+        document.querySelectorAll('#resultados .comp-filter').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        applyResultFilter(comp);
+    };
+
+    function applyResultFilter(comp) {
+        const filtered = comp === 'all' ? _allResults : _allResults.filter(m => {
+            const code = getCompCode(m.competition);
+            if (comp === 'BSA') return code === 'BSA';
+            if (comp === 'CLI') return ['CLI', 'LIBERTADORES', 'COPA_LIBERTADORES'].includes(code);
+            if (comp === 'COPA') return ['COPA', 'COPA_DO_BRASIL'].includes(code);
+            return true;
+        });
+
+        if (!filtered.length) {
+            showEmpty('recent-results', 'Nenhum resultado para esta competição');
+            return;
+        }
+        document.getElementById('recent-results').innerHTML = filtered.map(m => {
             const isHome = m.homeTeam.id === TEAM_ID;
             const our = isHome ? m.score.fullTime.home : m.score.fullTime.away;
             const opp = isHome ? m.score.fullTime.away : m.score.fullTime.home;
@@ -218,9 +315,12 @@
                 </div>
             </div>`;
         }).join('');
+        attachMatchListeners('recent-results');
+    }
 
-        document.querySelectorAll('#recent-results .match-item').forEach(el => {
-            el.addEventListener('click', () => el.querySelector('.match-extra').classList.toggle('open'));
+    function attachMatchListeners(containerId) {
+        document.querySelectorAll(`#${containerId} .match-item`).forEach(el => {
+            el.addEventListener('click', () => el.querySelector('.match-extra')?.classList.toggle('open'));
         });
     }
 
@@ -274,7 +374,128 @@
             <div style="border-top:1px solid var(--bg);padding-top:1rem">${tableHtml}</div>`;
     }
 
-    // --- Stats ---
+    // --- Performance Chart ---
+    async function renderPerformanceChart() {
+        const container = document.getElementById('team-stats');
+        if (!container) return;
+
+        container.innerHTML = `
+            <div class="chart-container">
+                <canvas id="performanceCanvas"></canvas>
+            </div>
+            <div style="text-align:center;margin-top:0.75rem;font-size:0.8rem;color:var(--text-muted)">Evolução de pontos por rodada — Brasileirão</div>
+        `;
+
+        const data = await api('matches?status=FINISHED&limit=38');
+        if (!data || !data.matches?.length) {
+            document.getElementById('performanceCanvas').parentElement.innerHTML += '<div class="empty" style="padding:1rem">Sem dados suficientes</div>';
+            return;
+        }
+
+        const matches = data.matches
+            .filter(m => m.competition?.code === 'BSA')
+            .sort((a, b) => new Date(a.utcDate) - new Date(b.utcDate));
+
+        if (matches.length < 3) {
+            document.getElementById('performanceCanvas').parentElement.innerHTML += '<div class="empty" style="padding:1rem">Mínimo 3 jogos do Brasileirão necessários</div>';
+            return;
+        }
+
+        const labels = [];
+        const pontos = [];
+        const acumulada = [];
+        let pts = 0;
+
+        matches.forEach((m, i) => {
+            const isHome = m.homeTeam.id === TEAM_ID;
+            const our = isHome ? m.score.fullTime.home : m.score.fullTime.away;
+            const opp = isHome ? m.score.fullTime.away : m.score.fullTime.home;
+            const r = our > opp ? 3 : our < opp ? 0 : 1;
+            pts += r;
+            pontos.push(r);
+            acumulada.push(pts);
+            const oppName = isHome ? CONFIG.teamName(m.awayTeam) : CONFIG.teamName(m.homeTeam);
+            labels.push(`R${m.matchday || i + 1}`);
+        });
+
+        const isDark = document.body.classList.contains('dark');
+        const textColor = isDark ? '#B0B0B0' : '#666666';
+        const gridColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)';
+
+        const ctx = document.getElementById('performanceCanvas').getContext('2d');
+        performanceChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels,
+                datasets: [
+                    {
+                        label: 'Pontos por jogo',
+                        data: pontos,
+                        borderColor: 'rgba(0,107,63,0.5)',
+                        backgroundColor: 'rgba(0,107,63,0.1)',
+                        borderWidth: 1,
+                        pointRadius: 4,
+                        pointBackgroundColor: 'rgba(0,107,63,0.8)',
+                        tension: 0.3,
+                        yAxisID: 'y',
+                    },
+                    {
+                        label: 'Pontos acumulados',
+                        data: acumulada,
+                        borderColor: '#006B3F',
+                        backgroundColor: 'rgba(0,107,63,0.05)',
+                        borderWidth: 2,
+                        pointRadius: 3,
+                        pointBackgroundColor: '#006B3F',
+                        fill: true,
+                        tension: 0.3,
+                        yAxisID: 'y1',
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                interaction: { mode: 'index', intersect: false },
+                scales: {
+                    x: {
+                        ticks: { color: textColor, maxRotation: 0, font: { size: 10 } },
+                        grid: { color: gridColor },
+                    },
+                    y: {
+                        position: 'left',
+                        ticks: { color: textColor, stepSize: 1 },
+                        grid: { color: gridColor },
+                        title: { display: true, text: 'Pts/jogo', color: textColor, font: { size: 10 } },
+                        min: 0, max: 3,
+                    },
+                    y1: {
+                        position: 'right',
+                        ticks: { color: textColor },
+                        grid: { drawOnChartArea: false },
+                        title: { display: true, text: 'Acumulado', color: textColor, font: { size: 10 } },
+                    }
+                },
+                plugins: {
+                    legend: {
+                        labels: { color: textColor, font: { size: 11 } }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            afterLabel: (item) => {
+                                if (item.datasetIndex === 0) {
+                                    const pts = item.raw;
+                                    return pts === 3 ? '✅ Vitória' : pts === 1 ? '➖ Empate' : '❌ Derrota';
+                                }
+                                return `Total: ${item.raw} pts`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // --- Stats (fallback when chart can't render) ---
     async function loadTeamStats() {
         showSkeleton('team-stats');
         const data = await api('matches?status=FINISHED&limit=20');
@@ -367,6 +588,7 @@
     window.loadPrediction = loadPrediction;
 
     document.addEventListener('DOMContentLoaded', () => {
+        initTheme();
         const el = document.getElementById('last-updated');
         if (el) el.textContent = 'Atualizado: ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
         initTabs();
