@@ -383,10 +383,85 @@ def apply_broadcast_info():
     print(f"    Updated {updated} matches")
 
 
+def collect_copa_brasil():
+    """Collect Copa do Brasil matches from free sources (scrapers)."""
+    print("  Copa do Brasil (free sources)...")
+    client = get_supabase()
+    if not client:
+        return
+
+    try:
+        from copa_brasil_scraper import get_copa_brasil_matches
+        matches = get_copa_brasil_matches()
+        if not matches:
+            print("    No Copa do Brasil matches found from scrapers")
+            return
+
+        # Check if matches are Supabase-ready dicts or raw scraper output
+        saved = 0
+        for m in matches:
+            if 'external_id' in m:
+                # Already Supabase-ready (known data)
+                ext_id = m.get('external_id')
+                existing = client.table('matches').select('external_id').eq('external_id', ext_id).execute()
+                if not existing.data:
+                    client.table('matches').insert(m).execute()
+                    saved += 1
+                else:
+                    # Update existing (maybe new scores/dates)
+                    client.table('matches').update(m).eq('external_id', ext_id).execute()
+                    saved += 1
+            else:
+                # Raw scraper output — convert to Supabase format
+                h_name = m.get('home_team_name', '?')
+                a_name = m.get('away_team_name', '?')
+                comp_code = m.get('competition_code', 'COPA')
+                comp_name = m.get('competition_name', 'Copa do Brasil')
+                utc_date = m.get('utc_date')
+                source = m.get('source', 'scraper')
+
+                if not utc_date:
+                    continue
+
+                # Create a deterministic ID
+                import hashlib
+                id_str = f"{comp_code}_{h_name}_{a_name}_{utc_date[:10]}"
+                ext_id = f"CBC_{hashlib.md5(id_str.encode()).hexdigest()[:8]}"
+
+                record = {
+                    'external_id': ext_id,
+                    'utc_date': utc_date,
+                    'status': 'SCHEDULED',
+                    'matchday': None,
+                    'stage': 'COPA_DO_BRASIL',
+                    'home_team': json.dumps({'name': h_name, 'shortName': h_name, 'tla': h_name[:3].upper()}),
+                    'away_team': json.dumps({'name': a_name, 'shortName': a_name, 'tla': a_name[:3].upper()}),
+                    'competition': json.dumps({'code': comp_code, 'name': comp_name}),
+                    'season': json.dumps({'year': 2026}),
+                    'venue': '',
+                    'home_score': None,
+                    'away_score': None,
+                    'half_time_home': None,
+                    'half_time_away': None,
+                    'referees': '[]',
+                    'broadcast': 'SporTV / Premiere',
+                }
+
+                existing = client.table('matches').select('external_id').eq('external_id', ext_id).execute()
+                if not existing.data:
+                    client.table('matches').insert(record).execute()
+                    saved += 1
+
+        print(f"    Copa do Brasil: {saved} matches saved/updated")
+    except Exception as e:
+        print(f"    Copa do Brasil error: {e}")
+
+
 if __name__ == '__main__':
     print(f"Palmeiras Collector v2 — {datetime.now().strftime('%Y-%m-%d %H:%M')}")
     collect_matches()
     collect_standings()
     collect_news()
+    collect_copa_brasil()
     apply_broadcast_info()
     print("Done!")
