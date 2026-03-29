@@ -32,7 +32,7 @@ from dotenv import load_dotenv
 
 load_dotenv(Path(__file__).parent.parent / '.env')
 
-# Setup logging
+# Setup logging - silent mode (file only, no stdout)
 LOG_DIR = Path(__file__).parent.parent / 'logs'
 LOG_DIR.mkdir(exist_ok=True)
 logging.basicConfig(
@@ -40,7 +40,6 @@ logging.basicConfig(
     format='%(asctime)s [%(levelname)s] %(name)s: %(message)s',
     handlers=[
         logging.FileHandler(LOG_DIR / f'collector_{datetime.now().strftime("%Y%m%d")}.log'),
-        logging.StreamHandler(sys.stdout),
     ]
 )
 logger = logging.getLogger('scheduler')
