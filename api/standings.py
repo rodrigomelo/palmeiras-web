@@ -55,7 +55,7 @@ class handler(BaseHTTPRequestHandler):
                     'crest': team.get('crest', ''),
                     'playedGames': r.get('played_games'),
                     'won': r.get('won'),
-                    'draw': r.get('draw'),
+                    'draw': r.get('drawn'),
                     'lost': r.get('lost'),
                     'points': r.get('points'),
                     'goalsFor': r.get('goals_for'),
