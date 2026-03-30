@@ -24,11 +24,6 @@ except ImportError:
 
 load_dotenv(Path(__file__).parent.parent / '.env')
 
-SILENT = True  # Set False for debugging
-def _print(*args, **kwargs):
-    if not SILENT:
-        print(*args, **kwargs)
-
 SUPABASE_URL = os.environ.get('SUPABASE_URL')
 SUPABASE_KEY = os.environ.get('SUPABASE_KEY')
 FOOTBALL_API_KEY = os.environ.get('FOOTBALL_API_KEY')
@@ -50,7 +45,7 @@ BROADCAST_MAP = {
 
 def get_supabase():
     if not (SUPABASE_URL and SUPABASE_KEY):
-        _print("  Missing SUPABASE_URL or SUPABASE_KEY")
+        print("  Missing SUPABASE_URL or SUPABASE_KEY")
         return None
     from supabase import create_client
     return create_client(SUPABASE_URL, SUPABASE_KEY)
@@ -58,7 +53,7 @@ def get_supabase():
 
 def collect_matches():
     """Fetch all Palmeiras matches with enhanced data."""
-    _print("  Fetching matches...")
+    print("  Fetching matches...")
     client = get_supabase()
     if not client or not FOOTBALL_API_KEY:
         return
@@ -92,7 +87,7 @@ def collect_matches():
             except Exception:
                 pass
 
-        _print(f"    Found {len(matches)} matches")
+        print(f"    Found {len(matches)} matches")
         now = datetime.now(timezone.utc).isoformat()
 
         records = []
@@ -148,17 +143,17 @@ def collect_matches():
 
         try:
             client.table('matches').upsert(records, on_conflict='external_id').execute()
-            _print(f"    Saved {len(records)} matches")
+            print(f"    Saved {len(records)} matches")
         except Exception as e:
-            _print(f"    Error saving matches: {e}")
+            print(f"    Error saving matches: {e}")
 
     except Exception as e:
-        _print(f"    Error: {e}")
+        print(f"    Error: {e}")
 
 
 def collect_standings():
     """Fetch league standings with form."""
-    _print("  Fetching standings...")
+    print("  Fetching standings...")
     client = get_supabase()
     if not client or not FOOTBALL_API_KEY:
         return
@@ -174,10 +169,10 @@ def collect_standings():
                 break
 
         if not table:
-            _print("    No standings data found")
+            print("    No standings data found")
             return
 
-        _print(f"    Found {len(table)} teams")
+        print(f"    Found {len(table)} teams")
         now = datetime.now(timezone.utc).isoformat()
 
         # Build all records first, then replace atomically
@@ -205,15 +200,15 @@ def collect_standings():
         for record in records:
             client.table('standings').insert(record).execute()
 
-        _print(f"    Saved {len(records)} standings")
+        print(f"    Saved {len(records)} standings")
 
     except Exception as e:
-        _print(f"    Error: {e}")
+        print(f"    Error: {e}")
 
 
 def collect_news():
     """Fetch Palmeiras news from multiple sources."""
-    _print("  Fetching news...")
+    print("  Fetching news...")
     client = get_supabase()
     if not client:
         return
@@ -221,7 +216,7 @@ def collect_news():
     try:
         from bs4 import BeautifulSoup
     except ImportError:
-        _print("    beautifulsoup4 not installed, skipping")
+        print("    beautifulsoup4 not installed, skipping")
         return
 
     news = []
@@ -250,9 +245,9 @@ def collect_news():
                     'source': 'ge.globo',
                     'collected_at': now,
                 })
-        _print(f"    ge.globo: {len(news)} articles")
+        print(f"    ge.globo: {len(news)} articles")
     except Exception as e:
-        _print(f"    ge.globo error: {e}")
+        print(f"    ge.globo error: {e}")
 
     # Source 2: lance.com.br
     try:
@@ -281,9 +276,9 @@ def collect_news():
                     'collected_at': now,
                 })
                 lance_count += 1
-        _print(f"    lance.com.br: {lance_count} articles")
+        print(f"    lance.com.br: {lance_count} articles")
     except Exception as e:
-        _print(f"    lance.com.br error: {e}")
+        print(f"    lance.com.br error: {e}")
 
     # Source 3: Gazeta Esportiva
     try:
@@ -311,9 +306,9 @@ def collect_news():
                     'collected_at': now,
                 })
                 gazeta_count += 1
-        _print(f"    gazetaesportiva.com: {gazeta_count} articles")
+        print(f"    gazetaesportiva.com: {gazeta_count} articles")
     except Exception as e:
-        _print(f"    gazetaesportiva.com error: {e}")
+        print(f"    gazetaesportiva.com error: {e}")
 
     # Source 4: UOL Esporte
     try:
@@ -341,9 +336,9 @@ def collect_news():
                     'collected_at': now,
                 })
                 uol_count += 1
-        _print(f"    uol.com.br: {uol_count} articles")
+        print(f"    uol.com.br: {uol_count} articles")
     except Exception as e:
-        _print(f"    uol.com.br error: {e}")
+        print(f"    uol.com.br error: {e}")
 
     # Filter out low-quality articles
     SKIP_TITLES = {
@@ -363,7 +358,7 @@ def collect_news():
         filtered.append(item)
     removed = len(news) - len(filtered)
     if removed:
-        _print(f"    Filtered out {removed} low-quality articles")
+        print(f"    Filtered out {removed} low-quality articles")
 
     # Save all news only if we got results
     if filtered:
@@ -371,16 +366,16 @@ def collect_news():
             client.table('news').delete().neq('id', '00000000-0000-0000-0000-000000000000').execute()
             for item in filtered:
                 client.table('news').insert(item).execute()
-            _print(f"    Saved {len(filtered)} news articles")
+            print(f"    Saved {len(filtered)} news articles")
         except Exception as e:
-            _print(f"    Error saving news: {e}")
+            print(f"    Error saving news: {e}")
     else:
-        _print("    No news collected, keeping existing data")
+        print("    No news collected, keeping existing data")
 
 
 def apply_broadcast_info():
     """Apply known broadcast partners to upcoming matches based on competition code."""
-    _print("  Applying broadcast info...")
+    print("  Applying broadcast info...")
     client = get_supabase()
     if not client:
         return
@@ -405,12 +400,12 @@ def apply_broadcast_info():
         except Exception:
             continue
 
-    _print(f"    Updated {updated} matches")
+    print(f"    Updated {updated} matches")
 
 
 def collect_copa_brasil():
     """Collect Copa do Brasil matches from free sources (scrapers)."""
-    _print("  Copa do Brasil (free sources)...")
+    print("  Copa do Brasil (free sources)...")
     client = get_supabase()
     if not client:
         return
@@ -419,7 +414,7 @@ def collect_copa_brasil():
         from copa_brasil_scraper import get_copa_brasil_matches
         matches = get_copa_brasil_matches()
         if not matches:
-            _print("    No Copa do Brasil matches found from scrapers")
+            print("    No Copa do Brasil matches found from scrapers")
             return
 
         # Check if matches are Supabase-ready dicts or raw scraper output
@@ -477,16 +472,16 @@ def collect_copa_brasil():
                     client.table('matches').insert(record).execute()
                     saved += 1
 
-        _print(f"    Copa do Brasil: {saved} matches saved/updated")
+        print(f"    Copa do Brasil: {saved} matches saved/updated")
     except Exception as e:
-        _print(f"    Copa do Brasil error: {e}")
+        print(f"    Copa do Brasil error: {e}")
 
 
 if __name__ == '__main__':
-    _print(f"Palmeiras Collector v2 — {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+    print(f"Palmeiras Collector v2 — {datetime.now().strftime('%Y-%m-%d %H:%M')}")
     collect_matches()
     collect_standings()
     collect_news()
     collect_copa_brasil()
     apply_broadcast_info()
-    _print("Done!")
+    print("Done!")
