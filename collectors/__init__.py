@@ -340,13 +340,33 @@ def collect_news():
     except Exception as e:
         print(f"    uol.com.br error: {e}")
 
+    # Filter out low-quality articles
+    SKIP_TITLES = {
+        'jogos', 'vídeos curtos do verdão!', 'vídeos', 'vídeo',
+        'ao vivo', 'mais lidas', 'mais lidas da semana',
+    }
+    filtered = []
+    for item in news:
+        title = item.get('title', '').strip().lower()
+        url = item.get('url', '').strip()
+        if not url:
+            continue  # Skip articles without URL
+        if title in SKIP_TITLES:
+            continue  # Skip generic titles
+        if len(title) < 5:
+            continue  # Skip very short titles
+        filtered.append(item)
+    removed = len(news) - len(filtered)
+    if removed:
+        print(f"    Filtered out {removed} low-quality articles")
+
     # Save all news only if we got results
-    if news:
+    if filtered:
         try:
             client.table('news').delete().neq('id', '00000000-0000-0000-0000-000000000000').execute()
-            for item in news:
+            for item in filtered:
                 client.table('news').insert(item).execute()
-            print(f"    Saved {len(news)} news articles")
+            print(f"    Saved {len(filtered)} news articles")
         except Exception as e:
             print(f"    Error saving news: {e}")
     else:

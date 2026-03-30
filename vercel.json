@@ -5,13 +5,16 @@
     { "src": "api/matches.py", "use": "@vercel/python" },
     { "src": "api/standings.py", "use": "@vercel/python" },
     { "src": "api/news.py", "use": "@vercel/python" },
-    { "src": "api/calendar.py", "use": "@vercel/python" }
+    { "src": "api/calendar.py", "use": "@vercel/python" },
+    { "src": "api/health.py", "use": "@vercel/python" }
   ],
   "routes": [
     { "src": "/api/matches", "dest": "/api/matches.py" },
     { "src": "/api/standings", "dest": "/api/standings.py" },
     { "src": "/api/news", "dest": "/api/news.py" },
     { "src": "/api/calendar.ics", "dest": "/api/calendar.py" },
+    { "src": "/api/calendar", "dest": "/api/calendar.py" },
+    { "src": "/api/health", "dest": "/api/health.py" },
     { "src": "/static/(.*)", "dest": "/static/$1" },
     { "src": "/(.*)", "dest": "/index.html" }
   ]
