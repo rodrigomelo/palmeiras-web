@@ -8,12 +8,9 @@ import os
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler
 from urllib.request import Request, urlopen
-from urllib.error import HTTPError
 
 SUPABASE_URL = os.environ.get('SUPABASE_URL', '')
 SUPABASE_KEY = os.environ.get('SUPABASE_KEY', '')
-
-
 VERSION = '1.0.0'
 
 
@@ -33,7 +30,7 @@ class handler(BaseHTTPRequestHandler):
             }
             req = Request(
                 f'{SUPABASE_URL}/rest/v1/matches?select=id&limit=1',
-                headers=headers
+                headers=headers,
             )
             urlopen(req, timeout=10).read().decode()
             elapsed = (datetime.now(timezone.utc) - start).total_seconds() * 1000
@@ -41,7 +38,6 @@ class handler(BaseHTTPRequestHandler):
             latency_ms = round(elapsed)
         except Exception:
             supabase_status = 'disconnected'
-
             latency_ms = 0
 
         status_code = 200 if supabase_status == 'connected' else 503
@@ -57,9 +53,8 @@ class handler(BaseHTTPRequestHandler):
             'version': VERSION,
         })
 
-        self.send_response(status_code, body)
-        self.end_headers()
-
+        self.send_response(status_code)
         self.send_header('Content-Type', 'application/json')
         self.send_header('Cache-Control', 'public, max-age=900')
+        self.end_headers()
         self.wfile.write(body.encode())

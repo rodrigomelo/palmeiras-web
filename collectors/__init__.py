@@ -24,7 +24,7 @@ except ImportError:
 
 load_dotenv(Path(__file__).parent.parent / '.env')
 
-SILENT = True  # Set False for debugging
+SILENT = False  # Set True for debugging
 def _print(*args, **kwargs):
     if not SILENT:
         print(*args, **kwargs)
