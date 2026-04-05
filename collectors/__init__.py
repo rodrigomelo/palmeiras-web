@@ -416,7 +416,10 @@ def collect_copa_brasil():
         return
 
     try:
-        from copa_brasil_scraper import get_copa_brasil_matches
+        try:
+            from collectors.copa_brasil_scraper import get_copa_brasil_matches
+        except ImportError:
+            from copa_brasil_scraper import get_copa_brasil_matches
         matches = get_copa_brasil_matches()
         if not matches:
             _print("    No Copa do Brasil matches found from scrapers")
