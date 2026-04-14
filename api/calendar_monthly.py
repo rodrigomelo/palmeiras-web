@@ -139,7 +139,7 @@ class handler(BaseHTTPRequestHandler):
                 limit='50',
             )
 
-            # Filter to current month in BR timezone
+            # Filter to current month in BR timezone, key by YYYY-MM-DD
             days = {}
             for m in matches:
                 utc_date = m.get('utc_date', '')
@@ -150,11 +150,20 @@ class handler(BaseHTTPRequestHandler):
                     dt_sp = dt.astimezone(BR_TZ)
                     if dt_sp.year != year or dt_sp.month != month:
                         continue
-                    day = dt_sp.day
+                    day_key = dt_sp.strftime('%Y-%m-%d')  # e.g. '2026-04-16'
                     match_dict = make_match_dict(m)
-                    if day not in days:
-                        days[day] = []
-                    days[day].append(match_dict)
+                    # Attach raw score fields for past-game display
+                    match_dict['utcDate'] = utc_date
+                    match_dict['status'] = m.get('status', 'SCHEDULED')
+                    match_dict['score'] = {
+                        'fullTime': {
+                            'home': m.get('home_score'),
+                            'away': m.get('away_score'),
+                        }
+                    }
+                    if day_key not in days:
+                        days[day_key] = []
+                    days[day_key].append(match_dict)
                 except Exception:
                     continue
 

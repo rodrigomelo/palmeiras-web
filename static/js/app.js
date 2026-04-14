@@ -793,7 +793,7 @@
         for (let day = 1; day <= daysInMonth; day++) {
             const dayStr = `${_calYear}-${String(_calMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
             const isToday = dayStr === todayStr;
-            let matches = data.days[day] || [];
+            let matches = data.days[dayStr] || [];
 
             // Apply competition filter
             if (_calCompFilter !== 'all') {
@@ -811,7 +811,7 @@
 
             const classes = ['cal-day'];
             if (isToday) classes.push('today');
-            if (_calSelectedDay === day) classes.push('selected');
+            if (_calSelectedDay === dayStr) classes.push('selected');
 
             html += `<div class="${classes.join(' ')}" data-day="${day}">
                 <div class="cal-day-num">${day}</div>
@@ -831,15 +831,15 @@
     }
 
     function toggleDay(day) {
-        if (_calSelectedDay === day) {
+        const dayStr = `${_calYear}-${String(_calMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        if (_calSelectedDay === dayStr) {
             _calSelectedDay = null;
             document.getElementById('calendar-expanded').innerHTML = '';
         } else {
-            _calSelectedDay = day;
-            renderExpandedDay(day);
+            _calSelectedDay = dayStr;
+            renderExpandedDay(dayStr);
             // Also switch to "Próximos" tab and filter the list to this day
             switchToTab('proximos');
-            const dayStr = `${_calYear}-${String(_calMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
             filterMatchesToDay(dayStr);
         }
         // Update selected state
@@ -857,8 +857,8 @@
         document.getElementById(tabId)?.classList.add('active');
     };
 
-    function renderExpandedDay(day) {
-        let matches = _calData?.days?.[day] || [];
+    function renderExpandedDay(dayStr) {
+        let matches = _calData?.days?.[dayStr] || [];
 
         // Apply competition filter
         if (_calCompFilter !== 'all') {
@@ -883,7 +883,6 @@
             CANCELLED: 'Cancelado',
         };
 
-        const dayStr = `${_calYear}-${String(_calMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
         container.innerHTML = `<div class="cal-expanded">
             <div class="cal-expanded-header">
                 <span class="cal-expanded-date">${dayStr.split('-').reverse().join('/')}</span>
@@ -899,7 +898,7 @@
                 const ourScore = isHome ? m.homeScore : m.awayScore;
                 const oppScore = isHome ? m.awayScore : m.homeScore;
 
-                const scoreHtml = m.status === 'FINISHED' && ourScore != null
+                const scoreHtml = (m.status === 'FINISHED' || m.status === 'PLAYING_TIME_FINISHED') && ourScore != null
                     ? `<span style="margin-left:0.5rem;font-weight:700;font-size:0.9rem">${ourScore}–${oppScore}</span>`
                     : '';
 
@@ -973,7 +972,7 @@
         for (let day = 1; day <= daysInMonth; day++) {
             const dayStr = `${_miniStripYear}-${String(_miniStripMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
             const isToday = dayStr === todayStr;
-            const matches = (data?.days || {})[day] || [];
+            const matches = (data?.days || {})[dayStr] || [];
             const comps = [...new Set(matches.map(m => {
                 const c = m.competition?.code;
                 if (c === 'BSA') return 'bsa';
@@ -985,7 +984,7 @@
             const classes = ['mini-strip-day'];
             if (isToday) classes.push('today');
             if (matches.length > 0) classes.push('has-match');
-            if (_miniStripSelectedDay === day) classes.push('selected');
+            if (_miniStripSelectedDay === dayStr) classes.push('selected');
 
             const dotsHtml = comps.slice(0, 3).map(c =>
                 `<div class="mini-strip-dot ${c}"></div>`
@@ -1003,18 +1002,19 @@
         grid.querySelectorAll('.mini-strip-day:not(.empty)').forEach(cell => {
             cell.addEventListener('click', () => {
                 const day = parseInt(cell.dataset.day);
-                selectMiniStripDay(day);
+                const dayStr = `${_miniStripYear}-${String(_miniStripMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                selectMiniStripDay(dayStr);
             });
         });
     }
 
-    function selectMiniStripDay(day) {
-        _miniStripSelectedDay = day;
+    function selectMiniStripDay(dayStr) {
+        _miniStripSelectedDay = dayStr;
         // Update selected visual
         document.querySelectorAll('.mini-strip-day').forEach(d => d.classList.remove('selected'));
-        document.querySelector(`.mini-strip-day[data-day="${day}"]`)?.classList.add('selected');
+        const dayNum = parseInt(dayStr.split('-')[2]);
+        document.querySelector(`.mini-strip-day[data-day="${dayNum}"]`)?.classList.add('selected');
         // Filter next matches to this day (unified filter respects competition too)
-        const dayStr = `${_miniStripYear}-${String(_miniStripMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
         filterMatchesToDay(dayStr);
     }
 
@@ -1033,9 +1033,10 @@
 
     window.filterMatchesToDay = function filterMatchesToDay(dayStr) {
         _listDayFilter = dayStr;
-        _miniStripSelectedDay = parseInt(dayStr.split('-')[2]); // sync mini strip visual
+        _miniStripSelectedDay = dayStr; // sync mini strip visual (uses YYYY-MM-DD now)
         document.querySelectorAll('.mini-strip-day').forEach(d => d.classList.remove('selected'));
-        document.querySelector(`.mini-strip-day[data-day="${_miniStripSelectedDay}"]`)?.classList.add('selected');
+        const dayNum = parseInt(dayStr.split('-')[2]);
+        document.querySelector(`.mini-strip-day[data-day="${dayNum}"]`)?.classList.add('selected');
         applyUnifiedListFilter();
     };
 
@@ -1060,12 +1061,11 @@
         }
 
         if (_listDayFilter) {
-            // Use _calData if available (has ALL games for the month, including hero game)
+            // Use _calData if available (has ALL games for the month, including past with scores)
             // Otherwise fall back to _allMatches
             let sourceMatches = [];
-            if (_calData) {
-                const dayNum = parseInt(_listDayFilter.split('-')[2]);
-                sourceMatches = _calData.days?.[dayNum] || [];
+            if (_calData && _calData.days?.[_listDayFilter]) {
+                sourceMatches = _calData.days[_listDayFilter];
             } else {
                 sourceMatches = _allMatches.filter(m => {
                     const d = new Date(m.utcDate).toLocaleDateString('en-CA', { timeZone: CONFIG.BR_TZ });
