@@ -1182,10 +1182,10 @@
         const todayYear = parseInt(todayStr.split('-')[0]);
         const todayMonth = parseInt(todayStr.split('-')[1]);
 
-        // Fetch 3 months: prev, current, next for complete list
+        // Fetch 12 months centered on current month for full year view
         const months = [];
         const d = new Date(_calYear, _calMonth - 1, 1);
-        for (let i = -1; i <= 1; i++) {
+        for (let i = -5; i <= 6; i++) {
             const dt = new Date(d.getFullYear(), d.getMonth() + i, 1);
             months.push({ year: dt.getFullYear(), month: dt.getMonth() + 1 });
         }
@@ -1194,9 +1194,8 @@
         for (const m of months) {
             const data = await api(`calendar_monthly?year=${m.year}&month=${m.month}`);
             if (data?.days) {
-                for (const [day, matches] of Object.entries(data.days)) {
-                    allDays[`${m.year}-${String(m.month).padStart(2,'0')}-${String(day).padStart(2,'0')}`] = matches;
-                }
+                // API already returns days keyed by YYYY-MM-DD — merge as-is
+                Object.assign(allDays, data.days);
             }
         }
 
@@ -1245,7 +1244,7 @@
                 const ourScore = isHome ? m.homeScore : m.awayScore;
                 const oppScore = isHome ? m.awayScore : m.homeScore;
                 const compClass = getCompBadgeClass(m.competition?.code);
-                const scoreHtml = m.status === 'FINISHED' && ourScore != null
+                const scoreHtml = (m.status === 'FINISHED' || m.status === 'PLAYING_TIME_FINISHED') && ourScore != null
                     ? `<span class="cal-match-score">${ourScore}–${oppScore}</span>` : '';
                 const statusText = statusLabel[m.status] || m.status;
                 const isLive = m.status === 'IN_PLAY';
