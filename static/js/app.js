@@ -227,8 +227,33 @@
     // --- Match HTML Builder ---
     function buildMatchHtml(m, isLive) {
         const venue = CONFIG.getVenue(m);
+        const isFinished = m.status === 'FINISHED';
+        const isPast = isFinished || m.status === 'PLAYING_TIME_FINISHED';
+
+        // Build match-header (status badge + date/time + competition)
+        let statusLabel = '';
+        if (isLive) statusLabel = '<span class="live-dot"></span>AO VIVO · ';
+        else if (isPast) statusLabel = '✅ FINALIZADO · ';
+        const score = m.score?.fullTime;
         const ht = m.score?.halfTime || {};
         const htInfo = (ht.home != null) ? `<div class="match-extra-row"><span class="icon">⏱️</span> 1º tempo: ${ht.home}–${ht.away}</div>` : '';
+
+        // Teams row with optional score for finished/live matches
+        let teamsHtml;
+        if (isPast && score?.home != null) {
+            teamsHtml = `<div class="match-teams">
+                <span><img src="${CONFIG.getCrest(m.homeTeam)}" style="width:22px;height:22px;vertical-align:middle;margin-right:4px" alt="">${escapeHtml(CONFIG.teamName(m.homeTeam))}</span>
+                <span class="match-score-badge">${score.home} × ${score.away}</span>
+                <span>${escapeHtml(CONFIG.teamName(m.awayTeam))}<img src="${CONFIG.getCrest(m.awayTeam)}" style="width:22px;height:22px;vertical-align:middle;margin-left:4px" alt=""></span>
+            </div>`;
+        } else {
+            teamsHtml = `<div class="match-teams">
+                <span><img src="${CONFIG.getCrest(m.homeTeam)}" style="width:22px;height:22px;vertical-align:middle;margin-right:4px" alt="">${escapeHtml(CONFIG.teamName(m.homeTeam))}</span>
+                <span style="color:var(--text-muted)">×</span>
+                <span>${escapeHtml(CONFIG.teamName(m.awayTeam))}<img src="${CONFIG.getCrest(m.awayTeam)}" style="width:22px;height:22px;vertical-align:middle;margin-left:4px" alt=""></span>
+            </div>`;
+        }
+
         return `<div class="match-item">
             <div class="match-extra">
                 <div class="match-extra-row"><span class="icon">🏟️</span> ${escapeHtml(venue)}</div>
@@ -236,12 +261,8 @@
                 <div class="match-extra-row"><span class="icon">🔢</span> Rodada ${m.matchday || '-'}${m.stage && m.stage !== 'REGULAR_SEASON' ? ' · ' + escapeHtml(m.stage) : ''}</div>
                 ${htInfo}
             </div>
-            <div class="match-header"><span>${isLive ? '<span class="live-dot"></span>AO VIVO · ' : ''}${formatDate(m.utcDate)} · ${formatTime(m.utcDate)}</span><span>${escapeHtml(CONFIG.formatComp(m.competition))}</span></div>
-            <div class="match-teams">
-                <span><img src="${CONFIG.getCrest(m.homeTeam)}" style="width:22px;height:22px;vertical-align:middle;margin-right:4px" alt="">${escapeHtml(CONFIG.teamName(m.homeTeam))}</span>
-                <span style="color:var(--text-muted)">×</span>
-                <span>${escapeHtml(CONFIG.teamName(m.awayTeam))}<img src="${CONFIG.getCrest(m.awayTeam)}" style="width:22px;height:22px;vertical-align:middle;margin-left:4px" alt=""></span>
-            </div>
+            <div class="match-header"><span>${statusLabel}${formatDate(m.utcDate)}${!isPast ? ' · ' + formatTime(m.utcDate) : ''}</span><span>${escapeHtml(CONFIG.formatComp(m.competition))}</span></div>
+            ${teamsHtml}
         </div>`;
     }
 
@@ -1002,6 +1023,14 @@
     // _listDayFilter: null (all days) | 'YYYY-MM-DD' (specific day)
     let _listDayFilter = null;
 
+    window.clearListDayFilter = function () {
+        _listDayFilter = null;
+        _miniStripSelectedDay = null;
+        document.querySelectorAll('.mini-strip-day').forEach(d => d.classList.remove('selected'));
+        document.getElementById('day-filter-chip').style.display = 'none';
+        applyUnifiedListFilter();
+    };
+
     window.filterMatchesToDay = function filterMatchesToDay(dayStr) {
         _listDayFilter = dayStr;
         _miniStripSelectedDay = parseInt(dayStr.split('-')[2]); // sync mini strip visual
@@ -1009,14 +1038,6 @@
         document.querySelector(`.mini-strip-day[data-day="${_miniStripSelectedDay}"]`)?.classList.add('selected');
         applyUnifiedListFilter();
     };
-
-    function clearListDayFilter() {
-        _listDayFilter = null;
-        _miniStripSelectedDay = null;
-        document.querySelectorAll('.mini-strip-day').forEach(d => d.classList.remove('selected'));
-        document.getElementById('day-filter-chip').style.display = 'none';
-        applyUnifiedListFilter();
-    }
 
     function applyUnifiedListFilter() {
         let filtered;
@@ -1261,6 +1282,7 @@
         if (_calMonth < 1) { _calMonth = 12; _calYear--; }
         _calSelectedDay = null;
         document.getElementById('calendar-expanded').innerHTML = '';
+        syncYearSelect();
         loadCalendar();
     });
     document.getElementById('cal-next')?.addEventListener('click', () => {
@@ -1268,8 +1290,32 @@
         if (_calMonth > 12) { _calMonth = 1; _calYear++; }
         _calSelectedDay = null;
         document.getElementById('calendar-expanded').innerHTML = '';
+        syncYearSelect();
         loadCalendar();
     });
+
+    function syncYearSelect() {
+        const sel = document.getElementById('cal-year-select');
+        if (sel && sel.value != _calYear) sel.value = _calYear;
+    }
+
+    window.changeCalYear = function (year) {
+        _calYear = parseInt(year);
+        _calMonth = 1;
+        _calSelectedDay = null;
+        document.getElementById('calendar-expanded').innerHTML = '';
+        loadCalendar();
+    };
+
+    // Populate year select (current year -1 to +2)
+    (function populateYearSelect() {
+        const sel = document.getElementById('cal-year-select');
+        if (!sel) return;
+        const currentYear = new Date().getFullYear();
+        const years = [currentYear - 1, currentYear, currentYear + 1, currentYear + 2];
+        sel.innerHTML = years.map(y => `<option value="${y}">${y}</option>`).join('');
+        sel.value = currentYear;
+    })();
 
     window.downloadCalendar = async function () {
         try {

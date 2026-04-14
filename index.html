@@ -116,7 +116,7 @@
         <div id="palpites" class="tab-content"><div class="card"><div class="card-title">🎯 Palpite do Próximo Jogo</div><div id="prediction"><div class="empty">Carregando...</div></div></div></div>
         <div id="calendario" class="tab-content"><div class="card">
             <div class="cal-header">
-                <div class="cal-title">📅 Calendário de Jogos</div>
+                <div class="cal-title">📅 Calendário de Jogos <select id="cal-year-select" style="margin-left:0.5rem;font-size:0.85rem;padding:0.2rem 0.4rem;border-radius:6px;border:1px solid rgba(0,0,0,0.15);background:var(--bg-card);color:var(--text);cursor:pointer" onchange="changeCalYear(this.value)"></select></div>
                 <div class="cal-view-switcher">
                     <button class="view-btn active" data-view="grid" onclick="switchCalView('grid',this)">
                         <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
