@@ -89,6 +89,12 @@
                         <span class="comp-legend-label">🥇 Copa do Brasil</span>
                     </div>
                 </div>
+                <!-- Day Filter Chip (shown when a calendar day is selected) -->
+                <div id="day-filter-chip" class="day-filter-chip" style="display:none">
+                    <span class="day-filter-icon">📅</span>
+                    <span class="day-filter-text" id="day-filter-text"></span>
+                    <button class="day-filter-clear" onclick="clearListDayFilter()" title="Limpar filtro de dia">✕</button>
+                </div>
                 <div id="next-matches"><div class="empty">Carregando...</div></div>
             </div>
         </div>

@@ -1014,12 +1014,29 @@
         _listDayFilter = null;
         _miniStripSelectedDay = null;
         document.querySelectorAll('.mini-strip-day').forEach(d => d.classList.remove('selected'));
+        document.getElementById('day-filter-chip').style.display = 'none';
         applyUnifiedListFilter();
     }
 
     function applyUnifiedListFilter() {
         let filtered;
         const container = document.getElementById('next-matches');
+
+        // --- Day Filter Chip management ---
+        const chip = document.getElementById('day-filter-chip');
+        const chipText = document.getElementById('day-filter-text');
+        if (_listDayFilter) {
+            const [y, m, d] = _listDayFilter.split('-');
+            const BR_DAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+            const date = new Date(parseInt(y), parseInt(m) - 1, parseInt(d));
+            const dayName = BR_DAYS[date.getDay()];
+            const compLabels = { BSA: '🇧🇷 Brasileirão', CLI: '🏆 Libertadores', COPA: '🥇 Copa do Brasil' };
+            const compPart = _sharedCompFilter !== 'all' ? ` · ${compLabels[_sharedCompFilter] || _sharedCompFilter}` : '';
+            chipText.textContent = `${dayName}, ${d}/${m}${compPart}`;
+            chip.style.display = 'flex';
+        } else {
+            chip.style.display = 'none';
+        }
 
         if (_listDayFilter) {
             // Use _calData if available (has ALL games for the month, including hero game)
