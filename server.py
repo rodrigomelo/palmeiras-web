@@ -161,6 +161,94 @@ def api_news(params):
         return 500, {'news': [], 'error': str(e)}
 
 
+def api_calendar_monthly(params):
+    """Monthly calendar — returns matches grouped by day."""
+    year_str = params.get('year', [None])[0]
+    month_str = params.get('month', [None])[0]
+
+    if not year_str or not month_str:
+        return 400, {'error': 'year and month required'}
+
+    try:
+        year = int(year_str)
+        month = int(month_str)
+    except ValueError:
+        return 400, {'error': 'Invalid year/month'}
+
+    if not (1 <= month <= 12):
+        return 400, {'error': 'Month must be 1-12'}
+
+    client = get_client()
+    if not client:
+        return 503, {'error': 'not_connected'}
+
+    try:
+        import re
+        BR_TZ = timezone(timedelta(hours=-3))
+        start_dt = datetime(year, month, 1, 0, 0, 0, tzinfo=BR_TZ)
+        if month == 12:
+            end_dt = datetime(year + 1, 1, 1, 0, 0, 0, tzinfo=BR_TZ)
+        else:
+            end_dt = datetime(year, month + 1, 1, 0, 0, 0, tzinfo=BR_TZ)
+
+        start_utc = start_dt.astimezone(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S')
+        end_utc = end_dt.astimezone(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S')
+
+        # Use raw URL with gte/lt filters via Supabase REST directly
+        import urllib.request
+        import urllib.parse
+        headers = {
+            'apikey': SUPABASE_KEY,
+            'Authorization': f'Bearer {SUPABASE_KEY}',
+        }
+        qs = f"utc_date=gte.{urllib.parse.quote(start_utc)}&utc_date=lt.{urllib.parse.quote(end_utc)}&order=utc_date.asc&limit=50"
+        url = f"{SUPABASE_URL}/rest/v1/matches?{qs}"
+        req = urllib.request.Request(url, headers=headers)
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            raw_matches = json.loads(resp.read())
+
+        days = {}
+        for m in raw_matches:
+            utc_date = m.get('utc_date', '')
+            if not utc_date:
+                continue
+            try:
+                dt = datetime.fromisoformat(utc_date.replace('Z', '+00:00'))
+                dt_sp = dt.astimezone(BR_TZ)
+                if dt_sp.year != year or dt_sp.month != month:
+                    continue
+                day = dt_sp.day
+
+                home = parse_json(m.get('home_team', '{}'))
+                away = parse_json(m.get('away_team', '{}'))
+                comp = parse_json(m.get('competition', '{}'))
+
+                match_dict = {
+                    'utcDate': utc_date,
+                    'status': m.get('status', 'SCHEDULED'),
+                    'competition': {'code': comp.get('code', 'OTHER'), 'name': comp.get('name', 'Outros')},
+                    'homeTeam': {'id': home.get('id'), 'name': home.get('name', 'Home'),
+                                 'shortName': home.get('shortName', ''), 'crest': home.get('crest', '')},
+                    'awayTeam': {'id': away.get('id'), 'name': away.get('name', 'Away'),
+                                 'shortName': away.get('shortName', ''), 'crest': away.get('crest', '')},
+                    'matchday': m.get('matchday'),
+                    'venue': m.get('venue', ''),
+                    'broadcast': m.get('broadcast', ''),
+                    'homeScore': m.get('home_score'),
+                    'awayScore': m.get('away_score'),
+                }
+
+                if day not in days:
+                    days[day] = []
+                days[day].append(match_dict)
+            except Exception:
+                continue
+
+        return 200, {'year': year, 'month': month, 'days': days}
+    except Exception as e:
+        return 500, {'error': str(e)}
+
+
 def api_calendar(params):
     client = get_client()
     if not client:
@@ -297,6 +385,7 @@ API_ROUTES = {
     '/api/standings': api_standings,
     '/api/news': api_news,
     '/api/calendar.ics': api_calendar,
+    '/api/calendar_monthly': api_calendar_monthly,
     '/api/health': api_health,
 }
 

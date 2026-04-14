@@ -134,9 +134,18 @@
                 document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
                 document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
                 btn.classList.add('active');
-                document.getElementById(btn.dataset.tab)?.classList.add('active');
+                const tab = document.getElementById(btn.dataset.tab);
+                tab?.classList.add('active');
                 if (btn.dataset.tab === 'estatisticas' && !performanceChart) {
                     renderPerformanceChart();
+                }
+                if (btn.dataset.tab === 'calendario' && !_calendarLoaded) {
+                    _calendarLoaded = true;
+                    loadCalendar();
+                }
+                // Load mini strip when "Próximos" tab is first shown
+                if (btn.dataset.tab === 'proximos') {
+                    loadMiniStrip();
                 }
             });
         });
@@ -245,12 +254,33 @@
         if (!data) { showError('next-matches', 'Erro ao carregar', 'loadMatches'); return; }
         const allMatches = data.matches || [];
         _allMatches = allMatches.slice(1); // Skip first (shown in hero)
-        applyMatchFilter('all');
+
+        // Pre-load current month calendar data so day-filter works (uses _calData for complete month data)
+        if (!_calData) {
+            const today = new Date();
+            const calData = await api(`calendar_monthly?year=${today.getFullYear()}&month=${today.getMonth() + 1}`);
+            if (calData) {
+                _calYear = today.getFullYear();
+                _calMonth = today.getMonth() + 1;
+                _calData = calData;
+            }
+        }
+
+        // Reset all filters and apply unified filter
+        clearListDayFilter();
+        applyMatchFilter(_sharedCompFilter);
     }
 
     window.filterMatches = function (comp, btn) {
-        document.querySelectorAll('#proximos .comp-filter').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
+        // Support both old .comp-filter buttons and new .comp-legend-item
+        const container = document.getElementById('proximos');
+        container.querySelectorAll('.comp-filter, .comp-legend-item').forEach(b => b.classList.remove('active'));
+        if (btn) btn.classList.add('active');
+        // Also activate the matching legend item if using old filter
+        container.querySelector(`.comp-legend-item[data-comp="${comp}"]`)?.classList.add('active');
+        // Update shared comp filter and apply with current day filter
+        _sharedCompFilter = comp;
+        clearListDayFilter(); // changing competition resets day filter
         applyMatchFilter(comp);
     };
 
@@ -673,6 +703,557 @@
     }
 
     // --- Calendar ---
+    const COMP_DOT_CLASS = {
+        BSA: 'bsa',
+        CLI: 'cli',
+        COPA: 'copa',
+        COPADO_BRASIL: 'copa',
+    };
+
+    function getDotClass(code) {
+        return COMP_DOT_CLASS[code] || 'other';
+    }
+
+    function getCompBadgeClass(code) {
+        return COMP_DOT_CLASS[code] || 'other';
+    }
+
+    const MONTHS_PT = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+                       'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+
+    let _calYear = null;
+    let _calMonth = null;
+    let _calData = null;
+    let _calSelectedDay = null;
+    let _calendarLoaded = false;
+
+    function getToday() {
+        return new Date().toLocaleDateString('en-CA', { timeZone: CONFIG.BR_TZ });
+    }
+
+    async function loadCalendar() {
+        if (!document.getElementById('calendar-grid')) return;
+
+        const todayStr = getToday();
+        const todayYear = parseInt(todayStr.split('-')[0]);
+        const todayMonth = parseInt(todayStr.split('-')[1]);
+
+        if (_calYear === null) {
+            _calYear = todayYear;
+            _calMonth = todayMonth;
+        }
+
+        const data = await api(`calendar_monthly?year=${_calYear}&month=${_calMonth}`);
+        if (!data) {
+            document.getElementById('calendar-grid').innerHTML = '<div class="empty">Erro ao carregar</div>';
+            return;
+        }
+        _calData = data;
+
+        document.getElementById('cal-month-label').textContent = `${MONTHS_PT[_calMonth - 1]} ${_calYear}`;
+
+        const daysInMonth = new Date(_calYear, _calMonth, 0).getDate();
+        const firstDow = new Date(_calYear, _calMonth - 1, 1).getDay(); // 0=Sun
+
+        const grid = document.getElementById('calendar-grid');
+        let html = '';
+
+        // Day headers
+        ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].forEach(d => {
+            html += `<div class="cal-head">${d}</div>`;
+        });
+
+        // Leading empty cells
+        for (let i = 0; i < firstDow; i++) {
+            html += `<div class="cal-day other-month"></div>`;
+        }
+
+        // Day cells
+        for (let day = 1; day <= daysInMonth; day++) {
+            const dayStr = `${_calYear}-${String(_calMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            const isToday = dayStr === todayStr;
+            let matches = data.days[day] || [];
+
+            // Apply competition filter
+            if (_calCompFilter !== 'all') {
+                matches = matches.filter(m => m.competition?.code === _calCompFilter);
+            }
+
+            const comps = [...new Set(matches.map(m => m.competition?.code || 'OTHER'))];
+            const visibleComps = comps.slice(0, 3);
+            const overflow = comps.length > 3 ? comps.length - 3 : 0;
+
+            const dotsHtml = visibleComps.map(c =>
+                `<div class="cal-dot ${getDotClass(c)}"></div>`
+            ).join('');
+            const overflowHtml = overflow > 0 ? `<span class="cal-overflow">+${overflow}</span>` : '';
+
+            const classes = ['cal-day'];
+            if (isToday) classes.push('today');
+            if (_calSelectedDay === day) classes.push('selected');
+
+            html += `<div class="${classes.join(' ')}" data-day="${day}">
+                <div class="cal-day-num">${day}</div>
+                ${matches.length ? `<div class="cal-dots">${dotsHtml}${overflowHtml}</div>` : ''}
+            </div>`;
+        }
+
+        grid.innerHTML = html;
+
+        // Attach click listeners
+        grid.querySelectorAll('.cal-day:not(.other-month)').forEach(cell => {
+            cell.addEventListener('click', () => {
+                const day = parseInt(cell.dataset.day);
+                toggleDay(day);
+            });
+        });
+    }
+
+    function toggleDay(day) {
+        if (_calSelectedDay === day) {
+            _calSelectedDay = null;
+            document.getElementById('calendar-expanded').innerHTML = '';
+        } else {
+            _calSelectedDay = day;
+            renderExpandedDay(day);
+            // Also switch to "Próximos" tab and filter the list to this day
+            switchToTab('proximos');
+            const dayStr = `${_calYear}-${String(_calMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            filterMatchesToDay(dayStr);
+        }
+        // Update selected state
+        document.querySelectorAll('.cal-day').forEach(d => d.classList.remove('selected'));
+        document.querySelector(`.cal-day[data-day="${day}"]`)?.classList.add('selected');
+    }
+
+    // Helper: switch to a tab by ID without triggering its load logic
+    window.switchToTab = function (tabId) {
+        const tabBtn = document.querySelector(`.tab-btn[data-tab="${tabId}"]`);
+        if (!tabBtn || tabBtn.classList.contains('active')) return;
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        tabBtn.classList.add('active');
+        document.getElementById(tabId)?.classList.add('active');
+    };
+
+    function renderExpandedDay(day) {
+        let matches = _calData?.days?.[day] || [];
+
+        // Apply competition filter
+        if (_calCompFilter !== 'all') {
+            matches = matches.filter(m => m.competition?.code === _calCompFilter);
+        }
+
+        const container = document.getElementById('calendar-expanded');
+
+        if (!matches.length) {
+            container.innerHTML = '';
+            return;
+        }
+
+        const statusLabel = {
+            SCHEDULED: 'Agendado',
+            TIMED: 'Agendado',
+            IN_PLAY: '🔴 AO VIVO',
+            FINISHED: 'Finalizado',
+            PAUSED: 'Intervalo',
+            POSTPONED: 'Adiado',
+            SUSPENDED: 'Suspenso',
+            CANCELLED: 'Cancelado',
+        };
+
+        const dayStr = `${_calYear}-${String(_calMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        container.innerHTML = `<div class="cal-expanded">
+            <div class="cal-expanded-header">
+                <span class="cal-expanded-date">${dayStr.split('-').reverse().join('/')}</span>
+                <button class="cal-expanded-btn" onclick="filterMatchesToDay('${dayStr}'); switchToTab('proximos')">
+                    📋 Ver em Próximos
+                </button>
+            </div>
+            ${matches.map(m => {
+                const time = new Date(m.utcDate).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: CONFIG.BR_TZ });
+                const isHome = m.homeTeam.id === CONFIG.TEAM_ID;
+                const ourTeam = isHome ? m.homeTeam : m.awayTeam;
+                const oppTeam = isHome ? m.awayTeam : m.homeTeam;
+                const ourScore = isHome ? m.homeScore : m.awayScore;
+                const oppScore = isHome ? m.awayScore : m.homeScore;
+
+                const scoreHtml = m.status === 'FINISHED' && ourScore != null
+                    ? `<span style="margin-left:0.5rem;font-weight:700;font-size:0.9rem">${ourScore}–${oppScore}</span>`
+                    : '';
+
+                const statusText = statusLabel[m.status] || m.status;
+                const compClass = getCompBadgeClass(m.competition?.code);
+
+                return `<div class="cal-match">
+                    <div class="cal-match-time">${time}</div>
+                    <div class="cal-match-comp ${compClass}">${escapeHtml(CONFIG.formatComp(m.competition))}</div>
+                    <div class="cal-match-teams">
+                        <img src="${CONFIG.getCrest(ourTeam)}" alt="">
+                        <span>${escapeHtml(CONFIG.teamName(ourTeam))}</span>
+                        <span class="cal-match-vs">×</span>
+                        <span>${escapeHtml(CONFIG.teamName(oppTeam))}</span>
+                        <img src="${CONFIG.getCrest(oppTeam)}" alt="">
+                        ${scoreHtml}
+                    </div>
+                    <div class="cal-match-status">${statusText}</div>
+                </div>`;
+            }).join('')}
+        </div>`;
+    }
+
+    window.loadCalendar = loadCalendar;
+
+    // --- Mini Calendar Strip ---
+    const WEEKDAYS_PT = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+    let _miniStripYear = null;
+    let _miniStripMonth = null;
+    let _miniStripData = null;
+    let _miniStripSelectedDay = null;
+
+    function getTodayStr() {
+        return new Date().toLocaleDateString('en-CA', { timeZone: CONFIG.BR_TZ });
+    }
+
+    async function loadMiniStrip() {
+        const todayStr = getTodayStr();
+        const todayYear = parseInt(todayStr.split('-')[0]);
+        const todayMonth = parseInt(todayStr.split('-')[1]);
+
+        if (_miniStripYear === null) {
+            _miniStripYear = todayYear;
+            _miniStripMonth = todayMonth;
+        }
+
+        const data = await api(`calendar_monthly?year=${_miniStripYear}&month=${_miniStripMonth}`);
+        _miniStripData = data;
+
+        const monthLabel = document.getElementById('mini-strip-month-label');
+        if (monthLabel) monthLabel.textContent = `${MONTHS_PT[_miniStripMonth - 1]} ${_miniStripYear}`;
+
+        const grid = document.getElementById('mini-strip-grid');
+        if (!grid) return;
+
+        const daysInMonth = new Date(_miniStripYear, _miniStripMonth, 0).getDate();
+        const firstDow = new Date(_miniStripYear, _miniStripMonth - 1, 1).getDay();
+
+        let html = '';
+        // Weekday headers
+        WEEKDAYS_PT.forEach(d => {
+            html += `<div style="text-align:center;font-size:0.6rem;font-weight:700;color:rgba(255,255,255,0.6);padding:0.2rem 0;text-transform:uppercase;letter-spacing:0.05em">${d}</div>`;
+        });
+
+        // Leading empty cells
+        for (let i = 0; i < firstDow; i++) {
+            html += `<div class="mini-strip-day empty"></div>`;
+        }
+
+        // Day cells
+        for (let day = 1; day <= daysInMonth; day++) {
+            const dayStr = `${_miniStripYear}-${String(_miniStripMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            const isToday = dayStr === todayStr;
+            const matches = (data?.days || {})[day] || [];
+            const comps = [...new Set(matches.map(m => {
+                const c = m.competition?.code;
+                if (c === 'BSA') return 'bsa';
+                if (c === 'CLI' || c === 'LIBERTADORES') return 'cli';
+                if (c === 'COPA' || c === 'COPA_DO_BRASIL') return 'copa';
+                return 'other';
+            }))];
+
+            const classes = ['mini-strip-day'];
+            if (isToday) classes.push('today');
+            if (matches.length > 0) classes.push('has-match');
+            if (_miniStripSelectedDay === day) classes.push('selected');
+
+            const dotsHtml = comps.slice(0, 3).map(c =>
+                `<div class="mini-strip-dot ${c}"></div>`
+            ).join('');
+
+            html += `<div class="${classes.join(' ')}" data-day="${day}">
+                <div class="mini-strip-day-num">${day}</div>
+                ${matches.length > 0 ? `<div class="mini-strip-day-dots">${dotsHtml}</div>` : ''}
+            </div>`;
+        }
+
+        grid.innerHTML = html;
+
+        // Attach click listeners
+        grid.querySelectorAll('.mini-strip-day:not(.empty)').forEach(cell => {
+            cell.addEventListener('click', () => {
+                const day = parseInt(cell.dataset.day);
+                selectMiniStripDay(day);
+            });
+        });
+    }
+
+    function selectMiniStripDay(day) {
+        _miniStripSelectedDay = day;
+        // Update selected visual
+        document.querySelectorAll('.mini-strip-day').forEach(d => d.classList.remove('selected'));
+        document.querySelector(`.mini-strip-day[data-day="${day}"]`)?.classList.add('selected');
+        // Filter next matches to this day (unified filter respects competition too)
+        const dayStr = `${_miniStripYear}-${String(_miniStripMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        filterMatchesToDay(dayStr);
+    }
+
+    // --- Unified List Filter (competition + day) ---
+    // _sharedCompFilter: 'all' | 'BSA' | 'CLI' | 'COPA'
+    // _listDayFilter: null (all days) | 'YYYY-MM-DD' (specific day)
+    let _listDayFilter = null;
+
+    window.filterMatchesToDay = function filterMatchesToDay(dayStr) {
+        _listDayFilter = dayStr;
+        _miniStripSelectedDay = parseInt(dayStr.split('-')[2]); // sync mini strip visual
+        document.querySelectorAll('.mini-strip-day').forEach(d => d.classList.remove('selected'));
+        document.querySelector(`.mini-strip-day[data-day="${_miniStripSelectedDay}"]`)?.classList.add('selected');
+        applyUnifiedListFilter();
+    };
+
+    function clearListDayFilter() {
+        _listDayFilter = null;
+        _miniStripSelectedDay = null;
+        document.querySelectorAll('.mini-strip-day').forEach(d => d.classList.remove('selected'));
+        applyUnifiedListFilter();
+    }
+
+    function applyUnifiedListFilter() {
+        let filtered;
+        const container = document.getElementById('next-matches');
+
+        if (_listDayFilter) {
+            // Use _calData if available (has ALL games for the month, including hero game)
+            // Otherwise fall back to _allMatches
+            let sourceMatches = [];
+            if (_calData) {
+                const dayNum = parseInt(_listDayFilter.split('-')[2]);
+                sourceMatches = _calData.days?.[dayNum] || [];
+            } else {
+                sourceMatches = _allMatches.filter(m => {
+                    const d = new Date(m.utcDate).toLocaleDateString('en-CA', { timeZone: CONFIG.BR_TZ });
+                    return d === _listDayFilter;
+                });
+            }
+
+            filtered = sourceMatches.filter(m => matchCompetition(m, _sharedCompFilter));
+        } else {
+            filtered = _allMatches.filter(m => matchCompetition(m, _sharedCompFilter));
+        }
+
+        if (!filtered.length) {
+            const dayDesc = _listDayFilter ? `em ${_listDayFilter.split('-').reverse().join('/')}` : '';
+            const compDesc = _sharedCompFilter !== 'all' ? ` para ${_sharedCompFilter}` : '';
+            container.innerHTML = `<div class="empty">Nenhum jogo encontrado ${dayDesc}${compDesc}</div>`;
+        } else {
+            container.innerHTML = filtered.map(m => buildMatchHtml(m, m.status === 'IN_PLAY')).join('');
+            attachMatchListeners('next-matches');
+        }
+    }
+
+    // Mini strip navigation
+    document.getElementById('mini-strip-prev')?.addEventListener('click', () => {
+        _miniStripMonth--;
+        if (_miniStripMonth < 1) { _miniStripMonth = 12; _miniStripYear--; }
+        _miniStripSelectedDay = null;
+        clearListDayFilter(); // reset day filter so all matches show
+        loadMiniStrip();
+    });
+    document.getElementById('mini-strip-next')?.addEventListener('click', () => {
+        _miniStripMonth++;
+        if (_miniStripMonth > 12) { _miniStripMonth = 1; _miniStripYear++; }
+        _miniStripSelectedDay = null;
+        clearListDayFilter(); // reset day filter so all matches show
+        loadMiniStrip();
+    });
+
+    // --- Calendar View Switcher (Grid | List) ---
+    let _calView = 'grid';
+
+    window.switchCalView = function (view, btn) {
+        _calView = view;
+        document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        document.querySelectorAll('.cal-view-content').forEach(el => el.classList.remove('active'));
+        if (view === 'grid') {
+            document.getElementById('calendar-grid')?.classList.add('active');
+        } else {
+            document.getElementById('calendar-list')?.classList.add('active');
+            renderCalendarListView();
+        }
+    };
+
+    // --- Calendar Competition Filter ---
+    let _calCompFilter = 'all';
+
+    window.filterCalendarComp = function (comp, btn) {
+        _calCompFilter = comp;
+        _sharedCompFilter = comp;
+        document.querySelectorAll('.cal-comp-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        // Also sync the "Próximos" tab filter so switching tabs shows consistent data
+        document.querySelectorAll('.comp-legend-item').forEach(b => b.classList.remove('active'));
+        document.querySelector(`.comp-legend-item[data-comp="${comp}"]`)?.classList.add('active');
+
+        // Clear day filter so all days of the competition show in list
+        clearListDayFilter();
+        applyUnifiedListFilter(); // update "Próximos" tab state too
+
+        // Re-render calendar view with filter
+        if (_calView === 'grid') {
+            loadCalendar();
+        } else {
+            renderCalendarListView();
+        }
+    };
+
+    // --- Shared Competition Filter (syncs calendar + list views) ---
+    let _sharedCompFilter = 'all';
+
+    window.filterSharedComp = function (comp, btn) {
+        _sharedCompFilter = comp;
+        _calCompFilter = comp; // Keep calendar in sync
+
+        // Sync calendar tab filter buttons
+        document.querySelectorAll('.cal-comp-btn').forEach(b => b.classList.remove('active'));
+        document.querySelector(`.cal-comp-btn[data-comp="${comp}"]`)?.classList.add('active');
+
+        // Sync "Próximos" tab filter buttons
+        document.querySelectorAll('.comp-legend-item').forEach(b => b.classList.remove('active'));
+        if (btn) btn.classList.add('active');
+        document.querySelector(`.comp-legend-item[data-comp="${comp}"]`)?.classList.add('active');
+
+        // Apply unified filter to list (clears day filter so all days of new comp show)
+        clearListDayFilter();
+        applyUnifiedListFilter();
+        if (_calView === 'grid') {
+            loadCalendar();
+        } else {
+            renderCalendarListView();
+        }
+    };
+
+    async function renderCalendarListView() {
+        const container = document.getElementById('calendar-list');
+        if (!container) return;
+        if (!_calData) {
+            container.innerHTML = '<div class="empty">Carregue o calendário primeiro</div>';
+            return;
+        }
+        const todayStr = getTodayStr();
+        const todayYear = parseInt(todayStr.split('-')[0]);
+        const todayMonth = parseInt(todayStr.split('-')[1]);
+
+        // Fetch 3 months: prev, current, next for complete list
+        const months = [];
+        const d = new Date(_calYear, _calMonth - 1, 1);
+        for (let i = -1; i <= 1; i++) {
+            const dt = new Date(d.getFullYear(), d.getMonth() + i, 1);
+            months.push({ year: dt.getFullYear(), month: dt.getMonth() + 1 });
+        }
+
+        let allDays = {};
+        for (const m of months) {
+            const data = await api(`calendar_monthly?year=${m.year}&month=${m.month}`);
+            if (data?.days) {
+                for (const [day, matches] of Object.entries(data.days)) {
+                    allDays[`${m.year}-${String(m.month).padStart(2,'0')}-${String(day).padStart(2,'0')}`] = matches;
+                }
+            }
+        }
+
+        // Sort dates
+        const sortedDates = Object.keys(allDays).sort();
+        const statusLabel = {
+            SCHEDULED: 'Agendado', TIMED: 'Agendado',
+            IN_PLAY: '🔴 AO VIVO', FINISHED: 'Finalizado',
+            PAUSED: 'Intervalo', POSTPONED: 'Adiado',
+            SUSPENDED: 'Suspenso', CANCELLED: 'Cancelado',
+        };
+
+        let html = '';
+        let currentMonthKey = null;
+
+        sortedDates.forEach(dateStr => {
+            const [y, m, d] = dateStr.split('-');
+            const monthKey = `${y}-${m}`;
+            const matches = allDays[dateStr] || [];
+
+            // Month header
+            if (monthKey !== currentMonthKey) {
+                currentMonthKey = monthKey;
+                const mi = parseInt(m);
+                html += `<div class="cal-list-month-header">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" style="opacity:0.8"><path d="M4 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2H4zm0 1h8a1 1 0 0 1 1 1v1H3V2a1 1 0 0 1 1-1z"/></svg>
+                    ${MONTHS_PT[mi - 1]} ${y}
+                </div>`;
+            }
+
+            const dt = new Date(dateStr);
+            const weekday = WEEKDAYS_PT[dt.getDay()];
+            const dayNum = parseInt(d);
+
+            // Filter by competition
+            const filteredMatches = matches.filter(m => {
+                if (_calCompFilter === 'all') return true;
+                return m.competition?.code === _calCompFilter;
+            });
+
+            filteredMatches.forEach(m => {
+                const time = new Date(m.utcDate).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: CONFIG.BR_TZ });
+                const isHome = m.homeTeam.id === CONFIG.TEAM_ID;
+                const ourTeam = isHome ? m.homeTeam : m.awayTeam;
+                const oppTeam = isHome ? m.awayTeam : m.homeTeam;
+                const ourScore = isHome ? m.homeScore : m.awayScore;
+                const oppScore = isHome ? m.awayScore : m.homeScore;
+                const compClass = getCompBadgeClass(m.competition?.code);
+                const scoreHtml = m.status === 'FINISHED' && ourScore != null
+                    ? `<span class="cal-match-score">${ourScore}–${oppScore}</span>` : '';
+                const statusText = statusLabel[m.status] || m.status;
+                const isLive = m.status === 'IN_PLAY';
+
+                html += `<div class="cal-list-match">
+                    <div class="cal-list-date">
+                        <div class="cal-list-date-day">${dayNum}</div>
+                        <div class="cal-list-date-weekday">${weekday}</div>
+                    </div>
+                    <div class="cal-list-comp ${compClass}">${escapeHtml(CONFIG.formatComp(m.competition))}</div>
+                    <div class="cal-list-info">
+                        <div class="cal-list-teams">
+                            <img src="${CONFIG.getCrest(ourTeam)}" alt="">${escapeHtml(CONFIG.teamName(ourTeam))}
+                            <span style="color:var(--text-muted)">×</span>
+                            ${escapeHtml(CONFIG.teamName(oppTeam))}<img src="${CONFIG.getCrest(oppTeam)}" alt="">
+                            ${scoreHtml}
+                        </div>
+                    </div>
+                    <div class="cal-list-time">${time}</div>
+                    <div class="cal-match-status ${isLive ? 'live' : ''}">${statusText}</div>
+                </div>`;
+            });
+        });
+
+        if (!html) {
+            html = '<div class="empty">Nenhum jogo encontrado</div>';
+        }
+        container.innerHTML = html;
+    }
+
+    // Nav buttons
+    document.getElementById('cal-prev')?.addEventListener('click', () => {
+        _calMonth--;
+        if (_calMonth < 1) { _calMonth = 12; _calYear--; }
+        _calSelectedDay = null;
+        document.getElementById('calendar-expanded').innerHTML = '';
+        loadCalendar();
+    });
+    document.getElementById('cal-next')?.addEventListener('click', () => {
+        _calMonth++;
+        if (_calMonth > 12) { _calMonth = 1; _calYear++; }
+        _calSelectedDay = null;
+        document.getElementById('calendar-expanded').innerHTML = '';
+        loadCalendar();
+    });
+
     window.downloadCalendar = async function () {
         try {
             const res = await fetch('/api/calendar.ics');
@@ -718,5 +1299,6 @@
         loadTeamStats();
         loadNews();
         loadPrediction();
+        loadMiniStrip(); // Load mini calendar strip for default "Próximos" tab
     });
 })();

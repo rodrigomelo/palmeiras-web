@@ -55,16 +55,39 @@
             <button class="tab-btn" data-tab="estatisticas">📊 Estatísticas da Temporada</button>
             <button class="tab-btn" data-tab="news">📰 Notícias</button>
             <button class="tab-btn" data-tab="palpites">🎯 Palpites</button>
+            <!-- <button class="tab-btn" data-tab="calendario">📅 Calendário</button> REMOVED - calendar accessible via mini strip -->
         </div>
 
         <div id="proximos" class="tab-content active">
             <div class="card">
                 <div class="card-title">📅 Próximos Jogos <button onclick="loadMatches()" style="float:right;background:none;border:none;cursor:pointer">🔄</button></div>
-                <div class="comp-filters">
-                    <button class="comp-filter active" data-comp="all" onclick="filterMatches('all',this)">Todos</button>
-                    <button class="comp-filter" data-comp="BSA" onclick="filterMatches('BSA',this)">🇧🇷 Brasileirão</button>
-                    <button class="comp-filter" data-comp="CLI" onclick="filterMatches('CLI',this)">🏆 Libertadores</button>
-                    <button class="comp-filter" data-comp="COPA" onclick="filterMatches('COPA',this)">🥇 Copa do Brasil</button>
+                <!-- Mini Calendar Strip -->
+                <div class="mini-calendar-strip" id="mini-calendar-strip">
+                    <div class="mini-strip-nav">
+                        <button class="mini-strip-btn" id="mini-strip-prev">‹</button>
+                        <span id="mini-strip-month-label"></span>
+                        <button class="mini-strip-btn" id="mini-strip-next">›</button>
+                    </div>
+                    <div class="mini-strip-grid" id="mini-strip-grid"></div>
+                </div>
+                <!-- Competition Legend -->
+                <div class="comp-legend" id="comp-legend">
+                    <div class="comp-legend-item active" data-comp="all" onclick="filterSharedComp('all',this)">
+                        <span class="comp-legend-dot" style="background:#006B3F"></span>
+                        <span class="comp-legend-label">Todos</span>
+                    </div>
+                    <div class="comp-legend-item" data-comp="BSA" onclick="filterSharedComp('BSA',this)">
+                        <span class="comp-legend-dot" style="background:#006B3F"></span>
+                        <span class="comp-legend-label">🇧🇷 Brasileirão</span>
+                    </div>
+                    <div class="comp-legend-item" data-comp="CLI" onclick="filterSharedComp('CLI',this)">
+                        <span class="comp-legend-dot" style="background:#DAA520"></span>
+                        <span class="comp-legend-label">🏆 Libertadores</span>
+                    </div>
+                    <div class="comp-legend-item" data-comp="COPA" onclick="filterSharedComp('COPA',this)">
+                        <span class="comp-legend-dot" style="background:#1E88E5"></span>
+                        <span class="comp-legend-label">🥇 Copa do Brasil</span>
+                    </div>
                 </div>
                 <div id="next-matches"><div class="empty">Carregando...</div></div>
             </div>
@@ -85,6 +108,38 @@
         <div id="estatisticas" class="tab-content"><div class="card"><div class="card-title">📊 Estatísticas da Temporada</div><div id="team-stats"><div class="empty">Carregando...</div></div></div></div>
         <div id="news" class="tab-content"><div class="card"><div class="card-title">📰 Notícias Recentes</div><div id="news-list"><div class="empty">Carregando...</div></div></div></div>
         <div id="palpites" class="tab-content"><div class="card"><div class="card-title">🎯 Palpite do Próximo Jogo</div><div id="prediction"><div class="empty">Carregando...</div></div></div></div>
+        <div id="calendario" class="tab-content"><div class="card">
+            <div class="cal-header">
+                <div class="cal-title">📅 Calendário de Jogos</div>
+                <div class="cal-view-switcher">
+                    <button class="view-btn active" data-view="grid" onclick="switchCalView('grid',this)">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+                        Grade
+                    </button>
+                    <button class="view-btn" data-view="list" onclick="switchCalView('list',this)">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="2" width="14" height="2" rx="1"/><rect x="1" y="7" width="14" height="2" rx="1"/><rect x="1" y="12" width="14" height="2" rx="1"/></svg>
+                        Lista
+                    </button>
+                </div>
+            </div>
+            <div id="calendar-nav" class="calendar-nav"><button class="cal-nav-btn" id="cal-prev">‹</button><span id="cal-month-label"></span><button class="cal-nav-btn" id="cal-next">›</button></div>
+            <!-- Competition filter for calendar -->
+            <div class="cal-comp-filters" id="cal-comp-filters">
+                <button class="cal-comp-btn active" data-comp="all" onclick="filterCalendarComp('all',this)">Todos</button>
+                <button class="cal-comp-btn" data-comp="BSA" onclick="filterCalendarComp('BSA',this)">
+                    <span class="cal-comp-dot" style="background:#006B3F"></span> Brasileirão
+                </button>
+                <button class="cal-comp-btn" data-comp="CLI" onclick="filterCalendarComp('CLI',this)">
+                    <span class="cal-comp-dot" style="background:#DAA520"></span> Libertadores
+                </button>
+                <button class="cal-comp-btn" data-comp="COPA" onclick="filterCalendarComp('COPA',this)">
+                    <span class="cal-comp-dot" style="background:#1E88E5"></span> Copa do Brasil
+                </button>
+            </div>
+            <div id="calendar-grid" class="cal-view-content active"></div>
+            <div id="calendar-list" class="cal-view-content"></div>
+            <div id="calendar-expanded"></div>
+        </div></div>
     </main>
 
     <footer class="footer">
