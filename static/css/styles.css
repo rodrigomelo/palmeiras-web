@@ -513,12 +513,12 @@ body.dark .theme-toggle {
 }
 .cal-day.today .cal-day-num { color: var(--brand); font-weight: 800; }
 .cal-day.selected {
-    background: var(--brand);
+    background: rgba(0, 107, 63, 0.1);
     border-color: var(--brand);
-    box-shadow: 0 4px 16px rgba(0,107,63,0.35);
+    box-shadow: 0 2px 8px rgba(0, 107, 63, 0.15);
 }
-.cal-day.selected .cal-day-num { color: white; }
-.cal-day.selected .cal-dots .cal-dot { background: rgba(255,255,255,0.9) !important; }
+.cal-day.selected .cal-day-num { color: var(--brand); font-weight: 700; }
+.cal-day.selected .cal-dots .cal-dot { opacity: 0.9; }
 .cal-day-num {
     font-size: 0.82rem;
     font-weight: 600;
@@ -974,10 +974,10 @@ body.dark .theme-toggle {
     transform: translateY(-1px);
 }
 .cal-comp-btn.active {
-    background: var(--brand);
-    color: white;
+    background: rgba(0, 107, 63, 0.1);
+    color: var(--brand);
     border-color: var(--brand);
-    box-shadow: 0 2px 8px rgba(0,107,63,0.25);
+    box-shadow: 0 1px 4px rgba(0,107,63,0.1);
 }
 .cal-comp-dot {
     width: 8px;
