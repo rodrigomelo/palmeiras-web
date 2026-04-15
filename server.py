@@ -12,7 +12,7 @@ import json
 import os
 import sys
 from datetime import datetime, timezone, timedelta
-from http.server import HTTPServer, SimpleHTTPRequestHandler
+from http.server import HTTPServer, SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse, parse_qs
 
@@ -62,7 +62,7 @@ def parse_json(val):
 
 def api_matches(params):
     status = params.get('status', [None])[0]
-    limit = int(params.get('limit', ['50'])[0])
+    limit = min(int(params.get('limit', ['50'])[0]), 100)
     from_date = params.get('from_date', [None])[0]
 
     client = get_client()
@@ -112,7 +112,8 @@ def api_matches(params):
             })
         return 200, {'matches': transformed}
     except Exception as e:
-        return 500, {'matches': [], 'error': str(e)}
+        print(f"[api_matches] error: {e}", file=sys.stderr)
+        return 500, {'matches': [], 'error': 'Erro interno do servidor'}
 
 
 def api_standings(params):
@@ -144,11 +145,12 @@ def api_standings(params):
             })
         return 200, {'standings': transformed}
     except Exception as e:
-        return 500, {'standings': [], 'error': str(e)}
+        print(f"[api_standings] error: {e}", file=sys.stderr)
+        return 500, {'standings': [], 'error': 'Erro interno do servidor'}
 
 
 def api_news(params):
-    limit = int(params.get('limit', ['10'])[0])
+    limit = min(int(params.get('limit', ['10'])[0]), 100)
 
     client = get_client()
     if not client:
@@ -158,7 +160,8 @@ def api_news(params):
         result = client.table('news').select('*').order('collected_at', desc=True).limit(limit).execute()
         return 200, {'news': result.data}
     except Exception as e:
-        return 500, {'news': [], 'error': str(e)}
+        print(f"[api_news] error: {e}", file=sys.stderr)
+        return 500, {'news': [], 'error': 'Erro interno do servidor'}
 
 
 def api_calendar_monthly(params):
@@ -183,7 +186,6 @@ def api_calendar_monthly(params):
         return 503, {'error': 'not_connected'}
 
     try:
-        import re
         BR_TZ = timezone(timedelta(hours=-3))
         start_dt = datetime(year, month, 1, 0, 0, 0, tzinfo=BR_TZ)
         if month == 12:
@@ -197,6 +199,8 @@ def api_calendar_monthly(params):
         # Use raw URL with gte/lt filters via Supabase REST directly
         import urllib.request
         import urllib.parse
+        # WARNING: Using service role key as Bearer — this bypasses RLS.
+        # TODO: Implement proper RLS policies and use anon key + user JWT instead.
         headers = {
             'apikey': SUPABASE_KEY,
             'Authorization': f'Bearer {SUPABASE_KEY}',
@@ -246,7 +250,8 @@ def api_calendar_monthly(params):
 
         return 200, {'year': year, 'month': month, 'days': days}
     except Exception as e:
-        return 500, {'error': str(e)}
+        print(f"[api_calendar_monthly] error: {e}", file=sys.stderr)
+        return 500, {'error': 'Erro interno do servidor'}
 
 
 def api_calendar(params):
@@ -256,7 +261,9 @@ def api_calendar(params):
 
     try:
         BR_TZ = timezone(timedelta(hours=-3))
-        result = client.table('matches').select('*').execute()
+        # NOTE: No request timeout on Supabase calls — sync client doesn't support it.
+        # Consider switching to async client with httpx for timeout control.
+        result = client.table('matches').select('*').limit(200).execute()
         matches = sorted(result.data, key=lambda x: x.get('utc_date', ''), reverse=True)[:150]
 
         lines = [
@@ -339,7 +346,8 @@ def api_calendar(params):
         lines.append("END:VCALENDAR")
         return 200, '\r\n'.join(lines), 'text/calendar; charset=utf-8'
     except Exception as e:
-        return 500, f'Error: {e}', 'text/plain'
+        print(f"[api_calendar] error: {e}", file=sys.stderr)
+        return 500, 'Erro interno do servidor', 'text/plain'
 
 
 def api_health(params):
@@ -396,6 +404,15 @@ class Handler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(DIRECTORY), **kwargs)
 
+    def _send_security_headers(self):
+        self.send_header('X-Content-Type-Options', 'nosniff')
+        self.send_header('X-Frame-Options', 'DENY')
+        self.send_header('Content-Security-Policy',
+                         "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+                         "img-src 'self' https: data:; style-src 'self' 'unsafe-inline'; "
+                         "connect-src 'self' https://*.supabase.co")
+        self.send_header('Referrer-Policy', 'strict-origin-when-cross-origin')
+
     def do_GET(self):
         parsed = urlparse(self.path)
         path = parsed.path
@@ -415,7 +432,12 @@ class Handler(SimpleHTTPRequestHandler):
 
                 self.send_response(status)
                 self.send_header('Content-Type', content_type)
-                self.send_header('Access-Control-Allow-Origin', '*')
+                # Restrict CORS to known origins
+                origin = self.headers.get('Origin', '')
+                allowed = ['http://localhost:5001', 'http://localhost:3000', 'https://palmeiras-web.vercel.app']
+                if origin in allowed:
+                    self.send_header('Access-Control-Allow-Origin', origin)
+                self._send_security_headers()
                 self.end_headers()
                 if isinstance(data, str):
                     self.wfile.write(data.encode())
@@ -430,6 +452,10 @@ class Handler(SimpleHTTPRequestHandler):
 
     def log_message(self, format, *args):
         sys.stderr.write(f"[{self.log_date_time_string()}] {format % args}\n")
+
+
+class PalmeirasHTTPServer(ThreadingHTTPServer):
+    allow_reuse_address = True
 
 
 if __name__ == '__main__':
@@ -452,8 +478,7 @@ if __name__ == '__main__':
     print(f"  API routes: {', '.join(API_ROUTES.keys())}")
     print(f"  Press Ctrl+C to stop")
 
-    server = HTTPServer(('0.0.0.0', PORT), Handler)
-    server.allow_reuse_address = True
+    server = PalmeirasHTTPServer(('0.0.0.0', PORT), Handler)
     try:
         server.serve_forever()
     except KeyboardInterrupt:

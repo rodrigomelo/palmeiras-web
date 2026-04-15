@@ -4,18 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Palmeiras Agenda</title>
+    <meta name="description" content="Palmeiras Agenda — Jogos, placares e próximos desafios do Verdão">
+    <meta name="theme-color" content="#006437">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lucide-static@latest/font/lucide.min.css">
     <link rel="icon" type="image/png" href="/static/favicon.png">
     <link rel="stylesheet" href="/static/css/styles.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
     <button class="theme-toggle" id="themeToggle" title="Alternar tema" aria-label="Alternar tema claro/escuro" onclick="toggleTheme()">🌙</button>
     <header class="header">
         <div class="header-content">
             <div class="logo">
-                <svg viewBox="0 0 100 100" width="60" height="60">
+                <svg viewBox="0 0 100 100" width="60" height="60" role="img" aria-label="Escudo do Palmeiras">
                     <circle cx="50" cy="50" r="48" fill="#006B3F"/>
                     <circle cx="50" cy="50" r="42" fill="white"/>
                     <circle cx="50" cy="50" r="38" fill="#006B3F"/>
@@ -34,7 +36,7 @@
 
     <main class="container">
         <!-- Hero -->
-        <div class="hero-card" id="hero-match" onclick="document.getElementById('hero-match').classList.toggle('flipped')">
+        <div class="hero-card" id="hero-match" onclick="document.getElementById('hero-match').classList.toggle('flipped')" role="button" tabindex="0" onkeydown="if(event.key==='Enter')this.classList.toggle('flipped')">
             <div class="hero-card-inner">
                 <div class="hero-card-front" id="hero-front"><div class="empty" style="color:white">Carregando...</div></div>
                 <div class="hero-card-back" id="hero-back"><div style="padding-top:1rem"><h3>Detalhes</h3><p>Carregando...</p></div></div>
@@ -48,17 +50,17 @@
         </div>
 
         <!-- Tabs -->
-        <div class="tabs">
-            <button class="tab-btn active" data-tab="proximos">📅 Próximos</button>
-            <button class="tab-btn" data-tab="resultados">🏆 Resultados</button>
-            <button class="tab-btn" data-tab="classificacao">📊 Tabela</button>
-            <button class="tab-btn" data-tab="estatisticas">📊 Estatísticas da Temporada</button>
-            <button class="tab-btn" data-tab="news">📰 Notícias</button>
-            <button class="tab-btn" data-tab="palpites">🎯 Palpites</button>
+        <div class="tabs" role="tablist">
+            <button class="tab-btn active" data-tab="proximos" role="tab" aria-selected="true" aria-controls="proximos" id="tab-proximos">📅 Próximos</button>
+            <button class="tab-btn" data-tab="resultados" role="tab" aria-selected="false" aria-controls="resultados" id="tab-resultados">🏆 Resultados</button>
+            <button class="tab-btn" data-tab="classificacao" role="tab" aria-selected="false" aria-controls="classificacao" id="tab-classificacao">📊 Tabela</button>
+            <button class="tab-btn" data-tab="estatisticas" role="tab" aria-selected="false" aria-controls="estatisticas" id="tab-estatisticas">📊 Estatísticas da Temporada</button>
+            <button class="tab-btn" data-tab="news" role="tab" aria-selected="false" aria-controls="news" id="tab-news">📰 Notícias</button>
+            <button class="tab-btn" data-tab="palpites" role="tab" aria-selected="false" aria-controls="palpites" id="tab-palpites">🎯 Palpites</button>
             <!-- <button class="tab-btn" data-tab="calendario">📅 Calendário</button> REMOVED - calendar accessible via mini strip -->
         </div>
 
-        <div id="proximos" class="tab-content active">
+        <div id="proximos" class="tab-content active" role="tabpanel" aria-labelledby="tab-proximos">
             <div class="card">
                 <div class="card-title">📅 Próximos Jogos <button onclick="loadMatches()" style="float:right;background:none;border:none;cursor:pointer">🔄</button></div>
                 <!-- Mini Calendar Strip -->
@@ -98,7 +100,7 @@
                 <div id="next-matches"><div class="empty">Carregando...</div></div>
             </div>
         </div>
-        <div id="resultados" class="tab-content">
+        <div id="resultados" class="tab-content" role="tabpanel" aria-labelledby="tab-resultados">
             <div class="card">
                 <div class="card-title">🏆 Resultados <button onclick="loadResults()" style="float:right;background:none;border:none;cursor:pointer">🔄</button></div>
                 <div class="comp-filters">
@@ -110,10 +112,10 @@
                 <div id="recent-results"><div class="empty">Carregando...</div></div>
             </div>
         </div>
-        <div id="classificacao" class="tab-content"><div class="card"><div class="card-title">📊 Classificação - Brasileirão <button onclick="loadStandings()" style="float:right;background:none;border:none;cursor:pointer">🔄</button></div><div id="standings"><div class="empty">Carregando...</div></div></div></div>
-        <div id="estatisticas" class="tab-content"><div class="card"><div class="card-title">📊 Estatísticas da Temporada</div><div id="team-stats"><div class="empty">Carregando...</div></div></div></div>
-        <div id="news" class="tab-content"><div class="card"><div class="card-title">📰 Notícias Recentes</div><div id="news-list"><div class="empty">Carregando...</div></div></div></div>
-        <div id="palpites" class="tab-content"><div class="card"><div class="card-title">🎯 Palpite do Próximo Jogo</div><div id="prediction"><div class="empty">Carregando...</div></div></div></div>
+        <div id="classificacao" class="tab-content" role="tabpanel" aria-labelledby="tab-classificacao"><div class="card"><div class="card-title">📊 Classificação - Brasileirão <button onclick="loadStandings()" style="float:right;background:none;border:none;cursor:pointer">🔄</button></div><div id="standings"><div class="empty">Carregando...</div></div></div></div>
+        <div id="estatisticas" class="tab-content" role="tabpanel" aria-labelledby="tab-estatisticas"><div class="card"><div class="card-title">📊 Estatísticas da Temporada</div><div id="team-stats"><div class="empty">Carregando...</div></div></div></div>
+        <div id="news" class="tab-content" role="tabpanel" aria-labelledby="tab-news"><div class="card"><div class="card-title">📰 Notícias Recentes</div><div id="news-list"><div class="empty">Carregando...</div></div></div></div>
+        <div id="palpites" class="tab-content" role="tabpanel" aria-labelledby="tab-palpites"><div class="card"><div class="card-title">🎯 Palpite do Próximo Jogo</div><div id="prediction"><div class="empty">Carregando...</div></div></div></div>
         <div id="calendario" class="tab-content"><div class="card">
             <div class="cal-header">
                 <div class="cal-title">📅 Calendário de Jogos <select id="cal-year-select" style="margin-left:0.5rem;font-size:0.85rem;padding:0.2rem 0.4rem;border-radius:6px;border:1px solid rgba(0,0,0,0.15);background:var(--bg-card);color:var(--text);cursor:pointer" onchange="changeCalYear(this.value)"></select></div>
@@ -147,6 +149,8 @@
             <div id="calendar-expanded"></div>
         </div></div>
     </main>
+
+    <noscript><p style="text-align:center;padding:2rem;color:#666">JavaScript é necessário para exibir os dados do Palmeiras Agenda.</p></noscript>
 
     <footer class="footer">
         <p>📡 Fontes: football-data.org | ge.globo | lance.com.br | wikipedia.org | palmeiras.com.br | API-Football</p>

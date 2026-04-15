@@ -41,6 +41,7 @@ body.dark {
     --text-muted: var(--text-muted-dark);
     --shadow: var(--shadow-dark-mode);
     --brand-light: var(--brand-light-dark);
+    background: linear-gradient(135deg, #1A1A2E 0%, #16213E 100%);
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -52,10 +53,6 @@ body {
     min-height: 100vh;
     padding-bottom: 2rem;
     transition: background 0.3s ease, color 0.3s ease;
-}
-
-body.dark {
-    background: linear-gradient(135deg, #1A1A2E 0%, #16213E 100%);
 }
 
 /* Theme toggle */
@@ -734,6 +731,23 @@ body.dark .cal-nav-btn:hover {
     color: rgba(255,255,255,0.8);
     background: rgba(255,255,255,0.08);
 }
+/* Missing dark mode overrides */
+body.dark .comp-legend {
+    border-color: rgba(255,255,255,0.1);
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.2);
+}
+body.dark .cal-comp-filters {
+    border-color: rgba(255,255,255,0.1);
+}
+body.dark .cal-comp-btn {
+    border-color: rgba(255,255,255,0.1);
+}
+body.dark .cal-view-switcher {
+    border-color: rgba(255,255,255,0.15);
+}
+body.dark .cal-list-match:hover {
+    background: rgba(255,255,255,0.04);
+}
 
 /* ================================================
    MINI CALENDAR STRIP — Quick Navigation
@@ -907,20 +921,6 @@ body.dark .cal-nav-btn:hover {
 .comp-legend-item.active .comp-legend-label {
     color: rgba(255,255,255,0.95);
 }
-/* Competition badge pills in legend */
-.comp-legend-badge {
-    padding: 0.1rem 0.35rem;
-    border-radius: 4px;
-    font-size: 0.6rem;
-    font-weight: 800;
-    color: white;
-    letter-spacing: 0.03em;
-    text-transform: uppercase;
-}
-.comp-legend-badge.bsa { background: var(--comp-bsa); }
-.comp-legend-badge.cli { background: var(--comp-cli); }
-.comp-legend-badge.copa { background: var(--comp-copa); }
-.comp-legend-badge.other { background: var(--comp-other); }
 
 /* ================================================
    DAY FILTER CHIP (calendar day selection)
@@ -1039,6 +1039,8 @@ body.dark .cal-nav-btn:hover {
 .skeleton { background: linear-gradient(90deg, var(--bg) 25%, #e0e0e0 50%, var(--bg) 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 4px; }
 .skeleton-card { padding: 1rem; background: var(--bg); border-radius: 8px; margin-bottom: 0.75rem; }
 .skeleton-line { height: 16px; background: linear-gradient(90deg, var(--bg) 25%, #e0e0e0 50%, var(--bg) 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 4px; margin-bottom: 8px; }
+body.dark .skeleton,
+body.dark .skeleton-line { background: linear-gradient(90deg, var(--bg) 25%, rgba(255,255,255,0.08) 50%, var(--bg) 75%); background-size: 200% 100%; }
 .skeleton-line.short { width: 40%; }
 .skeleton-line.medium { width: 70%; }
 
@@ -1180,5 +1182,23 @@ body.dark .cal-nav-btn:hover {
     .cal-list-month-header {
         padding: 0.5rem 0.6rem;
         font-size: 0.85rem;
+    }
+}
+
+/* Focus-visible styles */
+:focus-visible {
+    outline: 2px solid #006437;
+    outline-offset: 2px;
+}
+body.dark :focus-visible {
+    outline-color: #4ade80;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
     }
 }

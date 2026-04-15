@@ -28,10 +28,8 @@
 
     // --- Helpers ---
     function escapeHtml(str) {
-        if (!str) return '';
-        const div = document.createElement('div');
-        div.textContent = String(str);
-        return div.innerHTML;
+        if (str == null) return '';
+        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
 
     function formatDate(d) {
@@ -340,8 +338,8 @@
         }
         document.getElementById('recent-results').innerHTML = filtered.map(m => {
             const isHome = m.homeTeam.id === TEAM_ID;
-            const our = isHome ? m.score.fullTime.home : m.score.fullTime.away;
-            const opp = isHome ? m.score.fullTime.away : m.score.fullTime.home;
+            const our = isHome ? (m.score?.fullTime?.home ?? 0) : (m.score?.fullTime?.away ?? 0);
+            const opp = isHome ? (m.score?.fullTime?.away ?? 0) : (m.score?.fullTime?.home ?? 0);
             const oppName = isHome ? CONFIG.teamName(m.awayTeam) : CONFIG.teamName(m.homeTeam);
             const r = our > opp ? 'V' : our < opp ? 'D' : 'E';
             const resultClass = r === 'V' ? 'win' : r === 'D' ? 'loss' : 'draw';
@@ -660,8 +658,8 @@
         let w = 0, d = 0, l = 0, gf = 0, ga = 0;
         matches.forEach(m => {
             const isHome = m.homeTeam.id === TEAM_ID;
-            const f = isHome ? m.score.fullTime.home : m.score.fullTime.away;
-            const a = isHome ? m.score.fullTime.away : m.score.fullTime.home;
+            const f = isHome ? (m.score?.fullTime?.home ?? 0) : (m.score?.fullTime?.away ?? 0);
+            const a = isHome ? (m.score?.fullTime?.away ?? 0) : (m.score?.fullTime?.home ?? 0);
             gf += f; ga += a;
             if (f > a) w++; else if (f < a) l++; else d++;
         });
@@ -691,14 +689,19 @@
         document.getElementById('news-list').innerHTML = items.slice(0, 12).map(n => {
             const source = n.source || 'ge.globo';
             const icon = sourceIcons[source] || '📰';
-            const safeUrl = escapeHtml(n.url || '#');
             const safeTitle = escapeHtml(n.title);
             const safeSource = escapeHtml(source);
-            return `<div class="news-item" onclick="window.open('${safeUrl}','_blank')" role="link" tabindex="0">
+            return `<div class="news-item" data-href="${escapeHtml(n.url || '#')}" role="link" tabindex="0">
                 <div class="news-title">${safeTitle}</div>
                 <div class="news-meta">${icon} <span class="news-source">${safeSource}</span></div>
             </div>`;
         }).join('');
+
+        // Delegated click handler for news items
+        document.getElementById('news-list').addEventListener('click', function (e) {
+            const item = e.target.closest('.news-item[data-href]');
+            if (item) window.open(item.dataset.href, '_blank');
+        });
     }
 
     // --- Prediction ---
@@ -731,8 +734,19 @@
         COPADO_BRASIL: 'copa',
     };
 
+    const STATUS_LABEL = {
+        SCHEDULED: 'Agendado',
+        TIMED: 'Agendado',
+        IN_PLAY: '🔴 AO VIVO',
+        FINISHED: 'Finalizado',
+        PAUSED: 'Intervalo',
+        POSTPONED: 'Adiado',
+        SUSPENDED: 'Suspenso',
+        CANCELLED: 'Cancelado',
+    };
+
     function getDotClass(code) {
-        return COMP_DOT_CLASS[code] || 'other';
+        return getCompBadgeClass(code);
     }
 
     function getCompBadgeClass(code) {
@@ -748,14 +762,10 @@
     let _calSelectedDay = null;
     let _calendarLoaded = false;
 
-    function getToday() {
-        return new Date().toLocaleDateString('en-CA', { timeZone: CONFIG.BR_TZ });
-    }
-
     async function loadCalendar() {
         if (!document.getElementById('calendar-grid')) return;
 
-        const todayStr = getToday();
+        const todayStr = getTodayStr();
         const todayYear = parseInt(todayStr.split('-')[0]);
         const todayMonth = parseInt(todayStr.split('-')[1]);
 
@@ -872,17 +882,6 @@
             return;
         }
 
-        const statusLabel = {
-            SCHEDULED: 'Agendado',
-            TIMED: 'Agendado',
-            IN_PLAY: '🔴 AO VIVO',
-            FINISHED: 'Finalizado',
-            PAUSED: 'Intervalo',
-            POSTPONED: 'Adiado',
-            SUSPENDED: 'Suspenso',
-            CANCELLED: 'Cancelado',
-        };
-
         container.innerHTML = `<div class="cal-expanded">
             <div class="cal-expanded-header">
                 <span class="cal-expanded-date">${dayStr.split('-').reverse().join('/')}</span>
@@ -902,7 +901,7 @@
                     ? `<span style="margin-left:0.5rem;font-weight:700;font-size:0.9rem">${ourScore}–${oppScore}</span>`
                     : '';
 
-                const statusText = statusLabel[m.status] || m.status;
+                const statusText = STATUS_LABEL[m.status] || m.status;
                 const compClass = getCompBadgeClass(m.competition?.code);
 
                 return `<div class="cal-match">
@@ -930,12 +929,16 @@
     let _miniStripMonth = null;
     let _miniStripData = null;
     let _miniStripSelectedDay = null;
+    let _miniStripLoading = false;
 
     function getTodayStr() {
         return new Date().toLocaleDateString('en-CA', { timeZone: CONFIG.BR_TZ });
     }
 
     async function loadMiniStrip() {
+        if (_miniStripLoading) return;
+        _miniStripLoading = true;
+        try {
         const todayStr = getTodayStr();
         const todayYear = parseInt(todayStr.split('-')[0]);
         const todayMonth = parseInt(todayStr.split('-')[1]);
@@ -1006,6 +1009,7 @@
                 selectMiniStripDay(dayStr);
             });
         });
+        } finally { _miniStripLoading = false; }
     }
 
     function selectMiniStripDay(dayStr) {
@@ -1027,7 +1031,8 @@
         _listDayFilter = null;
         _miniStripSelectedDay = null;
         document.querySelectorAll('.mini-strip-day').forEach(d => d.classList.remove('selected'));
-        document.getElementById('day-filter-chip').style.display = 'none';
+        const chip = document.getElementById('day-filter-chip');
+        if (chip) chip.style.display = 'none';
         applyUnifiedListFilter();
     };
 
@@ -1047,24 +1052,25 @@
         // --- Day Filter Chip management ---
         const chip = document.getElementById('day-filter-chip');
         const chipText = document.getElementById('day-filter-text');
-        if (_listDayFilter) {
+        if (_listDayFilter && chip && chipText) {
             const [y, m, d] = _listDayFilter.split('-');
-            const BR_DAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-            const date = new Date(parseInt(y), parseInt(m) - 1, parseInt(d));
-            const dayName = BR_DAYS[date.getDay()];
+            const dateStr = new Date(`${y}-${m}-${d}T12:00:00`).toLocaleDateString('pt-BR', { weekday: 'short', timeZone: BR_TZ });
+            const dayName = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
             const compLabels = { BSA: '🇧🇷 Brasileirão', CLI: '🏆 Libertadores', COPA: '🥇 Copa do Brasil' };
             const compPart = _sharedCompFilter !== 'all' ? ` · ${compLabels[_sharedCompFilter] || _sharedCompFilter}` : '';
             chipText.textContent = `${dayName}, ${d}/${m}${compPart}`;
             chip.style.display = 'flex';
-        } else {
+        } else if (chip) {
             chip.style.display = 'none';
         }
 
         if (_listDayFilter) {
-            // Use _calData if available (has ALL games for the month, including past with scores)
-            // Otherwise fall back to _allMatches
+            // Use _miniStripData (same month as the strip) if available,
+            // otherwise fall back to _calData, then _allMatches
             let sourceMatches = [];
-            if (_calData && _calData.days?.[_listDayFilter]) {
+            if (_miniStripData && _miniStripData.days?.[_listDayFilter]) {
+                sourceMatches = _miniStripData.days[_listDayFilter];
+            } else if (_calData && _calData.days?.[_listDayFilter]) {
                 sourceMatches = _calData.days[_listDayFilter];
             } else {
                 sourceMatches = _allMatches.filter(m => {
@@ -1191,22 +1197,15 @@
         }
 
         let allDays = {};
-        for (const m of months) {
-            const data = await api(`calendar_monthly?year=${m.year}&month=${m.month}`);
-            if (data?.days) {
-                // API already returns days keyed by YYYY-MM-DD — merge as-is
-                Object.assign(allDays, data.days);
-            }
-        }
+        const results = await Promise.all(months.map(m =>
+            api(`calendar_monthly?year=${m.year}&month=${m.month}`)
+        ));
+        results.forEach(data => {
+            if (data?.days) Object.assign(allDays, data.days);
+        });
 
         // Sort dates
         const sortedDates = Object.keys(allDays).sort();
-        const statusLabel = {
-            SCHEDULED: 'Agendado', TIMED: 'Agendado',
-            IN_PLAY: '🔴 AO VIVO', FINISHED: 'Finalizado',
-            PAUSED: 'Intervalo', POSTPONED: 'Adiado',
-            SUSPENDED: 'Suspenso', CANCELLED: 'Cancelado',
-        };
 
         let html = '';
         let currentMonthKey = null;
@@ -1246,7 +1245,7 @@
                 const compClass = getCompBadgeClass(m.competition?.code);
                 const scoreHtml = (m.status === 'FINISHED' || m.status === 'PLAYING_TIME_FINISHED') && ourScore != null
                     ? `<span class="cal-match-score">${ourScore}–${oppScore}</span>` : '';
-                const statusText = statusLabel[m.status] || m.status;
+                const statusText = STATUS_LABEL[m.status] || m.status;
                 const isLive = m.status === 'IN_PLAY';
 
                 html += `<div class="cal-list-match">
