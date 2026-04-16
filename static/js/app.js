@@ -239,7 +239,7 @@
         // Date
         document.getElementById('hero-date-area').innerHTML =
             isLive ? 'JOGANDO AGORA' :
-            `${formatDate(match.utcDate)} · ${formatTime(match.utcDate)}<span class="hero-day">${dayOfWeek}</span>`;
+            `${formatDate(match.utcDate)} · ${formatTime(match.utcDate)} <span class="hero-day">${dayOfWeek}</span>`;
 
         // Detail pills
         const pillStadium = document.getElementById('pill-stadium');
