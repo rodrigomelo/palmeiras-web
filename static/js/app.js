@@ -172,7 +172,7 @@
 
     // --- Live Refresh ---
     function startLiveRefresh() {
-        if (!liveInterval) liveInterval = setInterval(loadHero, 30000);
+        if (!liveInterval) liveInterval = setInterval(loadHero, 15000);
     }
 
     function stopLiveRefresh() {
@@ -181,7 +181,7 @@
 
     // --- Hero ---
     async function loadHero() {
-        const data = await api('matches?status=SCHEDULED,TIMED,IN_PLAY&limit=5');
+        const data = await api('matches?status=SCHEDULED,TIMED,IN_PLAY,PAUSED&limit=5');
         if (!data) {
             document.getElementById('hero-comp-badge').textContent = 'Erro ao carregar';
             return;
@@ -199,7 +199,8 @@
         const comp = CONFIG.formatComp(match.competition);
         const dt = new Date(match.utcDate);
         const dayOfWeek = dt.toLocaleDateString('pt-BR', { weekday: 'long', timeZone: BR_TZ });
-        const isLive = match.status === 'IN_PLAY';
+        const isLive = match.status === 'IN_PLAY' || match.status === 'PAUSED';
+        const isPaused = match.status === 'PAUSED';
         const score = match.score?.fullTime || {};
         const ht = match.score?.halfTime || {};
         const venue = CONFIG.getVenue(match);
@@ -209,7 +210,9 @@
         heroCard?.classList.toggle('live', isLive);
 
         // Competition badge
-        const liveBadge = isLive ? '<span class="live-dot"></span> AO VIVO · ' : '';
+        const liveBadge = isLive
+            ? `<span class="live-dot"></span> ${isPaused ? 'INTERVALO' : 'AO VIVO'} · `
+            : '';
         document.getElementById('hero-comp-badge').innerHTML = liveBadge + escapeHtml(comp);
 
         // Home team
@@ -228,9 +231,10 @@
         const scoreArea = document.getElementById('hero-score-area');
         if (isLive) {
             const minute = estimateMinute(match.utcDate);
+            const minuteLabel = isPaused ? 'Intervalo' : minute;
             scoreArea.innerHTML = `
-                <div class="hero-score">${score.home ?? 0} × ${score.away ?? 0}</div>
-                ${minute ? `<div class="hero-minute">${minute}</div>` : ''}
+                <div class="hero-score live-score">${score.home ?? 0} <span class="score-sep">×</span> ${score.away ?? 0}</div>
+                ${minuteLabel ? `<div class="hero-minute">${minuteLabel}</div>` : ''}
                 ${(ht.home != null && ht.away != null) ? `<div class="hero-ht">1º tempo: ${ht.home}–${ht.away}</div>` : ''}`;
         } else {
             scoreArea.innerHTML = '<div class="hero-vs">×</div>';
@@ -238,7 +242,7 @@
 
         // Date
         document.getElementById('hero-date-area').innerHTML =
-            isLive ? 'JOGANDO AGORA' :
+            isLive ? (isPaused ? '⏸️ INTERVALO' : '🔴 JOGANDO AGORA') :
             `${formatDate(match.utcDate)} · ${formatTime(match.utcDate)} <span class="hero-day">${dayOfWeek}</span>`;
 
         // Detail pills
@@ -329,29 +333,31 @@
         const venue = CONFIG.getVenue(m);
         const isFinished = m.status === 'FINISHED';
         const isPast = isFinished || m.status === 'PLAYING_TIME_FINISHED';
+        const isPaused = m.status === 'PAUSED';
+        const isLiveOrPaused = isLive || isPaused;
 
         // Build match-header (status badge + date/time + competition)
         let statusLabel = '';
-        if (isLive) statusLabel = '<span class="live-dot"></span>AO VIVO · ';
+        if (isLiveOrPaused) statusLabel = `<span class="live-dot"></span>${isPaused ? 'INTERVALO' : 'AO VIVO'} · `;
         else if (isPast) statusLabel = '✅ FINALIZADO · ';
         const score = m.score?.fullTime;
         const ht = m.score?.halfTime || {};
         // Show half-time only for live matches, not finished ones
-        const htInfo = (isLive && ht.home != null) ? `<div class="match-extra-row"><span class="icon">⏱️</span> 1º tempo: ${ht.home}–${ht.away}</div>` : '';
+        const htInfo = (isLiveOrPaused && ht.home != null) ? `<div class="match-extra-row"><span class="icon">⏱️</span> 1º tempo: ${ht.home}–${ht.away}</div>` : '';
 
         // Teams row with optional score for finished/live matches
         let teamsHtml;
-        if (isPast && score?.home != null) {
+        if ((isPast || isLiveOrPaused) && score?.home != null) {
             teamsHtml = `<div class="match-teams">
                 <span><img src="${CONFIG.getCrest(m.homeTeam)}" style="width:22px;height:22px;vertical-align:middle;margin-right:4px" alt="">${escapeHtml(CONFIG.teamName(m.homeTeam))}</span>
-                <span class="match-score-badge">${score.home} × ${score.away}</span>
-                <span>${escapeHtml(CONFIG.teamName(m.awayTeam))}<img src="${CONFIG.getCrest(m.awayTeam)}" style="width:22px;height:22px;vertical-align:middle;margin-left:4px" alt=""></span>
+                <span class="match-score-badge${isLiveOrPaused ? ' live' : ''}">${score.home} × ${score.away}</span>
+                <span>${escapeHtml(CONFIG.teamName(m.awayTeam))}<img src="${CONFIG.getCrest(m.awayTeam)}" style="width:22px;height:22px;vertical-align:middle;margin-left:4px" alt="">${isLiveOrPaused ? `<span class="live-minute">${isPaused ? '⏸' : estimateMinute(m.utcDate) || ''}</span>` : ''}</span>
             </div>`;
         } else {
             teamsHtml = `<div class="match-teams">
                 <span><img src="${CONFIG.getCrest(m.homeTeam)}" style="width:22px;height:22px;vertical-align:middle;margin-right:4px" alt="">${escapeHtml(CONFIG.teamName(m.homeTeam))}</span>
                 <span style="color:var(--text-muted)">×</span>
-                <span>${escapeHtml(CONFIG.teamName(m.awayTeam))}<img src="${CONFIG.getCrest(m.awayTeam)}" style="width:22px;height:22px;vertical-align:middle;margin-left:4px" alt=""></span>
+                <span>${escapeHtml(CONFIG.teamName(m.awayTeam))}<img src="${CONFIG.getCrest(m.awayTeam)}" style="width:22px;height:22px;vertical-align:middle;margin-left:4px" alt="">${isLiveOrPaused ? `<span class="live-minute">${isPaused ? '⏸' : estimateMinute(m.utcDate) || ''}</span>` : ''}</span>
             </div>`;
         }
 
@@ -372,7 +378,7 @@
 
     async function loadMatches() {
         showSkeleton('next-matches');
-        const data = await api('matches?status=SCHEDULED,TIMED,IN_PLAY&limit=20');
+        const data = await api('matches?status=SCHEDULED,TIMED,IN_PLAY,PAUSED&limit=20');
         if (!data) { showError('next-matches', 'Erro ao carregar', 'loadMatches'); return; }
         const allMatches = data.matches || [];
         _allMatches = allMatches.slice(1); // Skip first (shown in hero)
@@ -410,7 +416,7 @@
             showEmpty('next-matches', 'Nenhum jogo para esta competição');
             return;
         }
-        document.getElementById('next-matches').innerHTML = filtered.map(m => buildMatchHtml(m, m.status === 'IN_PLAY')).join('');
+        document.getElementById('next-matches').innerHTML = filtered.map(m => buildMatchHtml(m, m.status === 'IN_PLAY' || m.status === 'PAUSED')).join('');
         attachMatchListeners('next-matches');
     }
 

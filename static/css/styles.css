@@ -144,6 +144,7 @@ body.dark .theme-toggle {
 .hero-card.live {
     box-shadow: inset 0 0 0 3px var(--live);
     animation: livePulse 2s ease-in-out infinite;
+    background: linear-gradient(135deg, rgba(255,23,68,0.08) 0%, transparent 50%);
 }
 @keyframes livePulse {
     0%, 100% { box-shadow: inset 0 0 0 3px var(--live); }
@@ -167,6 +168,12 @@ body.dark .theme-toggle {
 .hero-score {
     font-size: 3rem; font-weight: 800; letter-spacing: 0.08em;
     font-variant-numeric: tabular-nums; line-height: 1;
+}
+.hero-score.live-score { animation: scorePulse 3s ease-in-out infinite; }
+.hero-score .score-sep { opacity: 0.5; margin: 0 0.1em; }
+@keyframes scorePulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.85; text-shadow: 0 0 20px rgba(255,255,255,0.3); }
 }
 .hero-minute {
     display: inline-block; background: rgba(255,255,255,0.18);
@@ -428,6 +435,25 @@ body.dark .form-dot.draw { color: rgba(255,255,255,0.6); box-shadow: inset 0 0 0
     font-size: 0.85rem;
     font-weight: 700;
     letter-spacing: 0.02em;
+    white-space: nowrap;
+}
+.match-score-badge.live {
+    background: var(--live);
+    animation: badgePulse 2s ease-in-out infinite;
+}
+@keyframes badgePulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255,23,68,0.4); }
+    50% { box-shadow: 0 0 0 4px rgba(255,23,68,0.15); }
+}
+.live-minute {
+    display: inline-block;
+    background: rgba(255,23,68,0.15);
+    color: var(--live);
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    margin-left: 6px;
     white-space: nowrap;
 }
 .match-extra {
