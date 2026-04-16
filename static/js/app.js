@@ -16,6 +16,31 @@
         COPA: ['COPA', 'COPA_DO_BRASIL'],
     };
 
+    // --- Stage Name Translation (API enums → Portuguese) ---
+    const STAGE_NAMES = {
+        'GROUP_STAGE': 'Fase de Grupos',
+        '5TH_PHASE': '5ª Fase',
+        '4TH_PHASE': '4ª Fase',
+        '3RD_PHASE': '3ª Fase',
+        '2ND_PHASE': '2ª Fase',
+        '1ST_PHASE': '1ª Fase',
+        'QUARTER_FINALS': 'Quartas de Final',
+        'SEMI_FINALS': 'Semifinal',
+        'FINAL': 'Final',
+        'ROUND_OF_16': 'Oitavas de Final',
+        'ROUND_OF_32': '2ª Fase',
+        'PLAYOFF_ROUND': 'Repescagem',
+        'QUALIFYING_ROUND': 'Eliminatória',
+        'PRELIMINARY_ROUND': 'Fase Preliminar',
+        'REGULAR_SEASON': '',
+        'LEAGUE_PHASE': 'Fase de Liga',
+    };
+
+    function formatStage(stage) {
+        if (!stage || stage === 'REGULAR_SEASON') return '';
+        return STAGE_NAMES[stage] || stage;
+    }
+
     function getCompCode(comp) {
         return comp?.code || '';
     }
@@ -137,10 +162,6 @@
                 if (btn.dataset.tab === 'estatisticas' && !performanceChart) {
                     renderPerformanceChart();
                 }
-                if (btn.dataset.tab === 'calendario' && !_calendarLoaded) {
-                    _calendarLoaded = true;
-                    loadCalendar();
-                }
                 // Load mini strip when "Próximos" tab is first shown
                 if (btn.dataset.tab === 'proximos') {
                     loadMiniStrip();
@@ -160,11 +181,19 @@
 
     // --- Hero ---
     async function loadHero() {
-        showSkeleton('hero-front', 'hero');
         const data = await api('matches?status=SCHEDULED,TIMED,IN_PLAY&limit=5');
-        if (!data) { showError('hero-front', 'Erro ao carregar', 'loadHero'); return; }
+        if (!data) {
+            document.getElementById('hero-comp-badge').textContent = 'Erro ao carregar';
+            return;
+        }
         const match = data.matches?.[0];
-        if (!match) { showEmpty('hero-front', 'Nenhum jogo agendado'); return; }
+        if (!match) {
+            document.getElementById('hero-comp-badge').textContent = 'Nenhum jogo agendado';
+            document.getElementById('hero-teams-area').style.display = 'none';
+            document.getElementById('hero-date-area').style.display = 'none';
+            document.getElementById('hero-details').style.display = 'none';
+            return;
+        }
 
         const home = match.homeTeam, away = match.awayTeam;
         const comp = CONFIG.formatComp(match.competition);
@@ -174,52 +203,125 @@
         const score = match.score?.fullTime || {};
         const ht = match.score?.halfTime || {};
         const venue = CONFIG.getVenue(match);
+        const stageLabel = formatStage(match.stage);
 
         const heroCard = document.getElementById('hero-match');
         heroCard?.classList.toggle('live', isLive);
 
-        const liveBadge = isLive ? '<span class="live-dot"></span>AO VIVO' : '';
-        const minute = isLive ? estimateMinute(match.utcDate) : null;
+        // Competition badge
+        const liveBadge = isLive ? '<span class="live-dot"></span> AO VIVO · ' : '';
+        document.getElementById('hero-comp-badge').innerHTML = liveBadge + escapeHtml(comp);
 
-        const infoWatch = document.getElementById('where-watch');
-        const infoStadium = document.getElementById('stadium-info');
-        if (infoWatch) infoWatch.textContent = match.broadcast || 'Rodada ' + (match.matchday || '-');
-        if (infoStadium) infoStadium.textContent = venue;
+        // Home team
+        const homeEl = document.getElementById('hero-home');
+        homeEl.querySelector('img').src = CONFIG.getCrest(home);
+        homeEl.querySelector('img').alt = escapeHtml(CONFIG.teamName(home));
+        homeEl.querySelector('.hero-team-name').textContent = CONFIG.teamName(home);
 
-        let scoreHtml;
+        // Away team
+        const awayEl = document.getElementById('hero-away');
+        awayEl.querySelector('img').src = CONFIG.getCrest(away);
+        awayEl.querySelector('img').alt = escapeHtml(CONFIG.teamName(away));
+        awayEl.querySelector('.hero-team-name').textContent = CONFIG.teamName(away);
+
+        // Score / VS
+        const scoreArea = document.getElementById('hero-score-area');
         if (isLive) {
-            scoreHtml = `<div class="hero-score">${score.home ?? 0} × ${score.away ?? 0}</div>`;
-            if (minute) scoreHtml += `<div class="hero-minute">${minute}</div>`;
+            const minute = estimateMinute(match.utcDate);
+            scoreArea.innerHTML = `
+                <div class="hero-score">${score.home ?? 0} × ${score.away ?? 0}</div>
+                ${minute ? `<div class="hero-minute">${minute}</div>` : ''}
+                ${(ht.home != null && ht.away != null) ? `<div class="hero-ht">1º tempo: ${ht.home}–${ht.away}</div>` : ''}`;
         } else {
-            scoreHtml = `<div class="hero-vs">×</div>`;
+            scoreArea.innerHTML = '<div class="hero-vs">×</div>';
         }
 
-        document.getElementById('hero-front').innerHTML = `
-            <div class="hero-comp">${liveBadge ? liveBadge + ' · ' : ''}${escapeHtml(comp)}</div>
-            <div class="hero-teams">
-                <div class="hero-team">
-                    <img src="${CONFIG.getCrest(home)}" style="width:56px;height:56px" alt="${escapeHtml(CONFIG.teamName(home))}">
-                    <div class="hero-team-name">${escapeHtml(CONFIG.teamName(home))}</div>
-                </div>
-                ${scoreHtml}
-                <div class="hero-team">
-                    <img src="${CONFIG.getCrest(away)}" style="width:56px;height:56px" alt="${escapeHtml(CONFIG.teamName(away))}">
-                    <div class="hero-team-name">${escapeHtml(CONFIG.teamName(away))}</div>
-                </div>
-            </div>
-            <div class="hero-date">${isLive ? 'JOGANDO AGORA' : formatDate(match.utcDate) + ' · ' + formatTime(match.utcDate)}<span style="display:block;font-size:0.85rem;opacity:0.8;margin-top:0.3rem;font-weight:400">${isLive ? '' : dayOfWeek}</span></div>`;
+        // Date
+        document.getElementById('hero-date-area').innerHTML =
+            isLive ? 'JOGANDO AGORA' :
+            `${formatDate(match.utcDate)} · ${formatTime(match.utcDate)}<span class="hero-day">${dayOfWeek}</span>`;
 
-        const htScore = (ht.home != null && ht.away != null) ? `<p style="margin:0.5rem 0"><strong>1º tempo:</strong> ${ht.home}–${ht.away}</p>` : '';
-        document.getElementById('hero-back').innerHTML = `
-            <div style="padding-top:1rem"><h3 style="margin-bottom:1rem">Detalhes do Jogo</h3>
-            <p style="margin:0.5rem 0"><strong>Rodada:</strong> ${match.matchday || '-'}</p>
-            <p style="margin:0.5rem 0"><strong>Estádio:</strong> ${escapeHtml(venue)}</p>
-            <p style="margin:0.5rem 0"><strong>Competição:</strong> ${escapeHtml(comp)}</p>
-            <p style="margin:0.5rem 0"><strong>Transmissão:</strong> ${escapeHtml(match.broadcast || 'A confirmar')}</p>
-            ${htScore}
-            ${match.stage && match.stage !== 'REGULAR_SEASON' ? `<p style="margin:0.5rem 0"><strong>Fase:</strong> ${escapeHtml(match.stage)}</p>` : ''}</div>`;
+        // Detail pills
+        const pillStadium = document.getElementById('pill-stadium');
+        const pillBroadcast = document.getElementById('pill-broadcast');
+        const pillRound = document.getElementById('pill-round');
+        const pillStage = document.getElementById('pill-stage');
+
+        pillStadium.textContent = '🏟️ ' + (venue || 'A definir');
+        pillBroadcast.textContent = '📺 ' + (match.broadcast || 'A confirmar');
+        pillRound.textContent = '🔢 Rodada ' + (match.matchday || '-');
+
+        if (stageLabel) {
+            pillStage.textContent = '🏷️ ' + stageLabel;
+            pillStage.style.display = '';
+        } else {
+            pillStage.style.display = 'none';
+        }
 
         if (isLive) startLiveRefresh(); else stopLiveRefresh();
+
+        // Start countdown for upcoming matches
+        if (!isLive) {
+            startCountdown(match.utcDate);
+        } else {
+            document.getElementById('hero-countdown').style.display = 'none';
+        }
+    }
+
+    // --- Countdown Timer ---
+    let _countdownInterval = null;
+
+    function startCountdown(utcDate) {
+        if (_countdownInterval) clearInterval(_countdownInterval);
+        const target = new Date(utcDate).getTime();
+        const el = document.getElementById('hero-countdown');
+
+        function tick() {
+            const now = Date.now();
+            const diff = target - now;
+            if (diff <= 0) {
+                el.style.display = 'none';
+                clearInterval(_countdownInterval);
+                _countdownInterval = null;
+                // Reload hero — match might be starting
+                loadHero();
+                return;
+            }
+            el.style.display = '';
+            const d = Math.floor(diff / 86400000);
+            const h = Math.floor((diff % 86400000) / 3600000);
+            const m = Math.floor((diff % 3600000) / 60000);
+            const s = Math.floor((diff % 60000) / 1000);
+            document.getElementById('cd-days').textContent = d;
+            document.getElementById('cd-hours').textContent = String(h).padStart(2, '0');
+            document.getElementById('cd-mins').textContent = String(m).padStart(2, '0');
+            document.getElementById('cd-secs').textContent = String(s).padStart(2, '0');
+        }
+        tick();
+        _countdownInterval = setInterval(tick, 1000);
+    }
+
+    // --- Form Widget (last 5 results) ---
+    async function loadFormWidget() {
+        const data = await api('matches?status=FINISHED&limit=5');
+        if (!data?.matches?.length) return;
+
+        const widget = document.getElementById('form-widget');
+        const dots = document.getElementById('form-dots');
+        if (!widget || !dots) return;
+
+        dots.innerHTML = '';
+        data.matches.forEach(m => {
+            const isHome = m.homeTeam.id === TEAM_ID;
+            const our = isHome ? (m.score?.fullTime?.home ?? 0) : (m.score?.fullTime?.away ?? 0);
+            const opp = isHome ? (m.score?.fullTime?.away ?? 0) : (m.score?.fullTime?.home ?? 0);
+            const r = our > opp ? 'W' : our < opp ? 'L' : 'D';
+            const label = r === 'W' ? 'V' : r === 'L' ? 'D' : 'E';
+            const cls = r === 'W' ? 'win' : r === 'L' ? 'loss' : 'draw';
+            const tooltip = `${isHome ? '🏠' : '✈️'} ${our}-${opp} vs ${escapeHtml(isHome ? CONFIG.teamName(m.awayTeam) : CONFIG.teamName(m.homeTeam))}`;
+            dots.innerHTML += `<span class="form-dot ${cls}" title="${tooltip}">${label}</span>`;
+        });
+        widget.style.display = '';
     }
 
     // --- Match HTML Builder ---
@@ -234,7 +336,8 @@
         else if (isPast) statusLabel = '✅ FINALIZADO · ';
         const score = m.score?.fullTime;
         const ht = m.score?.halfTime || {};
-        const htInfo = (ht.home != null) ? `<div class="match-extra-row"><span class="icon">⏱️</span> 1º tempo: ${ht.home}–${ht.away}</div>` : '';
+        // Show half-time only for live matches, not finished ones
+        const htInfo = (isLive && ht.home != null) ? `<div class="match-extra-row"><span class="icon">⏱️</span> 1º tempo: ${ht.home}–${ht.away}</div>` : '';
 
         // Teams row with optional score for finished/live matches
         let teamsHtml;
@@ -256,7 +359,7 @@
             <div class="match-extra">
                 <div class="match-extra-row"><span class="icon">🏟️</span> ${escapeHtml(venue)}</div>
                 <div class="match-extra-row"><span class="icon">📺</span> ${escapeHtml(m.broadcast || 'A confirmar')}</div>
-                <div class="match-extra-row"><span class="icon">🔢</span> Rodada ${m.matchday || '-'}${m.stage && m.stage !== 'REGULAR_SEASON' ? ' · ' + escapeHtml(m.stage) : ''}</div>
+                <div class="match-extra-row"><span class="icon">🔢</span> Rodada ${m.matchday || '-'}${formatStage(m.stage) ? ' · ' + escapeHtml(formatStage(m.stage)) : ''}</div>
                 ${htInfo}
             </div>
             <div class="match-header"><span>${statusLabel}${formatDate(m.utcDate)}${!isPast ? ' · ' + formatTime(m.utcDate) : ''}</span><span>${escapeHtml(CONFIG.formatComp(m.competition))}</span></div>
@@ -291,11 +394,9 @@
     }
 
     window.filterMatches = function (comp, btn) {
-        // Support both old .comp-filter buttons and new .comp-legend-item
         const container = document.getElementById('proximos');
-        container.querySelectorAll('.comp-filter, .comp-legend-item').forEach(b => b.classList.remove('active'));
+        container.querySelectorAll('.comp-legend-item').forEach(b => b.classList.remove('active'));
         if (btn) btn.classList.add('active');
-        // Also activate the matching legend item if using old filter
         container.querySelector(`.comp-legend-item[data-comp="${comp}"]`)?.classList.add('active');
         // Update shared comp filter and apply with current day filter
         _sharedCompFilter = comp;
@@ -343,23 +444,20 @@
             const oppName = isHome ? CONFIG.teamName(m.awayTeam) : CONFIG.teamName(m.homeTeam);
             const r = our > opp ? 'V' : our < opp ? 'D' : 'E';
             const resultClass = r === 'V' ? 'win' : r === 'D' ? 'loss' : 'draw';
-            const ht = m.score?.halfTime || {};
-            const htInfo = (ht.home != null) ? `<div class="match-extra-row"><span class="icon">⏱️</span> 1º tempo: ${ht.home}–${ht.away}</div>` : '';
 
             return `<div class="match-item ${resultClass}">
-                <div class="match-extra">
-                    <div class="match-extra-row"><span class="icon">🏟️</span> ${escapeHtml(m.venue || 'A definir')}</div>
-                    <div class="match-extra-row"><span class="icon">📺</span> ${escapeHtml(m.broadcast || 'A confirmar')}</div>
-                    <div class="match-extra-row"><span class="icon">🔢</span> Rodada ${m.matchday || '-'}</div>
-                    ${htInfo}
+                <div class="match-teams result-highlight">
+                    <span>${isHome ? '🏠' : '✈️'} ${escapeHtml(oppName)}</span>
+                    <span class="result-score-wrap">
+                        <span class="match-score">${our} – ${opp}</span>
+                        <span class="result-badge ${resultClass}">${r === 'V' ? '✅ V' : r === 'D' ? '❌ D' : '➖ E'}</span>
+                    </span>
                 </div>
                 <div class="match-header"><span>${formatDate(m.utcDate)}</span><span>${escapeHtml(CONFIG.formatComp(m.competition))}</span></div>
-                <div class="match-teams">
-                    <span>${isHome ? '🏠' : '✈️'} ${escapeHtml(oppName)}</span>
-                    <span style="display:flex;align-items:center;gap:0.5rem">
-                        <span class="result-badge ${resultClass}">${r === 'V' ? '✅ V' : r === 'D' ? '❌ D' : '➖ E'}</span>
-                        <span class="match-score">${our} – ${opp}</span>
-                    </span>
+                <div class="match-extra">
+                    <div class="match-extra-row"><span class="icon">🏟️</span> ${escapeHtml(CONFIG.getVenue(m))}</div>
+                    <div class="match-extra-row"><span class="icon">📺</span> ${escapeHtml(m.broadcast || 'A confirmar')}</div>
+                    <div class="match-extra-row"><span class="icon">🔢</span> Rodada ${m.matchday || '-'}</div>
                 </div>
             </div>`;
         }).join('');
@@ -476,7 +574,8 @@
         const total = wins + draws + losses;
         const avgGF = total ? (goalsFor / total).toFixed(1) : '0';
         const avgGA = total ? (goalsAgainst / total).toFixed(1) : '0';
-        const pct = total ? Math.round(wins / total * 100) : 0;
+        const points = wins * 3 + draws;
+        const pct = total ? Math.round(points / (total * 3) * 100) : 0;
         const homeTotal = homeWins + homeDraws + homeLosses;
         const awayTotal = awayWins + awayDraws + awayLosses;
         const homePts = homeWins * 3 + homeDraws;
@@ -664,7 +763,8 @@
             if (f > a) w++; else if (f < a) l++; else d++;
         });
         const total = w + d + l;
-        const pct = total ? Math.round(w / total * 100) : 0;
+        const points = w * 3 + d;
+        const pct = total ? Math.round(points / (total * 3) * 100) : 0;
 
         document.getElementById('team-stats').innerHTML = [
             ['⚽ Jogos', total], ['✅ Vitórias', w], ['➖ Empates', d], ['❌ Derrotas', l],
@@ -691,39 +791,13 @@
             const icon = sourceIcons[source] || '📰';
             const safeTitle = escapeHtml(n.title);
             const safeSource = escapeHtml(source);
-            return `<div class="news-item" data-href="${escapeHtml(n.url || '#')}" role="link" tabindex="0">
+            return `<a class="news-item" href="${escapeHtml(n.url || '#')}" target="_blank" rel="noopener noreferrer">
                 <div class="news-title">${safeTitle}</div>
                 <div class="news-meta">${icon} <span class="news-source">${safeSource}</span></div>
-            </div>`;
+            </a>`;
         }).join('');
 
-        // Delegated click handler for news items
-        document.getElementById('news-list').addEventListener('click', function (e) {
-            const item = e.target.closest('.news-item[data-href]');
-            if (item) window.open(item.dataset.href, '_blank');
-        });
-    }
-
-    // --- Prediction ---
-    async function loadPrediction() {
-        showSkeleton('prediction');
-        const data = await api('matches?status=SCHEDULED,TIMED&limit=1');
-        if (!data) { showError('prediction', 'Erro ao carregar', 'loadPrediction'); return; }
-        const match = data.matches?.[0];
-        if (!match) { showEmpty('prediction', 'Nenhum jogo para palpitar'); return; }
-        const isHome = match.homeTeam.id === TEAM_ID;
-        const hw = isHome ? 45 : 30, dr = 28, aw = 100 - hw - dr;
-
-        document.getElementById('prediction').innerHTML = `
-            <div class="prediction-card">
-                <div style="font-size:1.1rem;font-weight:600;margin-bottom:0.5rem">${escapeHtml(CONFIG.teamName(match.homeTeam))} × ${escapeHtml(CONFIG.teamName(match.awayTeam))}</div>
-                <div class="prediction-probs">
-                    <div class="prob-box"><div class="prob-value">${hw}%</div><div class="prob-label">${isHome ? 'Vitória' : 'Derrota'}</div></div>
-                    <div class="prob-box"><div class="prob-value">${dr}%</div><div class="prob-label">Empate</div></div>
-                    <div class="prob-box"><div class="prob-value">${aw}%</div><div class="prob-label">${isHome ? 'Derrota' : 'Vitória'}</div></div>
-                </div>
-                <div style="margin-top:1rem;font-size:0.8rem;color:var(--text-muted)">* Palpite simples baseado em mando de campo</div>
-            </div>`;
+        // Delegated click handler is no longer needed — <a> handles natively
     }
 
     // --- Calendar ---
@@ -760,7 +834,6 @@
     let _calMonth = null;
     let _calData = null;
     let _calSelectedDay = null;
-    let _calendarLoaded = false;
 
     async function loadCalendar() {
         if (!document.getElementById('calendar-grid')) return;
@@ -1079,6 +1152,23 @@
                 });
             }
 
+            // Normalize calendar data (homeScore/awayScore) to score.fullTime format
+            // so buildMatchHtml() can render scores for finished games
+            sourceMatches = sourceMatches.map(m => {
+                if (m.homeScore != null && !m.score?.fullTime) {
+                    return {
+                        ...m,
+                        score: {
+                            fullTime: { home: m.homeScore, away: m.awayScore },
+                            halfTime: m.halfTimeHome != null
+                                ? { home: m.halfTimeHome, away: m.halfTimeAway }
+                                : undefined,
+                        },
+                    };
+                }
+                return m;
+            });
+
             filtered = sourceMatches.filter(m => matchCompetition(m, _sharedCompFilter));
         } else {
             filtered = _allMatches.filter(m => matchCompetition(m, _sharedCompFilter));
@@ -1158,13 +1248,16 @@
         _sharedCompFilter = comp;
         _calCompFilter = comp; // Keep calendar in sync
 
+        // Update legend items (main filter bar)
+        document.querySelectorAll('.comp-legend-item').forEach(b => b.classList.remove('active'));
+        document.querySelector(`.comp-legend-item[data-comp="${comp}"]`)?.classList.add('active');
+
         // Sync calendar tab filter buttons
         document.querySelectorAll('.cal-comp-btn').forEach(b => b.classList.remove('active'));
         document.querySelector(`.cal-comp-btn[data-comp="${comp}"]`)?.classList.add('active');
 
         // Sync "Próximos" tab filter buttons
         document.querySelectorAll('.comp-legend-item').forEach(b => b.classList.remove('active'));
-        if (btn) btn.classList.add('active');
         document.querySelector(`.comp-legend-item[data-comp="${comp}"]`)?.classList.add('active');
 
         // Apply unified filter to list (clears day filter so all days of new comp show)
@@ -1310,7 +1403,7 @@
         const sel = document.getElementById('cal-year-select');
         if (!sel) return;
         const currentYear = new Date().getFullYear();
-        const years = [currentYear - 1, currentYear, currentYear + 1, currentYear + 2];
+        const years = [currentYear, currentYear + 1];
         sel.innerHTML = years.map(y => `<option value="${y}">${y}</option>`).join('');
         sel.value = currentYear;
     })();
@@ -1345,7 +1438,6 @@
     window.loadStandings = loadStandings;
     window.loadTeamStats = loadTeamStats;
     window.loadNews = loadNews;
-    window.loadPrediction = loadPrediction;
 
     // --- Init ---
     document.addEventListener('DOMContentLoaded', () => {
@@ -1354,12 +1446,13 @@
         if (el) el.textContent = 'Atualizado: ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
         initTabs();
         loadHero();
+        loadFormWidget();
         loadMatches();
         loadResults();
         loadStandings();
         loadTeamStats();
         loadNews();
-        loadPrediction();
-        loadMiniStrip(); // Load mini calendar strip for default "Próximos" tab
+        loadMiniStrip();
+        loadCalendar();
     });
 })();

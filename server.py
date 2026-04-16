@@ -242,9 +242,10 @@ def api_calendar_monthly(params):
                     'awayScore': m.get('away_score'),
                 }
 
-                if day not in days:
-                    days[day] = []
-                days[day].append(match_dict)
+                day_str = dt_sp.strftime('%Y-%m-%d')
+                if day_str not in days:
+                    days[day_str] = []
+                days[day_str].append(match_dict)
             except Exception:
                 continue
 

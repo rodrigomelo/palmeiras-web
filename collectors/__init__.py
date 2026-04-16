@@ -270,11 +270,15 @@ def collect_news():
             link = a.select_one("a")
             img = a.select_one("img")
             if title and link:
+                # Prefer link text if title element contains a link with more complete text
+                link_text = link.get_text(strip=True)
+                title_text = title.get_text(strip=True)
+                final_title = link_text if len(link_text) > len(title_text) else title_text
                 href = link.get("href", "")
                 if href and not href.startswith("http"):
                     href = "https://www.lance.com.br" + href
                 news.append({
-                    'title': title.get_text(strip=True),
+                    'title': final_title,
                     'url': href,
                     'image': img.get("src", "") if img else "",
                     'source': 'lance.com.br',
@@ -352,14 +356,15 @@ def collect_news():
     }
     filtered = []
     for item in news:
-        title = item.get('title', '').strip().lower()
+        title = item.get('title', '').strip()
+        title_lower = title.lower()
         url = item.get('url', '').strip()
         if not url:
             continue  # Skip articles without URL
-        if title in SKIP_TITLES:
+        if title_lower in SKIP_TITLES:
             continue  # Skip generic titles
-        if len(title) < 5:
-            continue  # Skip very short titles
+        if len(title) < 15:
+            continue  # Skip very short or likely truncated titles
         filtered.append(item)
     removed = len(news) - len(filtered)
     if removed:

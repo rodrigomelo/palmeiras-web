@@ -6,18 +6,20 @@
     <title>Palmeiras Agenda</title>
     <meta name="description" content="Palmeiras Agenda — Jogos, placares e próximos desafios do Verdão">
     <meta name="theme-color" content="#006437">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lucide-static@latest/font/lucide.min.css">
     <link rel="icon" type="image/png" href="/static/favicon.png">
-    <link rel="stylesheet" href="/static/css/styles.css">
+    <link rel="stylesheet" href="/static/css/styles.css?v=11">
     <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
     <button class="theme-toggle" id="themeToggle" title="Alternar tema" aria-label="Alternar tema claro/escuro" onclick="toggleTheme()">🌙</button>
+
+    <!-- Compact Header -->
     <header class="header">
         <div class="header-content">
             <div class="logo">
-                <svg viewBox="0 0 100 100" width="60" height="60" role="img" aria-label="Escudo do Palmeiras">
+                <svg viewBox="0 0 100 100" width="48" height="48" role="img" aria-label="Escudo do Palmeiras">
                     <circle cx="50" cy="50" r="48" fill="#006B3F"/>
                     <circle cx="50" cy="50" r="42" fill="white"/>
                     <circle cx="50" cy="50" r="38" fill="#006B3F"/>
@@ -27,42 +29,92 @@
             </div>
             <div class="header-text">
                 <h1>Palmeiras Agenda</h1>
-                <div class="subtitle">Jogos, placares e próximos desafios do Verdão
-                    <button onclick="location.reload()" style="margin-left:10px;padding:4px 10px;background:rgba(255,255,255,0.2);color:white;border:none;border-radius:4px;cursor:pointer;font-size:0.8rem">🔄</button>
-                </div>
+                <div class="subtitle">Jogos, placares e próximos desafios do Verdão</div>
             </div>
+            <button onclick="location.reload()" class="refresh-btn" aria-label="Atualizar"><span class="refresh-icon">🔄</span></button>
         </div>
     </header>
 
     <main class="container">
-        <!-- Hero -->
-        <div class="hero-card" id="hero-match" onclick="document.getElementById('hero-match').classList.toggle('flipped')" role="button" tabindex="0" onkeydown="if(event.key==='Enter')this.classList.toggle('flipped')">
-            <div class="hero-card-inner">
-                <div class="hero-card-front" id="hero-front"><div class="empty" style="color:white">Carregando...</div></div>
-                <div class="hero-card-back" id="hero-back"><div style="padding-top:1rem"><h3>Detalhes</h3><p>Carregando...</p></div></div>
+
+        <!-- ============================================ -->
+        <!-- HERO — Next match + Countdown + Form         -->
+        <!-- ============================================ -->
+        <section class="hero-hub" id="hero-hub">
+            <!-- Match Card -->
+            <div class="hero-card" id="hero-match">
+                <!-- Competition badge -->
+                <div class="hero-comp" id="hero-comp-badge">Carregando...</div>
+
+                <!-- Teams -->
+                <div class="hero-teams" id="hero-teams-area">
+                    <div class="hero-team" id="hero-home">
+                        <img src="/static/crests/1769.png" alt="">
+                        <div class="hero-team-name">Palmeiras</div>
+                    </div>
+                    <div class="hero-center-score" id="hero-score-area">
+                        <div class="hero-vs">×</div>
+                    </div>
+                    <div class="hero-team" id="hero-away">
+                        <img src="/static/crests/1769.png" alt="">
+                        <div class="hero-team-name">—</div>
+                    </div>
+                </div>
+
+                <!-- Date + Detail pills row -->
+                <div class="hero-meta" id="hero-meta-area">
+                    <span class="hero-meta-date" id="hero-date-area">—</span>
+                    <span class="hero-meta-sep">·</span>
+                    <span class="hero-meta-pill" id="pill-stadium">🏟️ —</span>
+                    <span class="hero-meta-pill" id="pill-broadcast">📺 —</span>
+                    <span class="hero-meta-pill" id="pill-round">🔢 —</span>
+                    <span class="hero-meta-pill" id="pill-stage" style="display:none">🏷️ —</span>
+                </div>
             </div>
-        </div>
 
-        <!-- Info Bar -->
-        <div class="info-bar">
-            <div class="info-card"><span class="info-icon">📺</span><div><div class="info-label">Transmissão</div><div class="info-value" id="where-watch">-</div></div></div>
-            <div class="info-card"><span class="info-icon">🏟️</span><div><div class="info-label">Estádio</div><div class="info-value" id="stadium-info">-</div></div></div>
-        </div>
+            <!-- Bottom bar: Countdown + Form -->
+            <div class="hero-bottom" id="hero-bottom">
+                <div class="hero-countdown" id="hero-countdown">
+                    <div class="countdown-label">Jogo em</div>
+                    <div class="countdown-digits">
+                        <span class="cd-unit"><span class="cd-val" id="cd-days">0</span><span class="cd-lbl">dias</span></span>
+                        <span class="cd-sep">:</span>
+                        <span class="cd-unit"><span class="cd-val" id="cd-hours">0</span><span class="cd-lbl">horas</span></span>
+                        <span class="cd-sep">:</span>
+                        <span class="cd-unit"><span class="cd-val" id="cd-mins">0</span><span class="cd-lbl">min</span></span>
+                        <span class="cd-sep">:</span>
+                        <span class="cd-unit"><span class="cd-val" id="cd-secs">0</span><span class="cd-lbl">seg</span></span>
+                    </div>
+                </div>
+                <div class="form-widget" id="form-widget" style="display:none">
+                    <span class="form-label">Sequência</span>
+                    <div class="form-dots" id="form-dots"></div>
+                </div>
+            </div>
+        </section>
 
-        <!-- Tabs -->
+        <!-- ============================================ -->
+        <!-- TAB BAR — drill-down sections               -->
+        <!-- ============================================ -->
         <div class="tabs" role="tablist">
-            <button class="tab-btn active" data-tab="proximos" role="tab" aria-selected="true" aria-controls="proximos" id="tab-proximos">📅 Próximos</button>
-            <button class="tab-btn" data-tab="resultados" role="tab" aria-selected="false" aria-controls="resultados" id="tab-resultados">🏆 Resultados</button>
-            <button class="tab-btn" data-tab="classificacao" role="tab" aria-selected="false" aria-controls="classificacao" id="tab-classificacao">📊 Tabela</button>
-            <button class="tab-btn" data-tab="estatisticas" role="tab" aria-selected="false" aria-controls="estatisticas" id="tab-estatisticas">📊 Estatísticas da Temporada</button>
-            <button class="tab-btn" data-tab="news" role="tab" aria-selected="false" aria-controls="news" id="tab-news">📰 Notícias</button>
-            <button class="tab-btn" data-tab="palpites" role="tab" aria-selected="false" aria-controls="palpites" id="tab-palpites">🎯 Palpites</button>
-            <!-- <button class="tab-btn" data-tab="calendario">📅 Calendário</button> REMOVED - calendar accessible via mini strip -->
+            <button class="tab-btn active" data-tab="proximos" role="tab" aria-selected="true">📅 Próximos</button>
+            <button class="tab-btn" data-tab="resultados" role="tab" aria-selected="false">🏆 Resultados</button>
+            <button class="tab-btn" data-tab="classificacao" role="tab" aria-selected="false">📊 Tabela</button>
+            <button class="tab-btn" data-tab="estatisticas" role="tab" aria-selected="false">📈 Estatísticas</button>
+            <button class="tab-btn" data-tab="news" role="tab" aria-selected="false">📰 Notícias</button>
         </div>
 
-        <div id="proximos" class="tab-content active" role="tabpanel" aria-labelledby="tab-proximos">
+        <!-- ============================================ -->
+        <!-- TAB PANELS                                   -->
+        <!-- ============================================ -->
+
+        <!-- Próximos -->
+        <div id="proximos" class="tab-content active" role="tabpanel">
             <div class="card">
-                <div class="card-title">📅 Próximos Jogos <button onclick="loadMatches()" style="float:right;background:none;border:none;cursor:pointer">🔄</button></div>
+                <div class="card-title">
+                    📅 Próximos Jogos
+                    <button onclick="loadMatches()" class="inline-refresh" aria-label="Atualizar">🔄</button>
+                </div>
                 <!-- Mini Calendar Strip -->
                 <div class="mini-calendar-strip" id="mini-calendar-strip">
                     <div class="mini-strip-nav">
@@ -71,6 +123,12 @@
                         <button class="mini-strip-btn" id="mini-strip-next">›</button>
                     </div>
                     <div class="mini-strip-grid" id="mini-strip-grid"></div>
+                </div>
+                <!-- Day Filter Chip -->
+                <div id="day-filter-chip" class="day-filter-chip" style="display:none">
+                    <span class="day-filter-icon">📅</span>
+                    <span class="day-filter-text" id="day-filter-text"></span>
+                    <button class="day-filter-clear" onclick="clearListDayFilter()" title="Limpar filtro">✕</button>
                 </div>
                 <!-- Competition Legend -->
                 <div class="comp-legend" id="comp-legend">
@@ -91,84 +149,85 @@
                         <span class="comp-legend-label">🥇 Copa do Brasil</span>
                     </div>
                 </div>
-                <!-- Day Filter Chip (shown when a calendar day is selected) -->
-                <div id="day-filter-chip" class="day-filter-chip" style="display:none">
-                    <span class="day-filter-icon">📅</span>
-                    <span class="day-filter-text" id="day-filter-text"></span>
-                    <button class="day-filter-clear" onclick="clearListDayFilter()" title="Limpar filtro de dia">✕</button>
-                </div>
                 <div id="next-matches"><div class="empty">Carregando...</div></div>
             </div>
         </div>
-        <div id="resultados" class="tab-content" role="tabpanel" aria-labelledby="tab-resultados">
+
+        <!-- Resultados -->
+        <div id="resultados" class="tab-content" role="tabpanel">
             <div class="card">
-                <div class="card-title">🏆 Resultados <button onclick="loadResults()" style="float:right;background:none;border:none;cursor:pointer">🔄</button></div>
-                <div class="comp-filters">
-                    <button class="comp-filter active" data-comp="all" onclick="filterResults('all',this)">Todos</button>
-                    <button class="comp-filter" data-comp="BSA" onclick="filterResults('BSA',this)">🇧🇷 Brasileirão</button>
-                    <button class="comp-filter" data-comp="CLI" onclick="filterResults('CLI',this)">🏆 Libertadores</button>
-                    <button class="comp-filter" data-comp="COPA" onclick="filterResults('COPA',this)">🥇 Copa do Brasil</button>
-                </div>
+                <div class="card-title">🏆 Resultados</div>
                 <div id="recent-results"><div class="empty">Carregando...</div></div>
             </div>
         </div>
-        <div id="classificacao" class="tab-content" role="tabpanel" aria-labelledby="tab-classificacao"><div class="card"><div class="card-title">📊 Classificação - Brasileirão <button onclick="loadStandings()" style="float:right;background:none;border:none;cursor:pointer">🔄</button></div><div id="standings"><div class="empty">Carregando...</div></div></div></div>
-        <div id="estatisticas" class="tab-content" role="tabpanel" aria-labelledby="tab-estatisticas"><div class="card"><div class="card-title">📊 Estatísticas da Temporada</div><div id="team-stats"><div class="empty">Carregando...</div></div></div></div>
-        <div id="news" class="tab-content" role="tabpanel" aria-labelledby="tab-news"><div class="card"><div class="card-title">📰 Notícias Recentes</div><div id="news-list"><div class="empty">Carregando...</div></div></div></div>
-        <div id="palpites" class="tab-content" role="tabpanel" aria-labelledby="tab-palpites"><div class="card"><div class="card-title">🎯 Palpite do Próximo Jogo</div><div id="prediction"><div class="empty">Carregando...</div></div></div></div>
-        <div id="calendario" class="tab-content"><div class="card">
-            <div class="cal-header">
-                <div class="cal-title">📅 Calendário de Jogos <select id="cal-year-select" style="margin-left:0.5rem;font-size:0.85rem;padding:0.2rem 0.4rem;border-radius:6px;border:1px solid rgba(0,0,0,0.15);background:var(--bg-card);color:var(--text);cursor:pointer" onchange="changeCalYear(this.value)"></select></div>
-                <div class="cal-view-switcher">
-                    <button class="view-btn active" data-view="grid" onclick="switchCalView('grid',this)">
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
-                        Grade
-                    </button>
-                    <button class="view-btn" data-view="list" onclick="switchCalView('list',this)">
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="2" width="14" height="2" rx="1"/><rect x="1" y="7" width="14" height="2" rx="1"/><rect x="1" y="12" width="14" height="2" rx="1"/></svg>
-                        Lista
-                    </button>
+
+        <!-- Classificação -->
+        <div id="classificacao" class="tab-content" role="tabpanel">
+            <div class="card">
+                <div class="card-title">📊 Classificação — Brasileirão</div>
+                <div id="standings"><div class="empty">Carregando...</div></div>
+            </div>
+        </div>
+
+        <!-- Estatísticas -->
+        <div id="estatisticas" class="tab-content" role="tabpanel">
+            <div class="card">
+                <div class="card-title">📈 Estatísticas da Temporada</div>
+                <div id="team-stats"><div class="empty">Carregando...</div></div>
+            </div>
+        </div>
+
+        <!-- Calendário -->
+        <div id="calendario" class="tab-content" role="tabpanel">
+            <div class="card">
+                <div class="cal-header">
+                    <div class="cal-title">📅 Calendário de Jogos
+                        <select id="cal-year-select" onchange="changeCalYear(this.value)"></select>
+                    </div>
+                    <div class="cal-view-switcher">
+                        <button class="view-btn active" data-view="grid" onclick="switchCalView('grid',this)">
+                            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+                            Grade
+                        </button>
+                        <button class="view-btn" data-view="list" onclick="switchCalView('list',this)">
+                            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="2" width="14" height="2" rx="1"/><rect x="1" y="7" width="14" height="2" rx="1"/><rect x="1" y="12" width="14" height="2" rx="1"/></svg>
+                            Lista
+                        </button>
+                    </div>
                 </div>
+                <div class="calendar-nav">
+                    <button class="cal-nav-btn" id="cal-prev">‹</button>
+                    <span id="cal-month-label"></span>
+                    <button class="cal-nav-btn" id="cal-next">›</button>
+                </div>
+                <div id="calendar-grid" class="cal-view-content active"></div>
+                <div id="calendar-list" class="cal-view-content"></div>
+                <div id="calendar-expanded"></div>
             </div>
-            <div id="calendar-nav" class="calendar-nav"><button class="cal-nav-btn" id="cal-prev">‹</button><span id="cal-month-label"></span><button class="cal-nav-btn" id="cal-next">›</button></div>
-            <!-- Competition filter for calendar -->
-            <div class="cal-comp-filters" id="cal-comp-filters">
-                <button class="cal-comp-btn active" data-comp="all" onclick="filterCalendarComp('all',this)">Todos</button>
-                <button class="cal-comp-btn" data-comp="BSA" onclick="filterCalendarComp('BSA',this)">
-                    <span class="cal-comp-dot" style="background:#006B3F"></span> Brasileirão
-                </button>
-                <button class="cal-comp-btn" data-comp="CLI" onclick="filterCalendarComp('CLI',this)">
-                    <span class="cal-comp-dot" style="background:#DAA520"></span> Libertadores
-                </button>
-                <button class="cal-comp-btn" data-comp="COPA" onclick="filterCalendarComp('COPA',this)">
-                    <span class="cal-comp-dot" style="background:#1E88E5"></span> Copa do Brasil
-                </button>
+        </div>
+
+        <!-- Notícias -->
+        <div id="news" class="tab-content" role="tabpanel">
+            <div class="card">
+                <div class="card-title">📰 Notícias Recentes</div>
+                <div id="news-list"><div class="empty">Carregando...</div></div>
             </div>
-            <div id="calendar-grid" class="cal-view-content active"></div>
-            <div id="calendar-list" class="cal-view-content"></div>
-            <div id="calendar-expanded"></div>
-        </div></div>
+        </div>
+
     </main>
 
     <noscript><p style="text-align:center;padding:2rem;color:#666">JavaScript é necessário para exibir os dados do Palmeiras Agenda.</p></noscript>
 
     <footer class="footer">
-        <p>📡 Fontes: football-data.org | ge.globo | lance.com.br | wikipedia.org | palmeiras.com.br | API-Football</p>
-        <p id="last-updated" style="font-size:0.7rem;opacity:0.7;margin-top:0.25rem"></p>
-        <div style="margin-top:1rem">
-            <p style="font-size:0.75rem;margin-bottom:0.5rem;opacity:0.9">📅 <strong>Calendário</strong></p>
-            <div style="display:flex;gap:0.5rem;flex-wrap:wrap;justify-content:center;margin-bottom:0.75rem">
-                <button onclick="downloadCalendar()" style="background:#006B3F;color:white;padding:0.6rem 1.2rem;border-radius:6px;font-size:0.85rem;border:none;cursor:pointer">📥 Baixar .ICS</button>
-                <button onclick="copyCalendarUrl()" style="background:#006B3F;color:white;padding:0.6rem 1.2rem;border-radius:6px;font-size:0.85rem;border:none;cursor:pointer">🔗 Copiar Link</button>
-            </div>
-            <div style="text-align:center;padding:0 1rem">
-                <p style="font-size:0.7rem;color:var(--text-muted);margin:0.25rem 0"><strong>📥 Baixar .ICS:</strong> Baixa um arquivo de calendário com todos os jogos. Importe no Google Calendar, Apple Calendar ou Outlook.</p>
-                <p style="font-size:0.7rem;color:var(--text-muted);margin:0.25rem 0"><strong>🔗 Copiar Link:</strong> Copia a URL de assinatura. Cole no Google Calendar para receber atualizações automáticas dos jogos.</p>
-            </div>
+        <p>📡 Fontes: football-data.org · ge.globo · lance.com.br · wikipedia.org · palmeiras.com.br</p>
+        <p id="last-updated" class="footer-updated"></p>
+        <div class="footer-actions">
+            <button onclick="downloadCalendar()" class="footer-btn">📥 Baixar .ICS</button>
+            <button onclick="copyCalendarUrl()" class="footer-btn">🔗 Copiar Link</button>
         </div>
     </footer>
 
-    <script src="/static/js/config.js"></script>
-    <script src="/static/js/app.js"></script>
+    <script src="/static/js/config.js?v=11"></script>
+    <script src="/static/js/app.js?v=11"></script>
 </body>
 </html>
