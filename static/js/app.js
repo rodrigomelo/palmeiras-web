@@ -8,6 +8,11 @@
     const BR_TZ = CONFIG.BR_TZ;
     let liveInterval = null;
     let performanceChart = null;
+    let chartJsLoaded = false;
+
+    // --- API Cache (5 min TTL) ---
+    const _apiCache = {};
+    const CACHE_TTL = 5 * 60 * 1000;
 
     // --- Competition Codes ---
     const COMP_MAP = {
@@ -138,13 +143,21 @@
     }
 
     // --- API ---
-    async function api(path) {
+    async function api(path, ttlMs = CACHE_TTL) {
+        const cached = _apiCache[path];
+        if (cached && Date.now() - cached.time < ttlMs) {
+            return cached.data;
+        }
         try {
             const res = await fetch(`/api/${path}${path.includes('?') ? '&' : '?'}_t=${Date.now()}`);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            return await res.json();
+            const data = await res.json();
+            _apiCache[path] = { data, time: Date.now() };
+            return data;
         } catch (e) {
             console.error(`API [${path}]:`, e);
+            // Return stale cache on failure
+            if (cached) return cached.data;
             return null;
         }
     }
@@ -161,10 +174,6 @@
                 tab?.classList.add('active');
                 if (btn.dataset.tab === 'estatisticas' && !performanceChart) {
                     renderPerformanceChart();
-                }
-                // Load mini strip when "Próximos" tab is first shown
-                if (btn.dataset.tab === 'proximos') {
-                    loadMiniStrip();
                 }
             });
         });
@@ -191,7 +200,6 @@
             document.getElementById('hero-comp-badge').textContent = 'Nenhum jogo agendado';
             document.getElementById('hero-teams-area').style.display = 'none';
             document.getElementById('hero-date-area').style.display = 'none';
-            document.getElementById('hero-details').style.display = 'none';
             return;
         }
 
@@ -296,6 +304,7 @@
             const h = Math.floor((diff % 86400000) / 3600000);
             const m = Math.floor((diff % 3600000) / 60000);
             const s = Math.floor((diff % 60000) / 1000);
+            // Desktop: full labels; Mobile: hidden via CSS, compact separators
             document.getElementById('cd-days').textContent = d;
             document.getElementById('cd-hours').textContent = String(h).padStart(2, '0');
             document.getElementById('cd-mins').textContent = String(m).padStart(2, '0');
@@ -326,154 +335,6 @@
             dots.innerHTML += `<span class="form-dot ${cls}" title="${tooltip}">${label}</span>`;
         });
         widget.style.display = '';
-    }
-
-    // --- Match HTML Builder ---
-    function buildMatchHtml(m, isLive) {
-        const venue = CONFIG.getVenue(m);
-        const isFinished = m.status === 'FINISHED';
-        const isPast = isFinished || m.status === 'PLAYING_TIME_FINISHED';
-        const isPaused = m.status === 'PAUSED';
-        const isLiveOrPaused = isLive || isPaused;
-
-        // Build match-header (status badge + date/time + competition)
-        let statusLabel = '';
-        if (isLiveOrPaused) statusLabel = `<span class="live-dot"></span>${isPaused ? 'INTERVALO' : 'AO VIVO'} · `;
-        else if (isPast) statusLabel = '✅ FINALIZADO · ';
-        const score = m.score?.fullTime;
-        const ht = m.score?.halfTime || {};
-        // Show half-time only for live matches, not finished ones
-        const htInfo = (isLiveOrPaused && ht.home != null) ? `<div class="match-extra-row"><span class="icon">⏱️</span> 1º tempo: ${ht.home}–${ht.away}</div>` : '';
-
-        // Teams row with optional score for finished/live matches
-        let teamsHtml;
-        if ((isPast || isLiveOrPaused) && score?.home != null) {
-            teamsHtml = `<div class="match-teams">
-                <span><img src="${CONFIG.getCrest(m.homeTeam)}" style="width:22px;height:22px;vertical-align:middle;margin-right:4px" alt="">${escapeHtml(CONFIG.teamName(m.homeTeam))}</span>
-                <span class="match-score-badge${isLiveOrPaused ? ' live' : ''}">${score.home} × ${score.away}</span>
-                <span>${escapeHtml(CONFIG.teamName(m.awayTeam))}<img src="${CONFIG.getCrest(m.awayTeam)}" style="width:22px;height:22px;vertical-align:middle;margin-left:4px" alt="">${isLiveOrPaused ? `<span class="live-minute">${isPaused ? '⏸' : estimateMinute(m.utcDate) || ''}</span>` : ''}</span>
-            </div>`;
-        } else {
-            teamsHtml = `<div class="match-teams">
-                <span><img src="${CONFIG.getCrest(m.homeTeam)}" style="width:22px;height:22px;vertical-align:middle;margin-right:4px" alt="">${escapeHtml(CONFIG.teamName(m.homeTeam))}</span>
-                <span style="color:var(--text-muted)">×</span>
-                <span>${escapeHtml(CONFIG.teamName(m.awayTeam))}<img src="${CONFIG.getCrest(m.awayTeam)}" style="width:22px;height:22px;vertical-align:middle;margin-left:4px" alt="">${isLiveOrPaused ? `<span class="live-minute">${isPaused ? '⏸' : estimateMinute(m.utcDate) || ''}</span>` : ''}</span>
-            </div>`;
-        }
-
-        return `<div class="match-item">
-            <div class="match-extra">
-                <div class="match-extra-row"><span class="icon">🏟️</span> ${escapeHtml(venue)}</div>
-                <div class="match-extra-row"><span class="icon">📺</span> ${escapeHtml(m.broadcast || 'A confirmar')}</div>
-                <div class="match-extra-row"><span class="icon">🔢</span> Rodada ${m.matchday || '-'}${formatStage(m.stage) ? ' · ' + escapeHtml(formatStage(m.stage)) : ''}</div>
-                ${htInfo}
-            </div>
-            <div class="match-header"><span>${statusLabel}${formatDate(m.utcDate)}${!isPast ? ' · ' + formatTime(m.utcDate) : ''}</span><span>${escapeHtml(CONFIG.formatComp(m.competition))}</span></div>
-            ${teamsHtml}
-        </div>`;
-    }
-
-    // --- Matches ---
-    let _allMatches = [];
-
-    async function loadMatches() {
-        showSkeleton('next-matches');
-        const data = await api('matches?status=SCHEDULED,TIMED,IN_PLAY,PAUSED&limit=20');
-        if (!data) { showError('next-matches', 'Erro ao carregar', 'loadMatches'); return; }
-        const allMatches = data.matches || [];
-        _allMatches = allMatches.slice(1); // Skip first (shown in hero)
-
-        // Pre-load current month calendar data so day-filter works (uses _calData for complete month data)
-        if (!_calData) {
-            const today = new Date();
-            const calData = await api(`calendar_monthly?year=${today.getFullYear()}&month=${today.getMonth() + 1}`);
-            if (calData) {
-                _calYear = today.getFullYear();
-                _calMonth = today.getMonth() + 1;
-                _calData = calData;
-            }
-        }
-
-        // Reset all filters and apply unified filter
-        clearListDayFilter();
-        applyMatchFilter(_sharedCompFilter);
-    }
-
-    window.filterMatches = function (comp, btn) {
-        const container = document.getElementById('proximos');
-        container.querySelectorAll('.comp-legend-item').forEach(b => b.classList.remove('active'));
-        if (btn) btn.classList.add('active');
-        container.querySelector(`.comp-legend-item[data-comp="${comp}"]`)?.classList.add('active');
-        // Update shared comp filter and apply with current day filter
-        _sharedCompFilter = comp;
-        clearListDayFilter(); // changing competition resets day filter
-        applyMatchFilter(comp);
-    };
-
-    function applyMatchFilter(comp) {
-        const filtered = _allMatches.filter(m => matchCompetition(m, comp));
-        if (!filtered.length) {
-            showEmpty('next-matches', 'Nenhum jogo para esta competição');
-            return;
-        }
-        document.getElementById('next-matches').innerHTML = filtered.map(m => buildMatchHtml(m, m.status === 'IN_PLAY' || m.status === 'PAUSED')).join('');
-        attachMatchListeners('next-matches');
-    }
-
-    // --- Results ---
-    let _allResults = [];
-
-    async function loadResults() {
-        showSkeleton('recent-results');
-        const data = await api('matches?status=FINISHED&limit=20');
-        if (!data) { showError('recent-results', 'Erro ao carregar', 'loadResults'); return; }
-        _allResults = data.matches || [];
-        applyResultFilter('all');
-    }
-
-    window.filterResults = function (comp, btn) {
-        document.querySelectorAll('#resultados .comp-filter').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        applyResultFilter(comp);
-    };
-
-    function applyResultFilter(comp) {
-        const filtered = _allResults.filter(m => matchCompetition(m, comp));
-        if (!filtered.length) {
-            showEmpty('recent-results', 'Nenhum resultado para esta competição');
-            return;
-        }
-        document.getElementById('recent-results').innerHTML = filtered.map(m => {
-            const isHome = m.homeTeam.id === TEAM_ID;
-            const our = isHome ? (m.score?.fullTime?.home ?? 0) : (m.score?.fullTime?.away ?? 0);
-            const opp = isHome ? (m.score?.fullTime?.away ?? 0) : (m.score?.fullTime?.home ?? 0);
-            const oppName = isHome ? CONFIG.teamName(m.awayTeam) : CONFIG.teamName(m.homeTeam);
-            const r = our > opp ? 'V' : our < opp ? 'D' : 'E';
-            const resultClass = r === 'V' ? 'win' : r === 'D' ? 'loss' : 'draw';
-
-            return `<div class="match-item ${resultClass}">
-                <div class="match-teams result-highlight">
-                    <span>${isHome ? '🏠' : '✈️'} ${escapeHtml(oppName)}</span>
-                    <span class="result-score-wrap">
-                        <span class="match-score">${our} – ${opp}</span>
-                        <span class="result-badge ${resultClass}">${r === 'V' ? '✅ V' : r === 'D' ? '❌ D' : '➖ E'}</span>
-                    </span>
-                </div>
-                <div class="match-header"><span>${formatDate(m.utcDate)}</span><span>${escapeHtml(CONFIG.formatComp(m.competition))}</span></div>
-                <div class="match-extra">
-                    <div class="match-extra-row"><span class="icon">🏟️</span> ${escapeHtml(CONFIG.getVenue(m))}</div>
-                    <div class="match-extra-row"><span class="icon">📺</span> ${escapeHtml(m.broadcast || 'A confirmar')}</div>
-                    <div class="match-extra-row"><span class="icon">🔢</span> Rodada ${m.matchday || '-'}</div>
-                </div>
-            </div>`;
-        }).join('');
-        attachMatchListeners('recent-results');
-    }
-
-    function attachMatchListeners(containerId) {
-        document.querySelectorAll(`#${containerId} .match-item`).forEach(el => {
-            el.addEventListener('click', () => el.querySelector('.match-extra')?.classList.toggle('open'));
-        });
     }
 
     // --- Standings ---
@@ -526,10 +387,31 @@
             <div style="border-top:1px solid var(--bg);padding-top:1rem">${tableHtml}</div>`;
     }
 
+    // --- Chart.js Lazy Loader ---
+    function loadChartJs() {
+        return new Promise((resolve, reject) => {
+            if (window.Chart) { chartJsLoaded = true; resolve(); return; }
+            const script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js';
+            script.onload = () => { chartJsLoaded = true; resolve(); };
+            script.onerror = () => reject(new Error('Chart.js CDN failed'));
+            document.head.appendChild(script);
+        });
+    }
+
     // --- Performance Chart + Stats ---
     async function renderPerformanceChart() {
         const container = document.getElementById('team-stats');
         if (!container) return;
+
+        // Show loading state while Chart.js loads
+        if (!chartJsLoaded) {
+            container.innerHTML = '<div class="empty" style="padding:2rem">Carregando gráficos...</div>';
+            try { await loadChartJs(); } catch {
+                container.innerHTML = '<div class="empty" style="padding:2rem">⚠️ Erro ao carregar gráficos</div>';
+                return;
+            }
+        }
 
         const data = await api('matches?status=FINISHED&limit=38');
         if (!data || !data.matches?.length) {
@@ -835,6 +717,7 @@
 
     const MONTHS_PT = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
                        'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+    const WEEKDAYS_PT = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
 
     let _calYear = null;
     let _calMonth = null;
@@ -898,13 +781,38 @@
             ).join('');
             const overflowHtml = overflow > 0 ? `<span class="cal-overflow">+${overflow}</span>` : '';
 
+            // Score summary for finished games
+            const finished = matches.filter(m => m.status === 'FINISHED' || m.status === 'PLAYING_TIME_FINISHED');
+            const live = matches.filter(m => m.status === 'IN_PLAY' || m.status === 'PAUSED');
+            let scoreHtml = '';
+            if (live.length > 0) {
+                const m = live[0];
+                const isHome = m.homeTeam?.id === TEAM_ID;
+                const ourScore = isHome ? m.homeScore : m.awayScore;
+                const oppScore = isHome ? m.awayScore : m.homeScore;
+                scoreHtml = `<div class="cal-score live">🔴 ${ourScore ?? 0}–${oppScore ?? 0}</div>`;
+            } else if (finished.length > 0) {
+                // Show result badge for each finished game
+                scoreHtml = finished.map(m => {
+                    const isHome = m.homeTeam?.id === TEAM_ID;
+                    const ourScore = isHome ? m.homeScore : m.awayScore;
+                    const oppScore = isHome ? m.awayScore : m.homeScore;
+                    const result = ourScore > oppScore ? 'V' : ourScore < oppScore ? 'D' : 'E';
+                    const cls = result === 'V' ? 'win' : result === 'D' ? 'loss' : 'draw';
+                    return `<div class="cal-score ${cls}">${ourScore}–${oppScore}</div>`;
+                }).join('');
+            }
+
             const classes = ['cal-day'];
             if (isToday) classes.push('today');
+            if (matches.length > 0) classes.push('has-match');
+            if (live.length > 0) classes.push('is-live');
             if (_calSelectedDay === dayStr) classes.push('selected');
 
             html += `<div class="${classes.join(' ')}" data-day="${day}">
                 <div class="cal-day-num">${day}</div>
                 ${matches.length ? `<div class="cal-dots">${dotsHtml}${overflowHtml}</div>` : ''}
+                ${scoreHtml}
             </div>`;
         }
 
@@ -927,24 +835,11 @@
         } else {
             _calSelectedDay = dayStr;
             renderExpandedDay(dayStr);
-            // Also switch to "Próximos" tab and filter the list to this day
-            switchToTab('proximos');
-            filterMatchesToDay(dayStr);
         }
         // Update selected state
         document.querySelectorAll('.cal-day').forEach(d => d.classList.remove('selected'));
         document.querySelector(`.cal-day[data-day="${day}"]`)?.classList.add('selected');
     }
-
-    // Helper: switch to a tab by ID without triggering its load logic
-    window.switchToTab = function (tabId) {
-        const tabBtn = document.querySelector(`.tab-btn[data-tab="${tabId}"]`);
-        if (!tabBtn || tabBtn.classList.contains('active')) return;
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-        tabBtn.classList.add('active');
-        document.getElementById(tabId)?.classList.add('active');
-    };
 
     function renderExpandedDay(dayStr) {
         let matches = _calData?.days?.[dayStr] || [];
@@ -964,9 +859,6 @@
         container.innerHTML = `<div class="cal-expanded">
             <div class="cal-expanded-header">
                 <span class="cal-expanded-date">${dayStr.split('-').reverse().join('/')}</span>
-                <button class="cal-expanded-btn" onclick="filterMatchesToDay('${dayStr}'); switchToTab('proximos')">
-                    📋 Ver em Próximos
-                </button>
             </div>
             ${matches.map(m => {
                 const time = new Date(m.utcDate).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: CONFIG.BR_TZ });
@@ -1002,376 +894,24 @@
 
     window.loadCalendar = loadCalendar;
 
-    // --- Mini Calendar Strip ---
-    const WEEKDAYS_PT = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
-    let _miniStripYear = null;
-    let _miniStripMonth = null;
-    let _miniStripData = null;
-    let _miniStripSelectedDay = null;
-    let _miniStripLoading = false;
-
     function getTodayStr() {
         return new Date().toLocaleDateString('en-CA', { timeZone: CONFIG.BR_TZ });
     }
 
-    async function loadMiniStrip() {
-        if (_miniStripLoading) return;
-        _miniStripLoading = true;
-        try {
-        const todayStr = getTodayStr();
-        const todayYear = parseInt(todayStr.split('-')[0]);
-        const todayMonth = parseInt(todayStr.split('-')[1]);
-
-        if (_miniStripYear === null) {
-            _miniStripYear = todayYear;
-            _miniStripMonth = todayMonth;
-        }
-
-        const data = await api(`calendar_monthly?year=${_miniStripYear}&month=${_miniStripMonth}`);
-        _miniStripData = data;
-
-        const monthLabel = document.getElementById('mini-strip-month-label');
-        if (monthLabel) monthLabel.textContent = `${MONTHS_PT[_miniStripMonth - 1]} ${_miniStripYear}`;
-
-        const grid = document.getElementById('mini-strip-grid');
-        if (!grid) return;
-
-        const daysInMonth = new Date(_miniStripYear, _miniStripMonth, 0).getDate();
-        const firstDow = new Date(_miniStripYear, _miniStripMonth - 1, 1).getDay();
-
-        let html = '';
-        // Weekday headers
-        WEEKDAYS_PT.forEach(d => {
-            html += `<div style="text-align:center;font-size:0.6rem;font-weight:700;color:rgba(255,255,255,0.6);padding:0.2rem 0;text-transform:uppercase;letter-spacing:0.05em">${d}</div>`;
-        });
-
-        // Leading empty cells
-        for (let i = 0; i < firstDow; i++) {
-            html += `<div class="mini-strip-day empty"></div>`;
-        }
-
-        // Day cells
-        for (let day = 1; day <= daysInMonth; day++) {
-            const dayStr = `${_miniStripYear}-${String(_miniStripMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-            const isToday = dayStr === todayStr;
-            const matches = (data?.days || {})[dayStr] || [];
-            const comps = [...new Set(matches.map(m => {
-                const c = m.competition?.code;
-                if (c === 'BSA') return 'bsa';
-                if (c === 'CLI' || c === 'LIBERTADORES') return 'cli';
-                if (c === 'COPA' || c === 'COPA_DO_BRASIL') return 'copa';
-                return 'other';
-            }))];
-
-            const classes = ['mini-strip-day'];
-            if (isToday) classes.push('today');
-            if (matches.length > 0) classes.push('has-match');
-            if (_miniStripSelectedDay === dayStr) classes.push('selected');
-
-            const dotsHtml = comps.slice(0, 3).map(c =>
-                `<div class="mini-strip-dot ${c}"></div>`
-            ).join('');
-
-            html += `<div class="${classes.join(' ')}" data-day="${day}">
-                <div class="mini-strip-day-num">${day}</div>
-                ${matches.length > 0 ? `<div class="mini-strip-day-dots">${dotsHtml}</div>` : ''}
-            </div>`;
-        }
-
-        grid.innerHTML = html;
-
-        // Attach click listeners
-        grid.querySelectorAll('.mini-strip-day:not(.empty)').forEach(cell => {
-            cell.addEventListener('click', () => {
-                const day = parseInt(cell.dataset.day);
-                const dayStr = `${_miniStripYear}-${String(_miniStripMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                selectMiniStripDay(dayStr);
-            });
-        });
-        } finally { _miniStripLoading = false; }
-    }
-
-    function selectMiniStripDay(dayStr) {
-        _miniStripSelectedDay = dayStr;
-        // Update selected visual
-        document.querySelectorAll('.mini-strip-day').forEach(d => d.classList.remove('selected'));
-        const dayNum = parseInt(dayStr.split('-')[2]);
-        document.querySelector(`.mini-strip-day[data-day="${dayNum}"]`)?.classList.add('selected');
-        // Filter next matches to this day (unified filter respects competition too)
-        filterMatchesToDay(dayStr);
-    }
-
-    // --- Unified List Filter (competition + day) ---
-    // _sharedCompFilter: 'all' | 'BSA' | 'CLI' | 'COPA'
-    // _listDayFilter: null (all days) | 'YYYY-MM-DD' (specific day)
-    let _listDayFilter = null;
-
-    window.clearListDayFilter = function () {
-        _listDayFilter = null;
-        _miniStripSelectedDay = null;
-        document.querySelectorAll('.mini-strip-day').forEach(d => d.classList.remove('selected'));
-        const chip = document.getElementById('day-filter-chip');
-        if (chip) chip.style.display = 'none';
-        applyUnifiedListFilter();
-    };
-
-    window.filterMatchesToDay = function filterMatchesToDay(dayStr) {
-        _listDayFilter = dayStr;
-        _miniStripSelectedDay = dayStr; // sync mini strip visual (uses YYYY-MM-DD now)
-        document.querySelectorAll('.mini-strip-day').forEach(d => d.classList.remove('selected'));
-        const dayNum = parseInt(dayStr.split('-')[2]);
-        document.querySelector(`.mini-strip-day[data-day="${dayNum}"]`)?.classList.add('selected');
-        applyUnifiedListFilter();
-    };
-
-    function applyUnifiedListFilter() {
-        let filtered;
-        const container = document.getElementById('next-matches');
-
-        // --- Day Filter Chip management ---
-        const chip = document.getElementById('day-filter-chip');
-        const chipText = document.getElementById('day-filter-text');
-        if (_listDayFilter && chip && chipText) {
-            const [y, m, d] = _listDayFilter.split('-');
-            const dateStr = new Date(`${y}-${m}-${d}T12:00:00`).toLocaleDateString('pt-BR', { weekday: 'short', timeZone: BR_TZ });
-            const dayName = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
-            const compLabels = { BSA: '🇧🇷 Brasileirão', CLI: '🏆 Libertadores', COPA: '🥇 Copa do Brasil' };
-            const compPart = _sharedCompFilter !== 'all' ? ` · ${compLabels[_sharedCompFilter] || _sharedCompFilter}` : '';
-            chipText.textContent = `${dayName}, ${d}/${m}${compPart}`;
-            chip.style.display = 'flex';
-        } else if (chip) {
-            chip.style.display = 'none';
-        }
-
-        if (_listDayFilter) {
-            // Use _miniStripData (same month as the strip) if available,
-            // otherwise fall back to _calData, then _allMatches
-            let sourceMatches = [];
-            if (_miniStripData && _miniStripData.days?.[_listDayFilter]) {
-                sourceMatches = _miniStripData.days[_listDayFilter];
-            } else if (_calData && _calData.days?.[_listDayFilter]) {
-                sourceMatches = _calData.days[_listDayFilter];
-            } else {
-                sourceMatches = _allMatches.filter(m => {
-                    const d = new Date(m.utcDate).toLocaleDateString('en-CA', { timeZone: CONFIG.BR_TZ });
-                    return d === _listDayFilter;
-                });
-            }
-
-            // Normalize calendar data (homeScore/awayScore) to score.fullTime format
-            // so buildMatchHtml() can render scores for finished games
-            sourceMatches = sourceMatches.map(m => {
-                if (m.homeScore != null && !m.score?.fullTime) {
-                    return {
-                        ...m,
-                        score: {
-                            fullTime: { home: m.homeScore, away: m.awayScore },
-                            halfTime: m.halfTimeHome != null
-                                ? { home: m.halfTimeHome, away: m.halfTimeAway }
-                                : undefined,
-                        },
-                    };
-                }
-                return m;
-            });
-
-            filtered = sourceMatches.filter(m => matchCompetition(m, _sharedCompFilter));
-        } else {
-            filtered = _allMatches.filter(m => matchCompetition(m, _sharedCompFilter));
-        }
-
-        if (!filtered.length) {
-            const dayDesc = _listDayFilter ? `em ${_listDayFilter.split('-').reverse().join('/')}` : '';
-            const compDesc = _sharedCompFilter !== 'all' ? ` para ${_sharedCompFilter}` : '';
-            container.innerHTML = `<div class="empty">Nenhum jogo encontrado ${dayDesc}${compDesc}</div>`;
-        } else {
-            container.innerHTML = filtered.map(m => buildMatchHtml(m, m.status === 'IN_PLAY')).join('');
-            attachMatchListeners('next-matches');
-        }
-    }
-
-    // Mini strip navigation
-    document.getElementById('mini-strip-prev')?.addEventListener('click', () => {
-        _miniStripMonth--;
-        if (_miniStripMonth < 1) { _miniStripMonth = 12; _miniStripYear--; }
-        _miniStripSelectedDay = null;
-        clearListDayFilter(); // reset day filter so all matches show
-        loadMiniStrip();
-    });
-    document.getElementById('mini-strip-next')?.addEventListener('click', () => {
-        _miniStripMonth++;
-        if (_miniStripMonth > 12) { _miniStripMonth = 1; _miniStripYear++; }
-        _miniStripSelectedDay = null;
-        clearListDayFilter(); // reset day filter so all matches show
-        loadMiniStrip();
-    });
-
-    // --- Calendar View Switcher (Grid | List) ---
-    let _calView = 'grid';
-
-    window.switchCalView = function (view, btn) {
-        _calView = view;
-        document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        document.querySelectorAll('.cal-view-content').forEach(el => el.classList.remove('active'));
-        if (view === 'grid') {
-            document.getElementById('calendar-grid')?.classList.add('active');
-        } else {
-            document.getElementById('calendar-list')?.classList.add('active');
-            renderCalendarListView();
-        }
-    };
-
     // --- Calendar Competition Filter ---
     let _calCompFilter = 'all';
 
-    window.filterCalendarComp = function (comp, btn) {
+    // --- Shared Competition Filter (syncs calendar + list views) ---
+    window.filterSharedComp = function (comp, btn) {
         _calCompFilter = comp;
-        _sharedCompFilter = comp;
-        document.querySelectorAll('.cal-comp-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
 
-        // Also sync the "Próximos" tab filter so switching tabs shows consistent data
+        // Update legend items
         document.querySelectorAll('.comp-legend-item').forEach(b => b.classList.remove('active'));
         document.querySelector(`.comp-legend-item[data-comp="${comp}"]`)?.classList.add('active');
-
-        // Clear day filter so all days of the competition show in list
-        clearListDayFilter();
-        applyUnifiedListFilter(); // update "Próximos" tab state too
 
         // Re-render calendar view with filter
-        if (_calView === 'grid') {
-            loadCalendar();
-        } else {
-            renderCalendarListView();
-        }
+        loadCalendar();
     };
-
-    // --- Shared Competition Filter (syncs calendar + list views) ---
-    let _sharedCompFilter = 'all';
-
-    window.filterSharedComp = function (comp, btn) {
-        _sharedCompFilter = comp;
-        _calCompFilter = comp; // Keep calendar in sync
-
-        // Update legend items (main filter bar)
-        document.querySelectorAll('.comp-legend-item').forEach(b => b.classList.remove('active'));
-        document.querySelector(`.comp-legend-item[data-comp="${comp}"]`)?.classList.add('active');
-
-        // Sync calendar tab filter buttons
-        document.querySelectorAll('.cal-comp-btn').forEach(b => b.classList.remove('active'));
-        document.querySelector(`.cal-comp-btn[data-comp="${comp}"]`)?.classList.add('active');
-
-        // Sync "Próximos" tab filter buttons
-        document.querySelectorAll('.comp-legend-item').forEach(b => b.classList.remove('active'));
-        document.querySelector(`.comp-legend-item[data-comp="${comp}"]`)?.classList.add('active');
-
-        // Apply unified filter to list (clears day filter so all days of new comp show)
-        clearListDayFilter();
-        applyUnifiedListFilter();
-        if (_calView === 'grid') {
-            loadCalendar();
-        } else {
-            renderCalendarListView();
-        }
-    };
-
-    async function renderCalendarListView() {
-        const container = document.getElementById('calendar-list');
-        if (!container) return;
-        if (!_calData) {
-            container.innerHTML = '<div class="empty">Carregue o calendário primeiro</div>';
-            return;
-        }
-        const todayStr = getTodayStr();
-        const todayYear = parseInt(todayStr.split('-')[0]);
-        const todayMonth = parseInt(todayStr.split('-')[1]);
-
-        // Fetch 12 months centered on current month for full year view
-        const months = [];
-        const d = new Date(_calYear, _calMonth - 1, 1);
-        for (let i = -5; i <= 6; i++) {
-            const dt = new Date(d.getFullYear(), d.getMonth() + i, 1);
-            months.push({ year: dt.getFullYear(), month: dt.getMonth() + 1 });
-        }
-
-        let allDays = {};
-        const results = await Promise.all(months.map(m =>
-            api(`calendar_monthly?year=${m.year}&month=${m.month}`)
-        ));
-        results.forEach(data => {
-            if (data?.days) Object.assign(allDays, data.days);
-        });
-
-        // Sort dates
-        const sortedDates = Object.keys(allDays).sort();
-
-        let html = '';
-        let currentMonthKey = null;
-
-        sortedDates.forEach(dateStr => {
-            const [y, m, d] = dateStr.split('-');
-            const monthKey = `${y}-${m}`;
-            const matches = allDays[dateStr] || [];
-
-            // Month header
-            if (monthKey !== currentMonthKey) {
-                currentMonthKey = monthKey;
-                const mi = parseInt(m);
-                html += `<div class="cal-list-month-header">
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" style="opacity:0.8"><path d="M4 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2H4zm0 1h8a1 1 0 0 1 1 1v1H3V2a1 1 0 0 1 1-1z"/></svg>
-                    ${MONTHS_PT[mi - 1]} ${y}
-                </div>`;
-            }
-
-            const dt = new Date(dateStr);
-            const weekday = WEEKDAYS_PT[dt.getDay()];
-            const dayNum = parseInt(d);
-
-            // Filter by competition
-            const filteredMatches = matches.filter(m => {
-                if (_calCompFilter === 'all') return true;
-                return m.competition?.code === _calCompFilter;
-            });
-
-            filteredMatches.forEach(m => {
-                const time = new Date(m.utcDate).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: CONFIG.BR_TZ });
-                const isHome = m.homeTeam.id === CONFIG.TEAM_ID;
-                const ourTeam = isHome ? m.homeTeam : m.awayTeam;
-                const oppTeam = isHome ? m.awayTeam : m.homeTeam;
-                const ourScore = isHome ? m.homeScore : m.awayScore;
-                const oppScore = isHome ? m.awayScore : m.homeScore;
-                const compClass = getCompBadgeClass(m.competition?.code);
-                const scoreHtml = (m.status === 'FINISHED' || m.status === 'PLAYING_TIME_FINISHED') && ourScore != null
-                    ? `<span class="cal-match-score">${ourScore}–${oppScore}</span>` : '';
-                const statusText = STATUS_LABEL[m.status] || m.status;
-                const isLive = m.status === 'IN_PLAY';
-
-                html += `<div class="cal-list-match">
-                    <div class="cal-list-date">
-                        <div class="cal-list-date-day">${dayNum}</div>
-                        <div class="cal-list-date-weekday">${weekday}</div>
-                    </div>
-                    <div class="cal-list-comp ${compClass}">${escapeHtml(CONFIG.formatComp(m.competition))}</div>
-                    <div class="cal-list-info">
-                        <div class="cal-list-teams">
-                            <img src="${CONFIG.getCrest(ourTeam)}" alt="">${escapeHtml(CONFIG.teamName(ourTeam))}
-                            <span style="color:var(--text-muted)">×</span>
-                            ${escapeHtml(CONFIG.teamName(oppTeam))}<img src="${CONFIG.getCrest(oppTeam)}" alt="">
-                            ${scoreHtml}
-                        </div>
-                    </div>
-                    <div class="cal-list-time">${time}</div>
-                    <div class="cal-match-status ${isLive ? 'live' : ''}">${statusText}</div>
-                </div>`;
-            });
-        });
-
-        if (!html) {
-            html = '<div class="empty">Nenhum jogo encontrado</div>';
-        }
-        container.innerHTML = html;
-    }
 
     // Nav buttons
     document.getElementById('cal-prev')?.addEventListener('click', () => {
@@ -1439,8 +979,6 @@
 
     // --- Public API ---
     window.loadHero = loadHero;
-    window.loadMatches = loadMatches;
-    window.loadResults = loadResults;
     window.loadStandings = loadStandings;
     window.loadTeamStats = loadTeamStats;
     window.loadNews = loadNews;
@@ -1453,12 +991,9 @@
         initTabs();
         loadHero();
         loadFormWidget();
-        loadMatches();
-        loadResults();
         loadStandings();
         loadTeamStats();
         loadNews();
-        loadMiniStrip();
         loadCalendar();
     });
 })();

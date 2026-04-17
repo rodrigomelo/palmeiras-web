@@ -9,8 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lucide-static@latest/font/lucide.min.css">
     <link rel="icon" type="image/png" href="/static/favicon.png">
-    <link rel="stylesheet" href="/static/css/styles.css?v=12">
-    <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="/static/css/styles.css?v=19">
 </head>
 <body>
     <button class="theme-toggle" id="themeToggle" title="Alternar tema" aria-label="Alternar tema claro/escuro" onclick="toggleTheme()">🌙</button>
@@ -38,7 +37,7 @@
     <main class="container">
 
         <!-- ============================================ -->
-        <!-- HERO — Next match + Countdown + Form         -->
+        <!-- HERO — Live match + Countdown + Form         -->
         <!-- ============================================ -->
         <section class="hero-hub" id="hero-hub">
             <!-- Match Card -->
@@ -94,46 +93,21 @@
         </section>
 
         <!-- ============================================ -->
-        <!-- TAB BAR — drill-down sections               -->
+        <!-- CALENDAR HUB — main view below hero          -->
         <!-- ============================================ -->
-        <div class="tabs" role="tablist">
-            <button class="tab-btn active" data-tab="proximos" role="tab" aria-selected="true">📅 Próximos</button>
-            <button class="tab-btn" data-tab="resultados" role="tab" aria-selected="false">🏆 Resultados</button>
-            <button class="tab-btn" data-tab="classificacao" role="tab" aria-selected="false">📊 Tabela</button>
-            <button class="tab-btn" data-tab="estatisticas" role="tab" aria-selected="false">📈 Estatísticas</button>
-            <button class="tab-btn" data-tab="news" role="tab" aria-selected="false">📰 Notícias</button>
-        </div>
-
-        <!-- ============================================ -->
-        <!-- TAB PANELS                                   -->
-        <!-- ============================================ -->
-
-        <!-- Próximos -->
-        <div id="proximos" class="tab-content active" role="tabpanel">
+        <div class="main-layout">
+        <section class="calendar-hub" id="calendar-hub">
             <div class="card">
-                <div class="card-title">
-                    📅 Próximos Jogos
-                    <button onclick="loadMatches()" class="inline-refresh" aria-label="Atualizar">🔄</button>
-                </div>
-                <!-- Mini Calendar Strip -->
-                <div class="mini-calendar-strip" id="mini-calendar-strip">
-                    <div class="mini-strip-nav">
-                        <button class="mini-strip-btn" id="mini-strip-prev">‹</button>
-                        <span id="mini-strip-month-label"></span>
-                        <button class="mini-strip-btn" id="mini-strip-next">›</button>
+                <div class="cal-header">
+                    <div class="cal-title">📅 Jogos do Mês
+                        <select id="cal-year-select" onchange="changeCalYear(this.value)"></select>
                     </div>
-                    <div class="mini-strip-grid" id="mini-strip-grid"></div>
-                </div>
-                <!-- Day Filter Chip -->
-                <div id="day-filter-chip" class="day-filter-chip" style="display:none">
-                    <span class="day-filter-icon">📅</span>
-                    <span class="day-filter-text" id="day-filter-text"></span>
-                    <button class="day-filter-clear" onclick="clearListDayFilter()" title="Limpar filtro">✕</button>
+
                 </div>
                 <!-- Competition Legend -->
                 <div class="comp-legend" id="comp-legend">
                     <div class="comp-legend-item active" data-comp="all" onclick="filterSharedComp('all',this)">
-                        <span class="comp-legend-dot" style="background:#006B3F"></span>
+                        <span class="comp-legend-dot" style="background:#006437"></span>
                         <span class="comp-legend-label">Todos</span>
                     </div>
                     <div class="comp-legend-item" data-comp="BSA" onclick="filterSharedComp('BSA',this)">
@@ -149,20 +123,32 @@
                         <span class="comp-legend-label">🥇 Copa do Brasil</span>
                     </div>
                 </div>
-                <div id="next-matches"><div class="empty">Carregando...</div></div>
+                <div class="calendar-nav">
+                    <button class="cal-nav-btn" id="cal-prev">‹</button>
+                    <span id="cal-month-label"></span>
+                    <button class="cal-nav-btn" id="cal-next">›</button>
+                </div>
+                <div id="calendar-grid" class="calendar-grid"></div>
+                <div id="calendar-expanded"></div>
             </div>
+        </section>
+
+        <!-- ============================================ -->
+        <!-- SECONDARY TABS — Tabela, Estatísticas, etc.  -->
+        <!-- ============================================ -->
+        <div class="main-content">
+        <div class="tabs" role="tablist">
+            <button class="tab-btn active" data-tab="classificacao" role="tab" aria-selected="true">📊 Tabela</button>
+            <button class="tab-btn" data-tab="estatisticas" role="tab" aria-selected="false">📈 Estatísticas</button>
+            <button class="tab-btn" data-tab="news" role="tab" aria-selected="false">📰 Notícias</button>
         </div>
 
-        <!-- Resultados -->
-        <div id="resultados" class="tab-content" role="tabpanel">
-            <div class="card">
-                <div class="card-title">🏆 Resultados</div>
-                <div id="recent-results"><div class="empty">Carregando...</div></div>
-            </div>
-        </div>
+        <!-- ============================================ -->
+        <!-- TAB PANELS                                   -->
+        <!-- ============================================ -->
 
         <!-- Classificação -->
-        <div id="classificacao" class="tab-content" role="tabpanel">
+        <div id="classificacao" class="tab-content active" role="tabpanel">
             <div class="card">
                 <div class="card-title">📊 Classificação — Brasileirão</div>
                 <div id="standings"><div class="empty">Carregando...</div></div>
@@ -177,41 +163,14 @@
             </div>
         </div>
 
-        <!-- Calendário -->
-        <div id="calendario" class="tab-content" role="tabpanel">
-            <div class="card">
-                <div class="cal-header">
-                    <div class="cal-title">📅 Calendário de Jogos
-                        <select id="cal-year-select" onchange="changeCalYear(this.value)"></select>
-                    </div>
-                    <div class="cal-view-switcher">
-                        <button class="view-btn active" data-view="grid" onclick="switchCalView('grid',this)">
-                            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
-                            Grade
-                        </button>
-                        <button class="view-btn" data-view="list" onclick="switchCalView('list',this)">
-                            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="2" width="14" height="2" rx="1"/><rect x="1" y="7" width="14" height="2" rx="1"/><rect x="1" y="12" width="14" height="2" rx="1"/></svg>
-                            Lista
-                        </button>
-                    </div>
-                </div>
-                <div class="calendar-nav">
-                    <button class="cal-nav-btn" id="cal-prev">‹</button>
-                    <span id="cal-month-label"></span>
-                    <button class="cal-nav-btn" id="cal-next">›</button>
-                </div>
-                <div id="calendar-grid" class="cal-view-content active"></div>
-                <div id="calendar-list" class="cal-view-content"></div>
-                <div id="calendar-expanded"></div>
-            </div>
-        </div>
-
         <!-- Notícias -->
         <div id="news" class="tab-content" role="tabpanel">
             <div class="card">
                 <div class="card-title">📰 Notícias Recentes</div>
                 <div id="news-list"><div class="empty">Carregando...</div></div>
             </div>
+        </div>
+        </div>
         </div>
 
     </main>
@@ -227,7 +186,7 @@
         </div>
     </footer>
 
-    <script src="/static/js/config.js?v=12"></script>
-    <script src="/static/js/app.js?v=12"></script>
+    <script src="/static/js/config.js?v=13"></script>
+    <script src="/static/js/app.js?v=17"></script>
 </body>
 </html>
