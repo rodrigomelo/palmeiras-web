@@ -175,6 +175,9 @@
                 if (btn.dataset.tab === 'estatisticas' && !performanceChart) {
                     renderPerformanceChart();
                 }
+                if (btn.dataset.tab === 'prediction') {
+                    loadPrediction();
+                }
             });
         });
     }
@@ -688,6 +691,221 @@
         // Delegated click handler is no longer needed — <a> handles natively
     }
 
+    // --- Prediction ---
+    async function loadPrediction() {
+        showPredictionLoading();
+        
+        try {
+            // Fetch all required data in parallel
+            const [upcomingData, recentData, standingsData] = await Promise.all([
+                api('matches?status=SCHEDULED,TIMED&limit=5'),
+                api('matches?status=FINISHED&limit=8'),
+                api('standings?competition=BSA')
+            ]);
+
+            // Find next Palmeiras match
+            const nextMatch = findNextPalmeirasMatch(upcomingData?.matches || []);
+            if (!nextMatch) {
+                showPredictionEmpty();
+                return;
+            }
+
+            // Calculate prediction
+            const prediction = calculatePrediction(nextMatch, recentData?.matches || [], standingsData?.standings || []);
+            
+            // Render prediction UI
+            renderPrediction(nextMatch, prediction);
+            
+        } catch (error) {
+            showError('prediction-content', 'Erro ao carregar palpites', 'loadPrediction');
+        }
+    }
+
+    function findNextPalmeirasMatch(matches) {
+        return matches.find(m => m.homeTeam?.id === CONFIG.TEAM_ID || m.awayTeam?.id === CONFIG.TEAM_ID);
+    }
+
+    function calculatePrediction(match, recentMatches, standings) {
+        const isPalmerasHome = match.homeTeam?.id === CONFIG.TEAM_ID;
+        const opponent = isPalmerasHome ? match.awayTeam : match.homeTeam;
+        
+        // Base probabilities based on home/away
+        let probs = isPalmerasHome 
+            ? { win: 0.50, draw: 0.27, loss: 0.23 }
+            : { win: 0.38, draw: 0.29, loss: 0.33 };
+
+        // Recent form adjustment
+        const formAdjustment = calculateFormAdjustment(recentMatches);
+        probs.win += formAdjustment;
+        probs.loss -= formAdjustment;
+
+        // Position adjustment if both teams are in standings
+        const palmeirasStanding = standings.find(s => s.teamId === CONFIG.TEAM_ID);
+        const opponentStanding = standings.find(s => s.teamId === opponent?.id);
+        
+        if (palmeirasStanding && opponentStanding) {
+            const positionAdjustment = calculatePositionAdjustment(palmeirasStanding, opponentStanding);
+            probs.win += positionAdjustment;
+            probs.loss -= positionAdjustment;
+        }
+
+        // Normalize and apply floor
+        const total = probs.win + probs.draw + probs.loss;
+        probs.win = Math.max(0.12, probs.win / total);
+        probs.draw = Math.max(0.12, probs.draw / total);
+        probs.loss = Math.max(0.12, probs.loss / total);
+
+        // Final normalization
+        const newTotal = probs.win + probs.draw + probs.loss;
+        probs.win /= newTotal;
+        probs.draw /= newTotal;
+        probs.loss /= newTotal;
+
+        // Generate factors
+        const factors = generateFactors(match, recentMatches, palmeirasStanding, opponentStanding, isPalmerasHome);
+        
+        return { probs, factors, isPalmerasHome };
+    }
+
+    function calculateFormAdjustment(recentMatches) {
+        // Get last 5 Palmeiras matches
+        const palmeirasMatches = recentMatches
+            .filter(m => m.homeTeam?.id === CONFIG.TEAM_ID || m.awayTeam?.id === CONFIG.TEAM_ID)
+            .slice(0, 5);
+
+        if (palmeirasMatches.length === 0) return 0;
+
+        let formPoints = 0;
+        let matchCount = 0;
+
+        palmeirasMatches.forEach(match => {
+            if (match.score?.fullTime) {
+                const palmeirasIsHome = match.homeTeam?.id === CONFIG.TEAM_ID;
+                const palmeirasScore = palmeirasIsHome ? match.score.fullTime.home : match.score.fullTime.away;
+                const opponentScore = palmeirasIsHome ? match.score.fullTime.away : match.score.fullTime.home;
+
+                if (palmeirasScore > opponentScore) formPoints += 3;
+                else if (palmeirasScore === opponentScore) formPoints += 1;
+                
+                matchCount++;
+            }
+        });
+
+        if (matchCount === 0) return 0;
+
+        // Average points per game, adjusted to influence range
+        const avgPoints = formPoints / matchCount;
+        // Scale: 0 points/game = -0.09, 1.5 points/game = 0, 3 points/game = +0.09
+        return Math.max(-0.09, Math.min(0.09, (avgPoints - 1.5) * 0.06));
+    }
+
+    function calculatePositionAdjustment(palmeirasStanding, opponentStanding) {
+        const positionDiff = opponentStanding.position - palmeirasStanding.position;
+        // Better position = positive adjustment, worse = negative
+        // Scale: each 5 position difference = ±0.02, max ±0.10
+        return Math.max(-0.10, Math.min(0.10, positionDiff * 0.02));
+    }
+
+    function generateFactors(match, recentMatches, palmeirasStanding, opponentStanding, isPalmerasHome) {
+        const factors = [];
+
+        // Recent form
+        const palmeirasMatches = recentMatches
+            .filter(m => m.homeTeam?.id === CONFIG.TEAM_ID || m.awayTeam?.id === CONFIG.TEAM_ID)
+            .slice(0, 5);
+
+        let wins = 0, draws = 0, losses = 0;
+        palmeirasMatches.forEach(match => {
+            if (match.score?.fullTime) {
+                const palmeirasIsHome = match.homeTeam?.id === CONFIG.TEAM_ID;
+                const palmeirasScore = palmeirasIsHome ? match.score.fullTime.home : match.score.fullTime.away;
+                const opponentScore = palmeirasIsHome ? match.score.fullTime.away : match.score.fullTime.home;
+
+                if (palmeirasScore > opponentScore) wins++;
+                else if (palmeirasScore === opponentScore) draws++;
+                else losses++;
+            }
+        });
+
+        if (wins + draws + losses > 0) {
+            factors.push(`Forma: ${wins}V ${draws}E ${losses}D`);
+        }
+
+        // Home/Away
+        factors.push(isPalmerasHome ? 'Casa' : 'Fora');
+
+        // Table positions if available
+        if (palmeirasStanding && opponentStanding) {
+            factors.push(`Tabela: ${palmeirasStanding.position}º x ${opponentStanding.position}º`);
+        }
+
+        return factors.slice(0, 3); // Limit to 3 factors
+    }
+
+    function renderPrediction(match, prediction) {
+        const { probs, factors, isPalmerasHome } = prediction;
+        const opponent = isPalmerasHome ? match.awayTeam : match.homeTeam;
+        
+        // Determine confidence based on highest probability
+        const maxProb = Math.max(probs.win, probs.draw, probs.loss);
+        let confidenceBadge;
+        if (maxProb >= 0.60) {
+            confidenceBadge = '<div class="prediction-badge likely">🟢 Provável</div>';
+        } else if (maxProb >= 0.45) {
+            confidenceBadge = '<div class="prediction-badge maybe">🟡 Possível</div>';
+        } else {
+            confidenceBadge = '<div class="prediction-badge risky">🔴 Arriscado</div>';
+        }
+
+        // Match title
+        const matchTitle = isPalmerasHome 
+            ? `Palmeiras x ${escapeHtml(opponent?.shortName || opponent?.name || 'Adversário')}`
+            : `${escapeHtml(opponent?.shortName || opponent?.name || 'Adversário')} x Palmeiras`;
+
+        // Format probabilities as percentages
+        const winPct = Math.round(probs.win * 100);
+        const drawPct = Math.round(probs.draw * 100);
+        const lossPct = Math.round(probs.loss * 100);
+
+        const factorsHtml = factors.map(f => `<span class="prediction-factor">${escapeHtml(f)}</span>`).join('');
+
+        document.getElementById('prediction-content').innerHTML = `
+            <div class="prediction-card">
+                <div class="prediction-match">${matchTitle}</div>
+                ${confidenceBadge}
+                
+                <div class="prediction-probs">
+                    <div class="prob-box ${probs.win === maxProb ? 'primary' : ''}">
+                        <div class="prob-value">${winPct}%</div>
+                        <div class="prob-label">Vitória</div>
+                    </div>
+                    <div class="prob-box ${probs.draw === maxProb ? 'primary' : ''}">
+                        <div class="prob-value">${drawPct}%</div>
+                        <div class="prob-label">Empate</div>
+                    </div>
+                    <div class="prob-box ${probs.loss === maxProb ? 'primary' : ''}">
+                        <div class="prob-value">${lossPct}%</div>
+                        <div class="prob-label">Derrota</div>
+                    </div>
+                </div>
+                
+                ${factors.length > 0 ? `<div class="prediction-factors">${factorsHtml}</div>` : ''}
+                
+                <div class="prediction-note">
+                    Estimativa baseada em forma recente, mando de campo e tabela quando disponível.
+                </div>
+            </div>
+        `;
+    }
+
+    function showPredictionLoading() {
+        document.getElementById('prediction-content').innerHTML = '<div class="empty">Carregando...</div>';
+    }
+
+    function showPredictionEmpty() {
+        document.getElementById('prediction-content').innerHTML = '<div class="empty">Nenhum jogo agendado para palpite</div>';
+    }
+
     // --- Calendar ---
     const COMP_DOT_CLASS = {
         BSA: 'bsa',
@@ -835,10 +1053,23 @@
         } else {
             _calSelectedDay = dayStr;
             renderExpandedDay(dayStr);
+            
+            // Auto-scroll to expanded section on mobile after DOM update
+            if (window.matchMedia('(max-width: 600px)').matches) {
+                requestAnimationFrame(() => {
+                    const expandedEl = document.getElementById('calendar-expanded');
+                    if (expandedEl && expandedEl.firstElementChild) {
+                        expandedEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    }
+                });
+            }
         }
-        // Update selected state
+        
+        // Update selected state - only add if day is still selected
         document.querySelectorAll('.cal-day').forEach(d => d.classList.remove('selected'));
-        document.querySelector(`.cal-day[data-day="${day}"]`)?.classList.add('selected');
+        if (_calSelectedDay) {
+            document.querySelector(`.cal-day[data-day="${day}"]`)?.classList.add('selected');
+        }
     }
 
     function renderExpandedDay(dayStr) {
@@ -869,7 +1100,7 @@
                 const oppScore = isHome ? m.awayScore : m.homeScore;
 
                 const scoreHtml = (m.status === 'FINISHED' || m.status === 'PLAYING_TIME_FINISHED') && ourScore != null
-                    ? `<span style="margin-left:0.5rem;font-weight:700;font-size:0.9rem">${ourScore}–${oppScore}</span>`
+                    ? `<span class="cal-match-score">${ourScore}–${oppScore}</span>`
                     : '';
 
                 const statusText = STATUS_LABEL[m.status] || m.status;
@@ -879,11 +1110,11 @@
                     <div class="cal-match-time">${time}</div>
                     <div class="cal-match-comp ${compClass}">${escapeHtml(CONFIG.formatComp(m.competition))}</div>
                     <div class="cal-match-teams">
-                        <img src="${CONFIG.getCrest(ourTeam)}" alt="">
-                        <span>${escapeHtml(CONFIG.teamName(ourTeam))}</span>
+                        <img class="cal-match-crest" src="${CONFIG.getCrest(ourTeam)}" alt="">
+                        <span class="cal-match-team-name">${escapeHtml(CONFIG.teamName(ourTeam))}</span>
                         <span class="cal-match-vs">×</span>
-                        <span>${escapeHtml(CONFIG.teamName(oppTeam))}</span>
-                        <img src="${CONFIG.getCrest(oppTeam)}" alt="">
+                        <span class="cal-match-team-name">${escapeHtml(CONFIG.teamName(oppTeam))}</span>
+                        <img class="cal-match-crest" src="${CONFIG.getCrest(oppTeam)}" alt="">
                         ${scoreHtml}
                     </div>
                     <div class="cal-match-status">${statusText}</div>
@@ -982,6 +1213,7 @@
     window.loadStandings = loadStandings;
     window.loadTeamStats = loadTeamStats;
     window.loadNews = loadNews;
+    window.loadPrediction = loadPrediction;
 
     // --- Init ---
     document.addEventListener('DOMContentLoaded', () => {
@@ -994,6 +1226,7 @@
         loadStandings();
         loadTeamStats();
         loadNews();
+        loadPrediction();
         loadCalendar();
     });
 })();

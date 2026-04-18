@@ -9,7 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lucide-static@latest/font/lucide.min.css">
     <link rel="icon" type="image/png" href="/static/favicon.png">
-    <link rel="stylesheet" href="/static/css/styles.css?v=23">
+    <link rel="stylesheet" href="/static/css/styles.css?v=26">
 </head>
 <body>
     <button class="theme-toggle" id="themeToggle" title="Alternar tema" aria-label="Alternar tema claro/escuro" onclick="toggleTheme()">🌙</button>
@@ -140,6 +140,7 @@
         <div class="tabs" role="tablist">
             <button class="tab-btn active" data-tab="classificacao" role="tab" aria-selected="true">📊 Tabela</button>
             <button class="tab-btn" data-tab="estatisticas" role="tab" aria-selected="false">📈 Estatísticas</button>
+            <button class="tab-btn" data-tab="prediction" role="tab" aria-selected="false">🎯 Palpites</button>
             <button class="tab-btn" data-tab="news" role="tab" aria-selected="false">📰 Notícias</button>
         </div>
 
@@ -161,6 +162,14 @@
             <div class="card">
                 <div class="card-title">📈 Estatísticas da Temporada</div>
                 <div id="team-stats"><div class="empty">Carregando...</div></div>
+            </div>
+        </div>
+
+        <!-- Palpites -->
+        <div id="prediction" class="tab-content" role="tabpanel">
+            <div class="card">
+                <div class="card-title">🎯 Palpites do Próximo Jogo</div>
+                <div id="prediction-content"><div class="empty">Carregando...</div></div>
             </div>
         </div>
 
@@ -190,6 +199,6 @@
     </footer>
 
     <script src="/static/js/config.js?v=13"></script>
-    <script src="/static/js/app.js?v=17"></script>
+    <script src="/static/js/app.js?v=18"></script>
 </body>
 </html>
