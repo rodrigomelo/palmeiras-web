@@ -167,9 +167,13 @@
         document.querySelectorAll('.tab-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-btn').forEach(b => {
+                    b.classList.remove('active');
+                    b.setAttribute('aria-selected', 'false');
+                });
                 document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
                 btn.classList.add('active');
+                btn.setAttribute('aria-selected', 'true');
                 const tab = document.getElementById(btn.dataset.tab);
                 tab?.classList.add('active');
                 if (btn.dataset.tab === 'estatisticas' && !performanceChart) {
@@ -796,14 +800,34 @@
         // Average points per game, adjusted to influence range
         const avgPoints = formPoints / matchCount;
         // Scale: 0 points/game = -0.09, 1.5 points/game = 0, 3 points/game = +0.09
-        return Math.max(-0.09, Math.min(0.09, (avgPoints - 1.5) * 0.06));
+        return Math.max(
+            -PREDICTION_CONSTANTS.MAX_FORM_ADJUSTMENT, 
+            Math.min(
+                PREDICTION_CONSTANTS.MAX_FORM_ADJUSTMENT, 
+                (avgPoints - 1.5) * PREDICTION_CONSTANTS.FORM_WEIGHT_PER_POINT
+            )
+        );
     }
+
+    // Prediction model constants
+    const PREDICTION_CONSTANTS = {
+        POSITION_WEIGHT_PER_PLACE: 0.004,  // 0.02 per 5 places = 0.004 per place
+        MAX_POSITION_ADJUSTMENT: 0.10,
+        FORM_WEIGHT_PER_POINT: 0.06,
+        MAX_FORM_ADJUSTMENT: 0.09
+    };
 
     function calculatePositionAdjustment(palmeirasStanding, opponentStanding) {
         const positionDiff = opponentStanding.position - palmeirasStanding.position;
         // Better position = positive adjustment, worse = negative
-        // Scale: each 5 position difference = ±0.02, max ±0.10
-        return Math.max(-0.10, Math.min(0.10, positionDiff * 0.02));
+        // Scale: 0.004 per position difference, max ±0.10
+        return Math.max(
+            -PREDICTION_CONSTANTS.MAX_POSITION_ADJUSTMENT, 
+            Math.min(
+                PREDICTION_CONSTANTS.MAX_POSITION_ADJUSTMENT, 
+                positionDiff * PREDICTION_CONSTANTS.POSITION_WEIGHT_PER_PLACE
+            )
+        );
     }
 
     function generateFactors(match, recentMatches, palmeirasStanding, opponentStanding, isPalmerasHome) {
@@ -1105,8 +1129,9 @@
 
                 const statusText = STATUS_LABEL[m.status] || m.status;
                 const compClass = getCompBadgeClass(m.competition?.code);
+                const statusClass = (m.status === 'IN_PLAY' || m.status === 'PAUSED') ? 'live' : '';
 
-                return `<div class="cal-match">
+                return `<div class="cal-match ${compClass}">
                     <div class="cal-match-time">${time}</div>
                     <div class="cal-match-comp ${compClass}">${escapeHtml(CONFIG.formatComp(m.competition))}</div>
                     <div class="cal-match-teams">
@@ -1117,7 +1142,7 @@
                         <img class="cal-match-crest" src="${CONFIG.getCrest(oppTeam)}" alt="">
                         ${scoreHtml}
                     </div>
-                    <div class="cal-match-status">${statusText}</div>
+                    <div class="cal-match-status ${statusClass}">${statusText}</div>
                 </div>`;
             }).join('')}
         </div>`;
