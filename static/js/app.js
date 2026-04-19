@@ -1067,6 +1067,18 @@
                 toggleDay(day);
             });
         });
+
+        // Auto-select today's date if no day is selected and today is in current month
+        if (!_calSelectedDay && _calYear === todayYear && _calMonth === todayMonth) {
+            const todayDay = parseInt(todayStr.split('-')[2]);
+            if (todayDay >= 1 && todayDay <= daysInMonth) {
+                _calSelectedDay = todayStr;
+                // Update the visual selected state
+                document.querySelector(`.cal-day[data-day="${todayDay}"]`)?.classList.add('selected');
+                // Show expanded view for today's matches
+                renderExpandedDay(todayStr);
+            }
+        }
     }
 
     function toggleDay(day) {

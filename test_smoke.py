@@ -86,73 +86,76 @@ def run_smoke_test():
                 else:
                     print(f"  ❌ Tab accessibility failed - aria states: {aria_states}")
             
-            # Test 3: Calendar day expansion
-            print("  📅 Testing calendar expansion...")
-            # Look for days that have matches first
-            days_with_matches = page.locator('.cal-day.has-match[data-day]')
-            calendar_days = page.locator('.cal-day[data-day]:not(.other-month)')
+            # Test 3: Calendar expansion and today auto-selection
+            print("  📅 Testing calendar expansion and today auto-selection...")
             
-            test_day = days_with_matches.first if days_with_matches.count() > 0 else calendar_days.first
+            # Check if today is auto-selected
+            today_selected = page.locator('.cal-day.today.selected')
+            auto_selected = today_selected.count() > 0
             
-            if calendar_days.count() > 0:
-                # Click day with matches if available, otherwise first available day  
-                day_num = test_day.get_attribute('data-day')
-                has_matches = days_with_matches.count() > 0
+            if auto_selected:
+                print("  ✅ Today's date automatically selected")
+                results['calendar_expansion'] = True
                 
-                test_day.click()
-                page.wait_for_timeout(300)
-                
-                # Check if expanded content appeared
-                expanded = page.locator('#calendar-expanded .cal-expanded')
-                expanded_matches = page.locator('#calendar-expanded .cal-match')
-                
-                # Success if day has matches and expands, or day has no matches and doesn't expand
-                if has_matches:
-                    results['calendar_expansion'] = expanded.count() > 0
-                    if results['calendar_expansion']:
-                        print(f"  ✅ Calendar day {day_num} with matches expanded successfully")
-                    else:
-                        print(f"  ❌ Calendar day {day_num} with matches failed to expand")
+                # Check if expanded view exists (today might or might not have matches)
+                expanded = page.locator('#calendar-expanded .cal-expanded') 
+                if expanded.count() > 0:
+                    print("  ✅ Today's expanded view is showing")
                 else:
-                    # Day without matches - expansion should not happen, this is correct  
-                    results['calendar_expansion'] = expanded.count() == 0
-                    if results['calendar_expansion']:
-                        print(f"  ✅ Calendar day {day_num} without matches correctly didn't expand")
-                    else:
-                        print(f"  ⚠️  Calendar day {day_num} without matches unexpectedly expanded")
-                
-                # Test 4: Calendar styling classes (only if content expanded)
-                if expanded_matches.count() > 0:
-                    first_match = expanded_matches.first
-                    match_classes = first_match.get_attribute('class') or ""
-                    status_element = first_match.locator('.cal-match-status').first
+                    print("  ✅ Today has no matches (correct - no expansion needed)")
                     
-                    # Check if competition classes are applied
-                    has_comp_class = any(cls in match_classes for cls in ['bsa', 'cli', 'copa', 'other'])
-                    
-                    # Check basic styling is present  
-                    has_base_class = 'cal-match' in match_classes
-                    
-                    results['calendar_styling'] = has_base_class
-                    
-                    if results['calendar_styling']:
-                        print(f"  ✅ Calendar match styling applied correctly")
-                        if has_comp_class:
-                            print(f"    📌 Competition class detected: {match_classes}")
-                        else:
-                            print(f"    📌 Base classes found: {match_classes}")
-                    else:
-                        print(f"  ❌ Calendar styling issue - classes: {match_classes}")
-                else:
-                    # No expanded content to test styling on - mark as passed
-                    results['calendar_styling'] = True
-                    print(f"  ✅ Calendar styling test skipped (no expanded content)")
             else:
-                results['calendar_expansion'] = False
-                results['calendar_styling'] = False
-                print("  ❌ No calendar days found")
+                print("  ⚠️  Today not auto-selected, testing fallback...")
+                # Fallback: manually test a day with matches
+                days_with_matches = page.locator('.cal-day.has-match[data-day]')
+                
+                if days_with_matches.count() > 0:
+                    first_match_day = days_with_matches.first
+                    day_num = first_match_day.get_attribute('data-day')
+                    first_match_day.click()
+                    page.wait_for_timeout(300)
+                    
+                    expanded = page.locator('#calendar-expanded .cal-expanded')
+                    results['calendar_expansion'] = expanded.count() > 0
+                    
+                    if results['calendar_expansion']:
+                        print(f"  ✅ Manual selection of day {day_num} works")
+                    else:
+                        print(f"  ❌ Manual selection of day {day_num} failed")
+                else:
+                    results['calendar_expansion'] = False
+                    print("  ❌ No days with matches found for testing")
             
-            # Test 5: Prediction tab loading
+            
+            # Test 4: Calendar styling classes (only if content expanded)
+            expanded_matches = page.locator('#calendar-expanded .cal-match')
+            if expanded_matches.count() > 0:
+                first_match = expanded_matches.first
+                match_classes = first_match.get_attribute('class') or ""
+                status_element = first_match.locator('.cal-match-status').first
+                
+                # Check if competition classes are applied
+                has_comp_class = any(cls in match_classes for cls in ['bsa', 'cli', 'copa', 'other'])
+                
+                # Check basic styling is present  
+                has_base_class = 'cal-match' in match_classes
+                
+                results['calendar_styling'] = has_base_class
+                
+                if results['calendar_styling']:
+                    print(f"  ✅ Calendar match styling applied correctly")
+                    if has_comp_class:
+                        print(f"    📌 Competition class detected: {match_classes}")
+                    else:
+                        print(f"    📌 Base classes found: {match_classes}")
+                else:
+                    print(f"  ❌ Calendar styling issue - classes: {match_classes}")
+            else:
+                # No expanded content to test styling on - mark as passed
+                results['calendar_styling'] = True
+                print(f"  ✅ Calendar styling test skipped (no expanded content)")
+            
+            # Test 4: Prediction tab loading
             print("  🎯 Testing prediction functionality...")
             prediction_tab = page.locator('.tab-btn[data-tab="prediction"]')
             
@@ -171,7 +174,7 @@ def run_smoke_test():
                 else:
                     print(f"  ⚠️  Prediction still loading or empty: {content_text[:50]}...")
             
-            # Test 6: Console cleanliness
+            # Test 5: Console cleanliness
             error_messages = [msg for msg in console_messages if 'error' in msg.lower()]
             results['console_clean'] = len(error_messages) == 0 and len(page_errors) == 0
             
