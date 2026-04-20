@@ -178,10 +178,14 @@ def scrape_google_copa_brasil():
 # ---- Known Copa do Brasil 2026 data (manually verified) ----
 # Palmeiras enters in the 5th phase (round of 16 equivalent)
 # Source: ge.globo + Google search results (March 29, 2026)
+# Updated: April 19, 2026 — 1st leg confirmed Apr 23 19:30 BRT
+#
+# IMPORTANT: Entries with source='manual' are protected from collector overwrites.
+# The collector skips update() for manual entries — only scores are updated live.
 COPA_BRASIL_2026_KNOWN = [
     {
         'external_id': 990001,
-        'utc_date': '2026-04-22T00:00:00+00:00',  # April 22 (date-base)
+        'utc_date': '2026-04-23T22:30:00+00:00',  # April 23 19:30 BRT (Thu)
         'home_team': json.dumps({'id': TEAM_ID, 'name': 'SE Palmeiras', 'shortName': 'Palmeiras', 'tla': 'PAL'}),
         'away_team': json.dumps({'id': 0, 'name': 'Jacuipense BA', 'shortName': 'Jacuipense', 'tla': 'JAC'}),
         'competition': json.dumps({'code': 'COPA', 'name': 'Copa do Brasil 2026', 'emblem': ''}),
@@ -192,6 +196,7 @@ COPA_BRASIL_2026_KNOWN = [
         'venue': 'Allianz Parque',
         'home_score': None,
         'away_score': None,
+        'source': 'manual',
     },
     {
         'external_id': 990002,
@@ -206,6 +211,7 @@ COPA_BRASIL_2026_KNOWN = [
         'venue': '',
         'home_score': None,
         'away_score': None,
+        'source': 'manual',
     },
 ]
 

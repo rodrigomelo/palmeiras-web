@@ -441,7 +441,14 @@ def collect_copa_brasil():
                     client.table('matches').insert(m).execute()
                     saved += 1
                 else:
-                    # Update existing (maybe new scores/dates)
+                    # Protect manual entries (external_id >= 990000):
+                    # Only update scores/status, never overwrite date/venue/teams
+                    is_manual = isinstance(ext_id, int) and ext_id >= 990000
+                    if is_manual and m.get('source') != 'manual':
+                        # Collector trying to overwrite a manual entry — skip
+                        _print(f"    Manual entry {ext_id} protected from overwrite")
+                        continue
+                    # Normal update
                     client.table('matches').update(m).eq('external_id', ext_id).execute()
                     saved += 1
             else:
