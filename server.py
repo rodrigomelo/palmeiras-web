@@ -433,6 +433,9 @@ class Handler(SimpleHTTPRequestHandler):
 
                 self.send_response(status)
                 self.send_header('Content-Type', content_type)
+                # Cache-Control: standings/news stable, live data short TTL
+                cache_ttl = 120 if 'live' in route or 'hero' in route else 300
+                self.send_header('Cache-Control', f'public, max-age={cache_ttl}')
                 # Restrict CORS to known origins
                 origin = self.headers.get('Origin', '')
                 allowed = ['http://localhost:5001', 'http://localhost:3000', 'https://palmeiras-web.vercel.app']

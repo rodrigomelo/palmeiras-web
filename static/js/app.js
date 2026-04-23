@@ -50,12 +50,6 @@
         return comp?.code || '';
     }
 
-    function matchCompetition(match, comp) {
-        if (comp === 'all') return true;
-        const code = getCompCode(match.competition);
-        return (COMP_MAP[comp] || []).includes(code);
-    }
-
     // --- Helpers ---
     function escapeHtml(str) {
         if (str == null) return '';
@@ -153,6 +147,11 @@
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
             _apiCache[path] = { data, time: Date.now() };
+            // Evict stale entries to prevent memory leak
+            const now = Date.now();
+            for (const key of Object.keys(_apiCache)) {
+                if (now - _apiCache[key].time > CACHE_TTL * 3) delete _apiCache[key];
+            }
             return data;
         } catch (e) {
             console.error(`API [${path}]:`, e);
@@ -635,38 +634,6 @@
         }
     }
 
-    // --- Stats (legacy fallback) ---
-    async function loadTeamStats() {
-        // Don't overwrite if chart is already rendered
-        if (document.getElementById('performanceCanvas')) return;
-        
-        showSkeleton('team-stats');
-        const data = await api('matches?status=FINISHED&limit=20');
-        if (!data) { showError('team-stats', 'Erro ao carregar', 'loadTeamStats'); return; }
-        // Don't overwrite if chart was rendered while waiting for API
-        if (document.getElementById('performanceCanvas')) return;
-        
-        const matches = data.matches || [];
-        if (!matches.length) { showEmpty('team-stats', 'Nenhum dado'); return; }
-
-        let w = 0, d = 0, l = 0, gf = 0, ga = 0;
-        matches.forEach(m => {
-            const isHome = m.homeTeam.id === TEAM_ID;
-            const f = isHome ? (m.score?.fullTime?.home ?? 0) : (m.score?.fullTime?.away ?? 0);
-            const a = isHome ? (m.score?.fullTime?.away ?? 0) : (m.score?.fullTime?.home ?? 0);
-            gf += f; ga += a;
-            if (f > a) w++; else if (f < a) l++; else d++;
-        });
-        const total = w + d + l;
-        const points = w * 3 + d;
-        const pct = total ? Math.round(points / (total * 3) * 100) : 0;
-
-        document.getElementById('team-stats').innerHTML = [
-            ['⚽ Jogos', total], ['✅ Vitórias', w], ['➖ Empates', d], ['❌ Derrotas', l],
-            ['🥅 Gols Pro', gf], ['🛡️ Gols Contra', ga], ['📊 Saldo', gf - ga], ['📈 Aproveitamento', pct + '%']
-        ].map(([n, v]) => `<div class="stat-row"><span class="stat-name">${n}</span><span class="stat-number">${v}</span></div>`).join('');
-    }
-
     // --- News ---
     async function loadNews() {
         showSkeleton('news-list');
@@ -949,17 +916,12 @@
         CANCELLED: 'Cancelado',
     };
 
-    function getDotClass(code) {
-        return getCompBadgeClass(code);
-    }
-
     function getCompBadgeClass(code) {
         return COMP_DOT_CLASS[code] || 'other';
     }
 
     const MONTHS_PT = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
                        'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
-    const WEEKDAYS_PT = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
 
     let _calYear = null;
     let _calMonth = null;
@@ -1009,9 +971,10 @@
             const isToday = dayStr === todayStr;
             let matches = data.days[dayStr] || [];
 
-            // Apply competition filter
+            // Apply competition filter (fuzzy match via COMP_MAP)
             if (_calCompFilter !== 'all') {
-                matches = matches.filter(m => m.competition?.code === _calCompFilter);
+                const allowedCodes = COMP_MAP[_calCompFilter] || [_calCompFilter];
+                matches = matches.filter(m => allowedCodes.includes(m.competition?.code));
             }
 
             const comps = [...new Set(matches.map(m => m.competition?.code || 'OTHER'))];
@@ -1019,7 +982,7 @@
             const overflow = comps.length > 3 ? comps.length - 3 : 0;
 
             const dotsHtml = visibleComps.map(c =>
-                `<div class="cal-dot ${getDotClass(c)}"></div>`
+                `<div class="cal-dot ${getCompBadgeClass(c)}"></div>`
             ).join('');
             const overflowHtml = overflow > 0 ? `<span class="cal-overflow">+${overflow}</span>` : '';
 
@@ -1111,9 +1074,10 @@
     function renderExpandedDay(dayStr) {
         let matches = _calData?.days?.[dayStr] || [];
 
-        // Apply competition filter
+        // Apply competition filter (fuzzy match via COMP_MAP)
         if (_calCompFilter !== 'all') {
-            matches = matches.filter(m => m.competition?.code === _calCompFilter);
+            const allowedCodes = COMP_MAP[_calCompFilter] || [_calCompFilter];
+            matches = matches.filter(m => allowedCodes.includes(m.competition?.code));
         }
 
         const container = document.getElementById('calendar-expanded');
@@ -1127,7 +1091,7 @@
             <div class="cal-expanded-header">
                 <span class="cal-expanded-date">${dayStr.split('-').reverse().join('/')}</span>
             </div>
-            ${matches.map(m => {
+            ${matches.filter(m => m?.homeTeam?.id && m?.awayTeam?.id).map(m => {
                 const time = new Date(m.utcDate).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: CONFIG.BR_TZ });
                 const isHome = m.homeTeam.id === CONFIG.TEAM_ID;
                 const ourTeam = isHome ? m.homeTeam : m.awayTeam;
@@ -1248,9 +1212,7 @@
     // --- Public API ---
     window.loadHero = loadHero;
     window.loadStandings = loadStandings;
-    window.loadTeamStats = loadTeamStats;
     window.loadNews = loadNews;
-    window.loadPrediction = loadPrediction;
 
     // --- Init ---
     document.addEventListener('DOMContentLoaded', () => {
@@ -1261,9 +1223,7 @@
         loadHero();
         loadFormWidget();
         loadStandings();
-        loadTeamStats();
         loadNews();
-        loadPrediction();
         loadCalendar();
     });
 })();

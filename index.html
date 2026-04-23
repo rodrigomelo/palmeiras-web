@@ -7,9 +7,10 @@
     <meta name="description" content="Palmeiras Agenda — Jogos, placares e próximos desafios do Verdão">
     <meta name="theme-color" content="#006437">
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lucide-static@latest/font/lucide.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="icon" type="image/png" href="/static/favicon.png">
-    <link rel="stylesheet" href="/static/css/styles.css?v=27">
+    <link rel="stylesheet" href="/static/css/styles.css?v=28">
 </head>
 <body>
     <button class="theme-toggle" id="themeToggle" title="Alternar tema" aria-label="Alternar tema claro/escuro" onclick="toggleTheme()">🌙</button>
@@ -138,10 +139,10 @@
         <!-- ============================================ -->
         <div class="main-content">
         <div class="tabs" role="tablist">
-            <button class="tab-btn active" data-tab="classificacao" role="tab" aria-selected="true">📊 Tabela</button>
-            <button class="tab-btn" data-tab="estatisticas" role="tab" aria-selected="false">📈 Estatísticas</button>
-            <button class="tab-btn" data-tab="prediction" role="tab" aria-selected="false">🎯 Palpites</button>
-            <button class="tab-btn" data-tab="news" role="tab" aria-selected="false">📰 Notícias</button>
+            <button class="tab-btn active" data-tab="classificacao" role="tab" id="tab-classificacao" aria-selected="true" aria-controls="classificacao">📊 Tabela</button>
+            <button class="tab-btn" data-tab="estatisticas" role="tab" id="tab-estatisticas" aria-selected="false" aria-controls="estatisticas">📈 Estatísticas</button>
+            <button class="tab-btn" data-tab="prediction" role="tab" id="tab-prediction" aria-selected="false" aria-controls="prediction">🎯 Palpites</button>
+            <button class="tab-btn" data-tab="news" role="tab" id="tab-news" aria-selected="false" aria-controls="news">📰 Notícias</button>
         </div>
 
         <!-- ============================================ -->
@@ -150,7 +151,7 @@
         <div class="dashboard-grid">
 
         <!-- Classificação -->
-        <div id="classificacao" class="tab-content active" role="tabpanel">
+        <div id="classificacao" class="tab-content active" role="tabpanel" aria-labelledby="tab-classificacao">
             <div class="card">
                 <div class="card-title">📊 Classificação — Brasileirão</div>
                 <div id="standings"><div class="empty">Carregando...</div></div>
@@ -158,7 +159,7 @@
         </div>
 
         <!-- Estatísticas -->
-        <div id="estatisticas" class="tab-content" role="tabpanel">
+        <div id="estatisticas" class="tab-content" role="tabpanel" aria-labelledby="tab-estatisticas">
             <div class="card">
                 <div class="card-title">📈 Estatísticas da Temporada</div>
                 <div id="team-stats"><div class="empty">Carregando...</div></div>
@@ -198,7 +199,7 @@
         </div>
     </footer>
 
-    <script src="/static/js/config.js?v=13"></script>
-    <script src="/static/js/app.js?v=18"></script>
+    <script src="/static/js/config.js?v=14"></script>
+    <script src="/static/js/app.js?v=19"></script>
 </body>
 </html>
