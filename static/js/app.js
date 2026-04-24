@@ -1091,7 +1091,7 @@
             <div class="cal-expanded-header">
                 <span class="cal-expanded-date">${dayStr.split('-').reverse().join('/')}</span>
             </div>
-            ${matches.filter(m => m?.homeTeam?.id && m?.awayTeam?.id).map(m => {
+            ${matches.filter(m => m?.homeTeam && m?.awayTeam).map(m => {
                 const time = new Date(m.utcDate).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: CONFIG.BR_TZ });
                 const isHome = m.homeTeam.id === CONFIG.TEAM_ID;
                 const ourTeam = isHome ? m.homeTeam : m.awayTeam;

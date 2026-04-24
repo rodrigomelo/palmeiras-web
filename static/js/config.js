@@ -92,7 +92,7 @@ const CONFIG = {
     getCrest(team) {
         const crest = team?.crest;
         if (crest && !this.BROKEN_CRESTS.has(crest)) return crest;
-        if (team?.id && this.TEAM_CRESTS[team.id]) return this.TEAM_CRESTS[team.id];
+        if (team?.id != null && this.TEAM_CRESTS[team.id]) return this.TEAM_CRESTS[team.id];
         return 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="18" fill="#ccc"/><text x="20" y="25" text-anchor="middle" fill="#666" font-size="14">?</text></svg>');
     },
 };
