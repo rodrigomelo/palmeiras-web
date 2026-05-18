@@ -458,7 +458,6 @@ def collect_copa_brasil():
                 comp_code = m.get('competition_code', 'COPA')
                 comp_name = m.get('competition_name', 'Copa do Brasil')
                 utc_date = m.get('utc_date')
-                source = m.get('source', 'scraper')
 
                 if not utc_date:
                     continue
@@ -503,5 +502,10 @@ if __name__ == '__main__':
     collect_standings()
     collect_news()
     collect_copa_brasil()
+    try:
+        from collectors.score_resolver import resolve_scores
+    except ImportError:
+        from score_resolver import resolve_scores
+    resolve_scores()
     apply_broadcast_info()
     _print("Done!")

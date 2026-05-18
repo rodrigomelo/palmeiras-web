@@ -1,45 +1,36 @@
-"""
-GET /api/news?limit=20
-Uses direct Supabase REST API.
-"""
-import json
-import os
+"""GET /api/news?limit=20."""
+import sys
 from http.server import BaseHTTPRequestHandler
-from urllib.parse import urlparse, parse_qs, urlencode
-from urllib.request import Request, urlopen
 from urllib.error import HTTPError
+from urllib.parse import parse_qs, urlparse
 
-SUPABASE_URL = os.environ.get('SUPABASE_URL', '')
-SUPABASE_KEY = os.environ.get('SUPABASE_KEY', '')
+try:
+    from api._shared import RequestValidationError, int_param, is_configured, json_response, supabase_get, upstream_status
+except ImportError:
+    from _shared import RequestValidationError, int_param, is_configured, json_response, supabase_get, upstream_status  # type: ignore
+
+
+def _safe_error(code='upstream_error'):
+    return {'news': [], 'error': code}
 
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         params = parse_qs(urlparse(self.path).query)
-        limit = min(int(params.get('limit', ['20'])[0]), 50)
+        try:
+            limit = int_param(params, 'limit', 20, min_value=1, max_value=50)
+        except RequestValidationError as error:
+            return json_response(self, 400, _safe_error(str(error)), cache_control='no-store')
 
-        if not SUPABASE_URL or not SUPABASE_KEY:
-            return self._respond(503, {'news': [], 'error': 'not_configured'})
+        if not is_configured():
+            return json_response(self, 503, _safe_error('not_configured'), cache_control='no-store')
 
         try:
-            headers = {
-                'apikey': SUPABASE_KEY,
-                'Authorization': f'Bearer {SUPABASE_KEY}',
-            }
-            qs = urlencode({'select': '*', 'order': 'collected_at.desc', 'limit': str(limit)})
-            url = f'{SUPABASE_URL}/rest/v1/news?{qs}'
-            req = Request(url, headers=headers)
-            with urlopen(req, timeout=10) as resp:
-                data = json.loads(resp.read())
-            self._respond(200, {'news': data})
-        except HTTPError as e:
-            self._respond(e.code, {'news': [], 'error': f'supabase_{e.code}'})
-        except Exception as e:
-            self._respond(500, {'news': [], 'error': str(e)})
-
-    def _respond(self, status, data):
-        self.send_response(status)
-        self.send_header('Content-Type', 'application/json')
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.end_headers()
-        self.wfile.write(json.dumps(data).encode())
+            data = supabase_get('news', select='*', order='collected_at.desc', limit=str(limit))
+            return json_response(self, 200, {'news': data})
+        except HTTPError as error:
+            print(f'[api.news] Supabase HTTP {error.code}', file=sys.stderr)
+            return json_response(self, upstream_status(error), _safe_error(f'supabase_{error.code}'), cache_control='no-store')
+        except Exception as error:
+            print(f'[api.news] unexpected error: {type(error).__name__}', file=sys.stderr)
+            return json_response(self, 500, _safe_error('internal_error'), cache_control='no-store')

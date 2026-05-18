@@ -3,14 +3,14 @@
     --brand-dark: #004D2C;
     --brand-light: #E8F5E9;
     --win: #006B3F;
-    --loss: #D32F2F;
-    --draw: #757575;
+    --loss: #9B1C1C;
+    --draw: #555555;
     --live: #FF1744;
     --bg: #FAFAFA;
     --bg-card: #FFFFFF;
     --text: #1A1A1A;
     --text-secondary: #666666;
-    --text-muted: #999999;
+    --text-muted: #555555;
     --gold: #FFD700;
     --shadow: 0 4px 20px rgba(0,107,63,0.1);
     --shadow-dark: 0 4px 20px rgba(0,0,0,0.15);
@@ -45,6 +45,38 @@ body.dark {
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.skip-link {
+    position: fixed;
+    top: 0.75rem;
+    left: 0.75rem;
+    z-index: 2000;
+    transform: translateY(-150%);
+    background: var(--brand-dark);
+    color: white;
+    padding: 0.65rem 0.9rem;
+    border-radius: 8px;
+    font-weight: 700;
+    text-decoration: none;
+    transition: transform 0.2s ease;
+}
+.skip-link:focus-visible { transform: translateY(0); }
+
+button { font: inherit; }
+
+#main-content:focus { outline: none; }
 
 body {
     font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -294,6 +326,9 @@ body.dark .theme-toggle {
     font-size: 0.78rem;
     font-weight: 600;
     background: var(--bg-card);
+    color: var(--text-secondary);
+    appearance: none;
+    -webkit-appearance: none;
 }
 .comp-legend-item:hover {
     background: var(--brand-light);
@@ -677,8 +712,12 @@ body.dark .cal-title select {
     letter-spacing: 0.06em;
 }
 .cal-day {
+    appearance: none;
+    -webkit-appearance: none;
     aspect-ratio: 1;
     min-height: 50px;
+    width: 100%;
+    color: inherit;
     background: transparent;
     border-radius: 6px;
     display: flex;
@@ -764,10 +803,10 @@ body.dark .cal-title select {
     line-height: 1.2;
     white-space: nowrap;
 }
-.cal-score.win { background: rgba(0, 180, 80, 0.15); color: #0a6; }
-.cal-score.loss { background: rgba(220, 50, 50, 0.15); color: #c33; }
-.cal-score.draw { background: rgba(180, 160, 0, 0.15); color: #998a00; }
-.cal-score.live { background: rgba(255, 60, 60, 0.12); color: #e33; }
+.cal-score.win { background: #d9f4e5; color: #005a35; }
+.cal-score.loss { background: #f8dddd; color: #8a1f1f; }
+.cal-score.draw { background: #f4f1d9; color: #5f5200; }
+.cal-score.live { background: #ffe1e5; color: #9b0000; }
 .cal-day.has-match { border-color: rgba(0,0,0,0.12); }
 .cal-day.is-live {
     border-color: rgba(255, 60, 60, 0.4);
@@ -1187,7 +1226,7 @@ body.dark .skeleton-line { background: linear-gradient(90deg, var(--bg) 25%, rgb
 }
 .footer-updated {
     font-size: 0.7rem;
-    opacity: 0.7;
+    opacity: 1;
     margin-top: 0.25rem;
 }
 .footer-actions {
@@ -1408,7 +1447,7 @@ body.dark .skeleton-line { background: linear-gradient(90deg, var(--bg) 25%, rgb
     }
     .tab-btn:not(.active) {
         background: transparent;
-        color: var(--text-muted);
+        color: var(--text-secondary);
     }
 
     /* --- 8. Hero bottom - mobile layout --- */

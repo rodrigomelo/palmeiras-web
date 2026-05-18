@@ -127,7 +127,14 @@
     function showError(id, msg, fn) {
         const el = document.getElementById(id);
         if (!el) return;
-        el.innerHTML = `<div class="error-state"><div class="error-icon">⚠️</div><div class="error-message">${escapeHtml(msg)}</div>${fn ? `<button class="retry-btn" onclick="${fn}()">Tentar novamente</button>` : ''}</div>`;
+        el.innerHTML = `<div class="error-state"><div class="error-icon" aria-hidden="true">⚠️</div><div class="error-message">${escapeHtml(msg)}</div>${fn ? `<button type="button" class="retry-btn" data-retry-fn="${escapeHtml(fn)}">Tentar novamente</button>` : ''}</div>`;
+        const retry = el.querySelector('[data-retry-fn]');
+        if (retry) {
+            retry.addEventListener('click', () => {
+                const retryFn = window[retry.dataset.retryFn];
+                if (typeof retryFn === 'function') retryFn();
+            });
+        }
     }
 
     function showEmpty(id, msg) {
@@ -143,7 +150,7 @@
             return cached.data;
         }
         try {
-            const res = await fetch(`/api/${path}${path.includes('?') ? '&' : '?'}_t=${Date.now()}`);
+            const res = await fetch(`/api/${path}`, { headers: { 'Accept': 'application/json' } });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
             _apiCache[path] = { data, time: Date.now() };
@@ -154,7 +161,7 @@
             }
             return data;
         } catch (e) {
-            console.error(`API [${path}]:`, e);
+            console.warn(`API [${path}] failed; using fallback when available`);
             // Return stale cache on failure
             if (cached) return cached.data;
             return null;
@@ -163,26 +170,53 @@
 
     // --- Tabs ---
     function initTabs() {
-        document.querySelectorAll('.tab-btn').forEach(btn => {
+        const tabs = Array.from(document.querySelectorAll('.tab-btn'));
+        const panels = Array.from(document.querySelectorAll('.tab-content'));
+
+        function activateTab(btn, focusTab = false) {
+            tabs.forEach(tab => {
+                const selected = tab === btn;
+                tab.classList.toggle('active', selected);
+                tab.setAttribute('aria-selected', String(selected));
+                tab.tabIndex = selected ? 0 : -1;
+            });
+
+            panels.forEach(panel => {
+                const selected = panel.id === btn.dataset.tab;
+                panel.classList.toggle('active', selected);
+                panel.toggleAttribute('hidden', !selected);
+                panel.toggleAttribute('inert', !selected);
+                panel.setAttribute('aria-hidden', String(!selected));
+            });
+
+            if (focusTab) btn.focus();
+            if (btn.dataset.tab === 'estatisticas' && !performanceChart) {
+                renderPerformanceChart();
+            }
+            if (btn.dataset.tab === 'prediction') {
+                loadPrediction();
+            }
+        }
+
+        tabs.forEach((btn, index) => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                document.querySelectorAll('.tab-btn').forEach(b => {
-                    b.classList.remove('active');
-                    b.setAttribute('aria-selected', 'false');
-                });
-                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-                btn.classList.add('active');
-                btn.setAttribute('aria-selected', 'true');
-                const tab = document.getElementById(btn.dataset.tab);
-                tab?.classList.add('active');
-                if (btn.dataset.tab === 'estatisticas' && !performanceChart) {
-                    renderPerformanceChart();
-                }
-                if (btn.dataset.tab === 'prediction') {
-                    loadPrediction();
-                }
+                activateTab(btn);
+            });
+            btn.addEventListener('keydown', (event) => {
+                const keys = ['ArrowLeft', 'ArrowRight', 'Home', 'End'];
+                if (!keys.includes(event.key)) return;
+                event.preventDefault();
+                let nextIndex = index;
+                if (event.key === 'ArrowRight') nextIndex = (index + 1) % tabs.length;
+                if (event.key === 'ArrowLeft') nextIndex = (index - 1 + tabs.length) % tabs.length;
+                if (event.key === 'Home') nextIndex = 0;
+                if (event.key === 'End') nextIndex = tabs.length - 1;
+                activateTab(tabs[nextIndex], true);
             });
         });
+
+        activateTab(tabs.find(tab => tab.getAttribute('aria-selected') === 'true') || tabs[0]);
     }
 
     // --- Live Refresh ---
@@ -399,6 +433,8 @@
             if (window.Chart) { chartJsLoaded = true; resolve(); return; }
             const script = document.createElement('script');
             script.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js';
+            script.async = true;
+            script.crossOrigin = 'anonymous';
             script.onload = () => { chartJsLoaded = true; resolve(); };
             script.onerror = () => reject(new Error('Chart.js CDN failed'));
             document.head.appendChild(script);
@@ -957,7 +993,7 @@
 
         // Day headers
         ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].forEach(d => {
-            html += `<div class="cal-head">${d}</div>`;
+            html += `<div class="cal-head" aria-hidden="true">${d}</div>`;
         });
 
         // Leading empty cells
@@ -990,12 +1026,15 @@
             const finished = matches.filter(m => m.status === 'FINISHED' || m.status === 'PLAYING_TIME_FINISHED');
             const live = matches.filter(m => m.status === 'IN_PLAY' || m.status === 'PAUSED');
             let scoreHtml = '';
+            const scoreLabels = [];
             if (live.length > 0) {
                 const m = live[0];
                 const isHome = m.homeTeam?.id === TEAM_ID;
                 const ourScore = isHome ? m.homeScore : m.awayScore;
                 const oppScore = isHome ? m.awayScore : m.homeScore;
-                scoreHtml = `<div class="cal-score live">🔴 ${ourScore ?? 0}–${oppScore ?? 0}</div>`;
+                const scoreText = `🔴 ${ourScore ?? 0}–${oppScore ?? 0}`;
+                scoreLabels.push(scoreText);
+                scoreHtml = `<div class="cal-score live">${escapeHtml(scoreText)}</div>`;
             } else if (finished.length > 0) {
                 // Show result badge for each finished game
                 scoreHtml = finished.map(m => {
@@ -1004,7 +1043,9 @@
                     const oppScore = isHome ? m.awayScore : m.homeScore;
                     const result = ourScore > oppScore ? 'V' : ourScore < oppScore ? 'D' : 'E';
                     const cls = result === 'V' ? 'win' : result === 'D' ? 'loss' : 'draw';
-                    return `<div class="cal-score ${cls}">${ourScore}–${oppScore}</div>`;
+                    const scoreText = `${ourScore}–${oppScore}`;
+                    scoreLabels.push(scoreText);
+                    return `<div class="cal-score ${cls}">${escapeHtml(scoreText)}</div>`;
                 }).join('');
             }
 
@@ -1014,11 +1055,16 @@
             if (live.length > 0) classes.push('is-live');
             if (_calSelectedDay === dayStr) classes.push('selected');
 
-            html += `<div class="${classes.join(' ')}" data-day="${day}">
+            const selected = _calSelectedDay === dayStr;
+            const matchLabel = matches.length === 1 ? '1 jogo' : `${matches.length} jogos`;
+            const visibleScoreLabel = scoreLabels.length ? `, ${scoreLabels.join(', ')}` : '';
+            const ariaLabel = `${day}${visibleScoreLabel}, ${day}/${_calMonth}/${_calYear}${matches.length ? `, ${matchLabel}` : ', sem jogos'}`;
+
+            html += `<button type="button" class="${classes.join(' ')}" data-day="${day}" aria-pressed="${selected}" aria-label="${escapeHtml(ariaLabel)}">
                 <div class="cal-day-num">${day}</div>
                 ${matches.length ? `<div class="cal-dots">${dotsHtml}${overflowHtml}</div>` : ''}
                 ${scoreHtml}
-            </div>`;
+            </button>`;
         }
 
         grid.innerHTML = html;
@@ -1037,7 +1083,9 @@
             if (todayDay >= 1 && todayDay <= daysInMonth) {
                 _calSelectedDay = todayStr;
                 // Update the visual selected state
-                document.querySelector(`.cal-day[data-day="${todayDay}"]`)?.classList.add('selected');
+                const todayCell = document.querySelector(`.cal-day[data-day="${todayDay}"]`);
+                todayCell?.classList.add('selected');
+                todayCell?.setAttribute('aria-pressed', 'true');
                 // Show expanded view for today's matches
                 renderExpandedDay(todayStr);
             }
@@ -1065,9 +1113,14 @@
         }
         
         // Update selected state - only add if day is still selected
-        document.querySelectorAll('.cal-day').forEach(d => d.classList.remove('selected'));
+        document.querySelectorAll('.cal-day').forEach(d => {
+            d.classList.remove('selected');
+            d.setAttribute('aria-pressed', 'false');
+        });
         if (_calSelectedDay) {
-            document.querySelector(`.cal-day[data-day="${day}"]`)?.classList.add('selected');
+            const selectedCell = document.querySelector(`.cal-day[data-day="${day}"]`);
+            selectedCell?.classList.add('selected');
+            selectedCell?.setAttribute('aria-pressed', 'true');
         }
     }
 
@@ -1138,12 +1191,19 @@
         _calCompFilter = comp;
 
         // Update legend items
-        document.querySelectorAll('.comp-legend-item').forEach(b => b.classList.remove('active'));
-        document.querySelector(`.comp-legend-item[data-comp="${comp}"]`)?.classList.add('active');
+        document.querySelectorAll('.comp-legend-item').forEach(b => {
+            const selected = b.dataset.comp === comp;
+            b.classList.toggle('active', selected);
+            b.setAttribute('aria-pressed', String(selected));
+        });
 
         // Re-render calendar view with filter
         loadCalendar();
     };
+
+    document.querySelectorAll('.comp-legend-item').forEach(btn => {
+        btn.addEventListener('click', () => window.filterSharedComp(btn.dataset.comp || 'all', btn));
+    });
 
     // Nav buttons
     document.getElementById('cal-prev')?.addEventListener('click', () => {
@@ -1209,14 +1269,26 @@
         }
     };
 
+    function bindStaticControls() {
+        document.getElementById('themeToggle')?.addEventListener('click', window.toggleTheme);
+        document.getElementById('refreshButton')?.addEventListener('click', () => window.location.reload());
+        document.getElementById('cal-year-select')?.addEventListener('change', (event) => {
+            window.changeCalYear(event.target.value);
+        });
+        document.getElementById('downloadCalendarButton')?.addEventListener('click', window.downloadCalendar);
+        document.getElementById('copyCalendarUrlButton')?.addEventListener('click', window.copyCalendarUrl);
+    }
+
     // --- Public API ---
     window.loadHero = loadHero;
     window.loadStandings = loadStandings;
     window.loadNews = loadNews;
+    window.loadPrediction = loadPrediction;
 
     // --- Init ---
     document.addEventListener('DOMContentLoaded', () => {
         initTheme();
+        bindStaticControls();
         const el = document.getElementById('last-updated');
         if (el) el.textContent = 'Atualizado: ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
         initTabs();

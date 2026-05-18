@@ -1,76 +1,57 @@
-"""
-GET /api/standings?competition=BSA
-Uses direct Supabase REST API.
-"""
-import json
-import os
+"""GET /api/standings?competition=BSA."""
+import sys
 from http.server import BaseHTTPRequestHandler
-from urllib.parse import urlparse, parse_qs, urlencode
-from urllib.request import Request, urlopen
 from urllib.error import HTTPError
+from urllib.parse import parse_qs, urlparse
 
-SUPABASE_URL = os.environ.get('SUPABASE_URL', '')
-SUPABASE_KEY = os.environ.get('SUPABASE_KEY', '')
+try:
+    from api._shared import (
+        RequestValidationError,
+        competition_param,
+        is_configured,
+        json_response,
+        supabase_get,
+        transform_standing,
+        upstream_status,
+    )
+except ImportError:
+    from _shared import (  # type: ignore
+        RequestValidationError,
+        competition_param,
+        is_configured,
+        json_response,
+        supabase_get,
+        transform_standing,
+        upstream_status,
+    )
 
 
-def supabase_get(table, **params):
-    headers = {
-        'apikey': SUPABASE_KEY,
-        'Authorization': f'Bearer {SUPABASE_KEY}',
-    }
-    qs = urlencode(params)
-    url = f'{SUPABASE_URL}/rest/v1/{table}?{qs}'
-    req = Request(url, headers=headers)
-    with urlopen(req, timeout=10) as resp:
-        return json.loads(resp.read())
-
-
-def parse_json(val):
-    if isinstance(val, str):
-        try:
-            return json.loads(val)
-        except (json.JSONDecodeError, TypeError):
-            return {}
-    return val if isinstance(val, dict) else {}
+def _safe_error(code='upstream_error'):
+    return {'standings': [], 'error': code}
 
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         params = parse_qs(urlparse(self.path).query)
+        try:
+            competition = competition_param(params)
+        except RequestValidationError as error:
+            return json_response(self, 400, _safe_error(str(error)), cache_control='no-store')
 
-        if not SUPABASE_URL or not SUPABASE_KEY:
-            return self._respond(503, {'standings': [], 'error': 'not_configured'})
+        if not is_configured():
+            return json_response(self, 503, _safe_error('not_configured'), cache_control='no-store')
 
         try:
-            rows = supabase_get('standings', select='*', order='position.asc')
-            standings = []
-            for r in rows:
-                team = parse_json(r.get('team', '{}'))
-                standings.append({
-                    'position': r.get('position'),
-                    'teamId': team.get('id'),
-                    'teamName': team.get('name', ''),
-                    'teamShort': team.get('shortName', ''),
-                    'teamTla': team.get('tla', ''),
-                    'crest': team.get('crest', ''),
-                    'playedGames': r.get('played_games'),
-                    'won': r.get('won'),
-                    'draw': r.get('drawn'),
-                    'lost': r.get('lost'),
-                    'points': r.get('points'),
-                    'goalsFor': r.get('goals_for'),
-                    'goalsAgainst': r.get('goals_against'),
-                    'goalDifference': r.get('goal_difference'),
-                })
-            self._respond(200, {'standings': standings})
-        except HTTPError as e:
-            self._respond(e.code, {'standings': [], 'error': f'supabase_{e.code}'})
-        except Exception as e:
-            self._respond(500, {'standings': [], 'error': str(e)})
-
-    def _respond(self, status, data):
-        self.send_response(status)
-        self.send_header('Content-Type', 'application/json')
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.end_headers()
-        self.wfile.write(json.dumps(data).encode())
+            rows = supabase_get(
+                'standings',
+                select='*',
+                competition=f'eq.{competition}',
+                order='position.asc',
+            )
+            return json_response(self, 200, {'standings': [transform_standing(row) for row in rows]})
+        except HTTPError as error:
+            print(f'[api.standings] Supabase HTTP {error.code}', file=sys.stderr)
+            return json_response(self, upstream_status(error), _safe_error(f'supabase_{error.code}'), cache_control='no-store')
+        except Exception as error:
+            print(f'[api.standings] unexpected error: {type(error).__name__}', file=sys.stderr)
+            return json_response(self, 500, _safe_error('internal_error'), cache_control='no-store')
