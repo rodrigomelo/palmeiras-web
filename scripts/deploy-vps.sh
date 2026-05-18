@@ -46,11 +46,24 @@ python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements.txt
 
 chown -R root:root "${REMOTE_DIR}"
+find "${REMOTE_DIR}" -path "${REMOTE_DIR}/.venv" -prune -o -type d -exec chmod 755 {} +
+find "${REMOTE_DIR}" -path "${REMOTE_DIR}/.venv" -prune -o -type f -exec chmod 644 {} +
+chmod +x "${REMOTE_DIR}/scripts/deploy-vps.sh"
 
 systemctl daemon-reload
+systemctl enable "${SERVICE_NAME}" >/dev/null
 systemctl restart "${SERVICE_NAME}"
 systemctl is-active --quiet "${SERVICE_NAME}"
 
-curl --fail --silent --show-error "http://127.0.0.1:${APP_PORT}/api/health" >/tmp/palmeiras-web-health.json
-cat /tmp/palmeiras-web-health.json
+for attempt in {1..20}; do
+  if curl --fail --silent --show-error "http://127.0.0.1:${APP_PORT}/api/health" >/tmp/palmeiras-web-health.json; then
+    cat /tmp/palmeiras-web-health.json
+    exit 0
+  fi
+  sleep 1
+done
+
+systemctl status "${SERVICE_NAME}" --no-pager -l >&2 || true
+journalctl -u "${SERVICE_NAME}" -n 80 --no-pager >&2 || true
+exit 1
 REMOTE
