@@ -1,8 +1,9 @@
 """
-Palmeiras Web - Local Development Server (port 5001)
+Palmeiras Web - Static/API HTTP server
 
 Direct Supabase access with the same API contracts as the Vercel serverless
-functions. This server is intentionally small and read-only.
+functions. This server is intentionally small and read-only. By default it
+serves local development on port 5001; production can override HOST and PORT.
 
 Usage:
     /opt/homebrew/bin/python3 server.py
@@ -48,7 +49,19 @@ SUPABASE_KEY = (
     or os.environ.get('SUPABASE_PUBLIC_KEY')
     or os.environ.get('SUPABASE_KEY', '')
 )
-PORT = 5001
+HOST = os.environ.get('HOST', '0.0.0.0')
+PORT = int(os.environ.get('PORT', '5001'))
+DEFAULT_ALLOWED_ORIGINS = {
+    'http://localhost:5001',
+    'http://localhost:3000',
+    'https://palmeiras-web.vercel.app',
+    'https://palmeiras.rodrigolanna.com.br',
+}
+ALLOWED_ORIGINS = {
+    origin.strip()
+    for origin in os.environ.get('ALLOWED_ORIGINS', '').split(',')
+    if origin.strip()
+} or DEFAULT_ALLOWED_ORIGINS
 
 _client = None
 
@@ -278,6 +291,10 @@ class Handler(SimpleHTTPRequestHandler):
         parsed = urlparse(self.path)
         path = parsed.path
 
+        if any(part.startswith('.') for part in Path(path).parts):
+            self.send_error(404)
+            return
+
         for route, handler in API_ROUTES.items():
             if path == route:
                 params = parse_qs(parsed.query)
@@ -287,8 +304,7 @@ class Handler(SimpleHTTPRequestHandler):
                 self.send_header('Content-Type', content_type)
                 self.send_header('Cache-Control', cache_control)
                 origin = self.headers.get('Origin', '')
-                allowed = {'http://localhost:5001', 'http://localhost:3000', 'https://palmeiras-web.vercel.app'}
-                if origin in allowed:
+                if origin in ALLOWED_ORIGINS:
                     self.send_header('Access-Control-Allow-Origin', origin)
                 self.end_headers()
                 if isinstance(data, (dict, list)):
@@ -325,8 +341,8 @@ if __name__ == '__main__':
         print('ERROR: SUPABASE_URL and SUPABASE_KEY/SUPABASE_ANON_KEY must be set in .env', file=sys.stderr)
         sys.exit(1)
 
-    print(f'Palmeiras Agenda running at http://localhost:{PORT}')
-    server = PalmeirasHTTPServer(('', PORT), Handler)
+    print(f'Palmeiras Agenda running at http://{HOST}:{PORT}')
+    server = PalmeirasHTTPServer((HOST, PORT), Handler)
     try:
         server.serve_forever()
     except KeyboardInterrupt:

@@ -1,0 +1,26 @@
+[Unit]
+Description=Palmeiras Web static/API server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/palmeiras-web
+Environment=HOST=127.0.0.1
+Environment=PORT=5001
+Environment=PYTHONUNBUFFERED=1
+Environment=ALLOWED_ORIGINS=https://palmeiras.rodrigolanna.com.br,https://palmeiras-web.vercel.app
+EnvironmentFile=/etc/palmeiras-web.env
+ExecStart=/var/www/palmeiras-web/.venv/bin/python server.py
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=full
+ReadWritePaths=/var/www/palmeiras-web
+
+[Install]
+WantedBy=multi-user.target

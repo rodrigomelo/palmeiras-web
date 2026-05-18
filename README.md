@@ -90,6 +90,21 @@ npx vercel env add SUPABASE_URL development
 npx vercel env add SUPABASE_KEY development
 ```
 
+### Deploy to VPS
+
+The production VPS target is `palmeiras.rodrigolanna.com.br`, served from `/var/www/palmeiras-web` behind Nginx.
+
+```bash
+scripts/deploy-vps.sh
+```
+
+Server-only setup files live in `deploy/`:
+
+- `deploy/palmeiras-web.service` → systemd service on port `5001`
+- `deploy/nginx-palmeiras.conf` → Nginx HTTP virtual host; run Certbot after DNS points to the VPS
+
+Keep Supabase credentials outside the web root in `/etc/palmeiras-web.env` on the VPS. Do not deploy `.env` into `/var/www/palmeiras-web`.
+
 ## API Endpoints
 
 | Endpoint | Description |
@@ -106,7 +121,11 @@ npx vercel env add SUPABASE_KEY development
 | Variable | Required | Description |
 |---|---|---|
 | `SUPABASE_URL` | ✅ | Supabase project URL |
-| `SUPABASE_KEY` | ✅ | Supabase service role key |
+| `SUPABASE_ANON_KEY` | Recommended | Supabase anon/public key for read-only public API requests |
+| `SUPABASE_KEY` | Fallback | Legacy Supabase key fallback when `SUPABASE_ANON_KEY` is not configured |
+| `HOST` | Server | Bind address for `server.py`; VPS uses `127.0.0.1` |
+| `PORT` | Server | Bind port for `server.py`; default is `5001` |
+| `ALLOWED_ORIGINS` | Server | Comma-separated CORS allowlist for API responses |
 | `FOOTBALL_API_KEY` | Collectors | football-data.org API key |
 
 ## Database
