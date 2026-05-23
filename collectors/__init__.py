@@ -37,7 +37,8 @@ API_BASE = 'https://api.football-data.org/v4'
 HEADERS = {'X-Auth-Token': FOOTBALL_API_KEY} if FOOTBALL_API_KEY else {}
 PALMEIRAS_HOME = 'Allianz Parque'
 
-# Known broadcast partners for Brazilian football
+# Known broadcast partners for Brazilian football (used as initial seed during match collection)
+# Dynamic scraping from ge.globo happens in broadcast_scraper.py
 BROADCAST_MAP = {
     'BSA': 'Premiere / Globo',
     'COPA': 'SporTV / Premiere',
@@ -384,33 +385,17 @@ def collect_news():
 
 
 def apply_broadcast_info():
-    """Apply known broadcast partners to upcoming matches based on competition code."""
-    _print("  Applying broadcast info...")
-    client = get_supabase()
-    if not client:
-        return
+    """Scrape broadcast info from ge.globo + static fallback.
 
+    Delegates to collectors.broadcast_scraper for dynamic ge.globo scraping
+    with BROADCAST_MAP as fallback when no match page exists yet.
+    """
+    _print("  Applying broadcast info (ge.globo + static fallback)...")
     try:
-        result = client.table('matches').select('*').in_('status', ['SCHEDULED', 'TIMED']).execute()
-        upcoming = result.data[:5]
-    except Exception:
-        return
-
-    updated = 0
-    for match in upcoming:
-        try:
-            ext_id = match.get('external_id')
-            comp = json.loads(match.get('competition') or '{}')
-            comp_code = comp.get('code', '')
-
-            broadcast = BROADCAST_MAP.get(comp_code, '')
-            if broadcast and ext_id:
-                client.table('matches').update({'broadcast': broadcast}).eq('external_id', ext_id).execute()
-                updated += 1
-        except Exception:
-            continue
-
-    _print(f"    Updated {updated} matches")
+        from collectors.broadcast_scraper import collect_broadcast_info
+    except ImportError:
+        from broadcast_scraper import collect_broadcast_info
+    collect_broadcast_info(limit=10)
 
 
 def collect_copa_brasil():
