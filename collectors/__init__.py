@@ -37,16 +37,21 @@ API_BASE = 'https://api.football-data.org/v4'
 HEADERS = {'X-Auth-Token': FOOTBALL_API_KEY} if FOOTBALL_API_KEY else {}
 PALMEIRAS_HOME = 'Allianz Parque'
 
-# Known broadcast partners for Brazilian football (used as initial seed during match collection)
-# Dynamic scraping from ge.globo happens in broadcast_scraper.py
-BROADCAST_MAP = {
-    'BSA': 'Premiere / Globo',
-    'COPA': 'SporTV / Premiere',
-    'COPA_DO_BRASIL': 'SporTV / Premiere',
-    'CLI': 'ESPN / Star+',
-    'LIBERTADORES': 'ESPN / Star+',
-    'COPA_LIBERTADORES': 'ESPN / Star+',
-}
+# Known broadcast partners — single source of truth lives in broadcast_scraper.py
+# Imported lazily below to avoid circular imports at module load
+BROADCAST_MAP = None  # type: ignore[assignment]
+
+
+def _get_broadcast_map() -> dict:
+    """Get the broadcast map (lazy-loaded to avoid circular imports)."""
+    global BROADCAST_MAP
+    if BROADCAST_MAP is None:
+        try:
+            from collectors.broadcast_scraper import BROADCAST_MAP as _bm
+        except ImportError:
+            from broadcast_scraper import BROADCAST_MAP as _bm
+        BROADCAST_MAP = _bm
+    return BROADCAST_MAP
 
 
 def get_supabase():
@@ -121,7 +126,7 @@ def collect_matches():
                 venue = PALMEIRAS_HOME
 
             # Broadcast from known map
-            broadcast = BROADCAST_MAP.get(comp.get('code'), '')
+            broadcast = _get_broadcast_map().get(comp.get('code'), '')
 
             # Referees
             referees = m.get('referees', [])

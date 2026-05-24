@@ -14,7 +14,6 @@ from __future__ import annotations
 import json
 import re
 import os
-import sys
 import time
 from datetime import datetime, timezone, timedelta
 from typing import Optional, List
@@ -66,6 +65,8 @@ def _get_supabase():
 # ── URL construction ───────────────────────────────────────────────────────
 
 # Competition -> ge.globo URL slug
+# Note: 'COPA' (Copa do Brasil) not included — ge.globo URLs differ per round/opponent
+# and aren't predictable. Copa do Brasil falls back to BROADCAST_MAP.
 COMPETITION_SLUGS = {
     'BSA': 'brasileirao-serie-a',
     'COPA_DO_BRASIL': 'copa-do-brasil',
@@ -276,15 +277,28 @@ def _scrape_broadcast_from_page(url: str) -> Optional[List[str]]:
     Returns:
         List of channel names (e.g. ['SporTV', 'Premiere', 'Globoplay']) or None.
     """
-    try:
-        resp = _session.get(url, timeout=20, allow_redirects=True)
-        if resp.status_code != 200 or len(resp.text) < 5000:
-            return None
-    except requests.RequestException:
+    for attempt in range(3):
+        try:
+            resp = _session.get(url, timeout=20, allow_redirects=True)
+            if resp.status_code == 200:
+                break
+            if resp.status_code == 404:
+                return None  # No point retrying a 404
+        except requests.RequestException:
+            if attempt == 2:
+                return None
+            time.sleep(2 ** attempt)
+            continue
+    else:
+        return None
+
+    # Reject tiny responses (error pages, redirects)
+    if len(resp.text) < 1000:
         return None
 
     # Extract liveWatchSources JSON array
-    match = re.search(r'"liveWatchSources":\s*(\[.*?\])\s*,', resp.text)
+    # Allow trailing comma OR closing brace (handles last field in object)
+    match = re.search(r'"liveWatchSources":\s*(\[.*?\])\s*[,}]', resp.text)
     if not match:
         return None
 
@@ -376,6 +390,7 @@ def collect_broadcast_info(limit: int = 10) -> int:
 
         # Try dynamic scrape with multiple URL candidates
         broadcast = None
+        scraped = False
         urls = _build_match_urls(
             match.get('utc_date', ''), home_name, away_name, comp_code
         )
@@ -384,7 +399,7 @@ def collect_broadcast_info(limit: int = 10) -> int:
             channels = _scrape_broadcast_from_page(url)
             if channels:
                 broadcast = _format_broadcast(channels)
-                _print(f'  ✅ {home_name} x {away_name}: {broadcast} (ge.globo)')
+                scraped = True
                 break
             time.sleep(0.5)  # brief pause between URL attempts
 
@@ -400,7 +415,9 @@ def collect_broadcast_info(limit: int = 10) -> int:
                     {'broadcast': broadcast}
                 ).eq('external_id', ext_id).execute()
                 updated += 1
-                if not any(_scrape_broadcast_from_page(u) for u in urls):
+                if scraped:
+                    _print(f'  ✅ {home_name} x {away_name}: {broadcast} (ge.globo)')
+                else:
                     _print(f'  🔄 {home_name} x {away_name}: {broadcast} (static fallback)')
             except Exception as e:
                 _print(f'  ❌ Error updating {home_name} x {away_name}: {e}')
@@ -417,6 +434,7 @@ def collect_broadcast_info(limit: int = 10) -> int:
 # ── CLI entry point ────────────────────────────────────────────────────────
 
 if __name__ == '__main__':
+    import sys
     from dotenv import load_dotenv
     load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
     count = collect_broadcast_info(limit=int(sys.argv[1]) if len(sys.argv) > 1 else 10)
