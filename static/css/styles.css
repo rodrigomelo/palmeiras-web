@@ -27,7 +27,7 @@
     --bg-card-dark: #16213E;
     --text-dark: #E8E8E8;
     --text-secondary-dark: #B0B0B0;
-    --text-muted-dark: #707070;
+    --text-muted-dark: #9a9a9a;
     --brand-light-dark: #0F3D2B;
     --shadow-dark-mode: 0 4px 20px rgba(0,0,0,0.3);
 }
@@ -265,7 +265,7 @@ body.dark .theme-toggle {
 .countdown-label {
     font-size: 0.6rem; font-weight: 700;
     text-transform: uppercase; letter-spacing: 0.12em;
-    opacity: 0.5; margin-bottom: 0.25rem;
+    opacity: 0.65; margin-bottom: 0.25rem;
 }
 .countdown-digits {
     display: flex; align-items: center; justify-content: center; gap: 0.15rem;
@@ -275,7 +275,7 @@ body.dark .theme-toggle {
     font-size: 1.2rem; font-weight: 800;
     font-variant-numeric: tabular-nums; line-height: 1;
 }
-.cd-lbl { font-size: 0.5rem; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.4; margin-top: 1px; }
+.cd-lbl { font-size: 0.5rem; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.55; margin-top: 1px; }
 .cd-sep { font-size: 1rem; font-weight: 700; opacity: 0.25; align-self: flex-start; padding-top: 0.1rem; }
 
 /* Form Widget */
@@ -377,10 +377,6 @@ body.dark .form-dot.draw { color: rgba(255,255,255,0.6); box-shadow: inset 0 0 0
 
 /* Mobile overrides for Hub */
 /* Tabs */
-.info-icon { font-size: 1.3rem; }
-.info-label { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; }
-.info-value { font-size: 0.9rem; font-weight: 600; }
-
 /* Cards */
 .card {
     background: var(--bg-card); border-radius: var(--radius);
@@ -413,106 +409,7 @@ body.dark .form-dot.draw { color: rgba(255,255,255,0.6); box-shadow: inset 0 0 0
     opacity: 1;
 }
 
-/* Competition Filters */
-.comp-filters {
-    display: flex; gap: 0.5rem; flex-wrap: wrap;
-    margin-bottom: 1rem;
-}
-.comp-filter {
-    padding: 0.4rem 0.9rem; background: var(--bg); border: 1px solid var(--brand);
-    border-radius: 20px; color: var(--brand); cursor: pointer;
-    font-size: 0.8rem; font-weight: 600;
-    transition: all 0.2s ease;
-}
-.comp-filter:hover { background: var(--brand-light); }
-.comp-filter.active {
-    background: var(--brand); color: white;
-}
-
-/* Match Items */
-.match-item {
-    padding: 1rem; background: var(--bg); border-radius: 8px;
-    margin-bottom: 0.75rem; border-left: 4px solid var(--brand);
-    cursor: pointer; transition: all 0.2s ease;
-}
-.match-item:hover { background: var(--brand-light); }
-.match-item.win { border-left-color: var(--win); }
-.match-item.loss { border-left-color: var(--loss); }
-.match-item.draw { border-left-color: var(--draw); }
-
-.match-header { display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.8rem; color: var(--text-muted); }
-.match-teams { display: flex; justify-content: space-between; align-items: center; font-weight: 500; }
-
-.match-score-badge {
-    background: var(--brand);
-    color: white;
-    padding: 0.2rem 0.6rem;
-    border-radius: 6px;
-    font-size: 0.85rem;
-    font-weight: 700;
-    letter-spacing: 0.02em;
-    white-space: nowrap;
-}
-.match-score-badge.live {
-    background: var(--live);
-    animation: badgePulse 2s ease-in-out infinite;
-}
-@keyframes badgePulse {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(255,23,68,0.4); }
-    50% { box-shadow: 0 0 0 4px rgba(255,23,68,0.15); }
-}
-.live-minute {
-    display: inline-block;
-    background: rgba(255,23,68,0.15);
-    color: var(--live);
-    padding: 0.1rem 0.4rem;
-    border-radius: 4px;
-    font-size: 0.7rem;
-    font-weight: 700;
-    margin-left: 6px;
-    white-space: nowrap;
-}
-.match-extra {
-    max-height: 0; overflow: hidden; padding: 0 0.75rem;
-    background: var(--brand); border-radius: 8px;
-    margin-top: 0.75rem; color: white;
-    transition: max-height 0.3s ease-out, padding 0.3s ease-out;
-}
-.match-extra.open {
-    max-height: 400px; padding: 0.75rem;
-}
-.match-extra-row {
-    display: flex; align-items: center; gap: 0.5rem;
-    margin: 0.3rem 0; font-size: 0.8rem;
-}
-.match-extra-row .icon { font-size: 1rem; }
-
-.result-badge {
-    padding: 0.2rem 0.6rem; border-radius: 4px;
-    font-size: 0.75rem; font-weight: 700;
-}
-.result-badge.win { background: rgba(0,107,63,0.15); color: var(--win); }
-.result-badge.loss { background: rgba(211,47,47,0.15); color: var(--loss); }
-.result-badge.draw { background: rgba(117,117,117,0.15); color: var(--draw); }
-.match-score {
-    font-size: 1.3rem; font-weight: 800;
-    font-variant-numeric: tabular-nums;
-    letter-spacing: 0.05em;
-}
-/* Results tab — score-first layout */
-.result-highlight {
-    padding: 0.25rem 0 0.5rem;
-}
-.result-highlight .match-score {
-    font-size: 1.6rem; font-weight: 800;
-    letter-spacing: 0.08em;
-}
-.result-score-wrap {
-    display: flex; align-items: center; gap: 0.6rem;
-}
-.match-item.win { border-left: 3px solid var(--win); }
-.match-item.loss { border-left: 3px solid var(--loss); }
-.match-item.draw { border-left: 3px solid var(--draw); }
+/* Match Items REMOVED — unused */
 
 /* Standings */
 .position-badge {
@@ -568,12 +465,6 @@ body.dark .form-dot.draw { color: rgba(255,255,255,0.6); box-shadow: inset 0 0 0
 .news-title { font-weight: 600; font-size: 0.95rem; margin-bottom: 0.25rem; }
 .news-meta { font-size: 0.75rem; color: var(--text-muted); }
 .news-source { color: var(--brand); font-weight: 600; }
-
-/* Stats */
-.stat-row { display: flex; justify-content: space-between; padding: 0.75rem 0; border-bottom: 1px solid var(--bg); transition: background 0.3s ease; }
-.stat-row:last-child { border-bottom: none; }
-.stat-name { font-weight: 500; }
-.stat-number { font-weight: 700; min-width: 40px; text-align: right; }
 
 /* Stats Summary */
 .stats-summary { margin-bottom: 1rem; }
@@ -815,7 +706,7 @@ body.dark .cal-title select {
 }
 body.dark .cal-score.win { background: rgba(0, 200, 100, 0.2); color: #4c4; }
 body.dark .cal-score.loss { background: rgba(255, 80, 80, 0.2); color: #f66; }
-body.dark .cal-score.draw { background: rgba(220, 200, 0, 0.2); color: #cc0; }
+body.dark .cal-score.draw { background: rgba(220, 200, 0, 0.2); color: #e8d44d; }
 body.dark .cal-score.live { background: rgba(255, 80, 80, 0.2); color: #f55; }
 body.dark .cal-day.has-match { border-color: rgba(255,255,255,0.1); }
 body.dark .cal-day.is-live { border-color: rgba(255, 80, 80, 0.5); background: rgba(255, 80, 80, 0.08); }
@@ -838,21 +729,6 @@ body.dark .cal-day.is-live { border-color: rgba(255, 80, 80, 0.5); background: r
     font-weight: 700;
     font-size: 0.85rem;
     color: var(--text);
-}
-.cal-expanded-btn {
-    padding: 0.28rem 0.7rem;
-    background: transparent;
-    color: var(--brand);
-    border: 1.5px solid var(--brand);
-    border-radius: 6px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.18s;
-}
-.cal-expanded-btn:hover {
-    background: var(--brand);
-    color: white;
 }
 .cal-match {
     display: flex;
@@ -1000,55 +876,6 @@ body.dark .tab-btn.active {
     display: block; /* Default behavior for mobile/tablet */
 }
 
-/* ================================================
-   RESPONSIVE — Desktop Dashboard Layout
-   ================================================ */
-@media (min-width: 1024px) {
-    /* Keep dashboard-grid as block to preserve tab behavior */
-    .dashboard-grid {
-        display: block;
-    }
-    
-    /* Keep tabs visible on desktop */
-    .tabs {
-        display: flex;
-    }
-    
-    /* Desktop hero split layout */
-    .hero-hub {
-        display: grid;
-        grid-template-columns: minmax(0, 1.35fr) minmax(300px, 0.75fr);
-    }
-
-    .hero-card {
-        grid-column: 1;
-        grid-row: 1;
-    }
-
-    .hero-bottom {
-        grid-column: 2;
-        grid-row: 1;
-        flex-direction: column;
-        justify-content: center;
-        align-items: stretch;
-        gap: 1rem;
-        border-top: none;
-        border-left: 1px solid rgba(255,255,255,0.08);
-        padding: 1.5rem;
-    }
-    
-    .hero-countdown {
-        text-align: left;
-    }
-    
-    .form-widget {
-        border-left: none;
-        border-top: 1px solid rgba(255,255,255,0.12);
-        padding-left: 0;
-        padding-top: 1rem;
-    }
-}
-
 @keyframes slideDown {
     from {
         opacity: 0;
@@ -1088,13 +915,13 @@ body.dark .tab-btn.active {
 }
 
 .prediction-badge.maybe {
-    background: rgba(234, 179, 8, 0.1);
-    color: #eab308;
+    background: rgba(234, 179, 8, 0.15);
+    color: #facc15;
 }
 
 .prediction-badge.risky {
-    background: rgba(239, 68, 68, 0.1);
-    color: #ef4444;
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
 }
 
 .prediction-probs { 
@@ -1284,8 +1111,52 @@ body.dark .skeleton-line { background: linear-gradient(90deg, var(--bg) 25%, rgb
    DESKTOP LAYOUT (1024px+)
    ================================================ */
 @media (min-width: 1024px) {
+    /* Keep dashboard-grid as block to preserve tab behavior */
+    .dashboard-grid {
+        display: block;
+    }
+
+    /* Keep tabs visible on desktop */
+    .tabs {
+        display: flex;
+    }
+
+    /* Desktop hero split layout */
+    .hero-hub {
+        display: grid;
+        grid-template-columns: minmax(0, 1.35fr) minmax(300px, 0.75fr);
+    }
+
+    .hero-card {
+        grid-column: 1;
+        grid-row: 1;
+    }
+
+    .hero-bottom {
+        grid-column: 2;
+        grid-row: 1;
+        flex-direction: column;
+        justify-content: center;
+        align-items: stretch;
+        gap: 2rem;
+        border-top: none;
+        border-left: 1px solid rgba(255,255,255,0.08);
+        padding: 0.75rem 2rem 1rem;
+    }
+
+    .hero-countdown {
+        text-align: left;
+    }
+
+    .form-widget {
+        border-left: none;
+        border-top: 1px solid rgba(255,255,255,0.12);
+        padding-left: 0;
+        padding-top: 1rem;
+    }
+
     .container { max-width: 1100px; }
-    
+
     /* Side-by-side: Calendar + Tabs content */
     .main-layout {
         display: grid;
@@ -1293,31 +1164,25 @@ body.dark .skeleton-line { background: linear-gradient(90deg, var(--bg) 25%, rgb
         gap: 1.5rem;
         align-items: start;
     }
-    
+
     /* Make calendar sticky on desktop scroll */
     .calendar-hub {
         position: sticky;
         top: 1rem;
     }
-    
+
     /* Ensure main content stacks properly in right column */
     .main-content {
         min-width: 0; /* Prevent overflow issues */
     }
-    
-    /* Hero bottom: countdown and form widget side by side with more space */
-    .hero-bottom {
-        gap: 2rem;
-        padding: 0.75rem 2rem 1rem;
-    }
-    
+
     /* Larger hero team images */
     .hero-team img { width: 80px; height: 80px; }
     .hero-score { font-size: 3.5rem; }
-    
+
     /* Stats grid: 6 columns on wide screens */
     .stats-grid { grid-template-columns: repeat(6, 1fr); }
-    
+
     /* Wider standings stats spacing */
     .standings-row .stats { gap: 1.5rem; }
 }

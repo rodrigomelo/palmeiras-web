@@ -5,15 +5,18 @@ from http.server import BaseHTTPRequestHandler
 from urllib.error import HTTPError
 
 try:
-    from api._shared import is_configured, json_response, supabase_get
+    from api._shared import is_configured, json_response, supabase_get, cors_options_response
 except ImportError:
-    from _shared import is_configured, json_response, supabase_get  # type: ignore
+    from _shared import is_configured, json_response, supabase_get, cors_options_response  # type: ignore
 
 VERSION = '1.1.0'
 
 
 class handler(BaseHTTPRequestHandler):
     """Vercel serverless function entry for /api/health."""
+
+    def do_OPTIONS(self):
+        cors_options_response(self)
 
     def do_GET(self):
         start = datetime.now(timezone.utc)

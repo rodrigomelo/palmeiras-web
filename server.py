@@ -41,13 +41,17 @@ from api._shared import (  # noqa: E402
     transform_standing,
     year_month_params,
 )
+from api._shared import validate_date  # noqa: E402
 from api.calendar import render_calendar  # noqa: E402
 
 SUPABASE_URL = os.environ.get('SUPABASE_URL', '')
+# Read-only API: use anon key only (preserves RLS).  The service_role key
+# (SUPABASE_KEY) is intentionally excluded so the dev server never bypasses
+# Row Level Security on public read endpoints.
 SUPABASE_KEY = (
     os.environ.get('SUPABASE_ANON_KEY')
     or os.environ.get('SUPABASE_PUBLIC_KEY')
-    or os.environ.get('SUPABASE_KEY', '')
+    or ''
 )
 HOST = os.environ.get('HOST', '0.0.0.0')
 PORT = int(os.environ.get('PORT', '5001'))
@@ -93,6 +97,9 @@ def api_matches(params):
         statuses = parse_statuses(status)
         limit = int_param(params, 'limit', 50, min_value=1, max_value=100)
         from_date = params.get('from_date', [None])[0]
+        from_date, date_error = validate_date(from_date)
+        if date_error:
+            raise RequestValidationError(date_error)
     except RequestValidationError as error:
         return 400, _safe_error('matches', str(error)), 'application/json', 'no-store'
 
@@ -125,6 +132,7 @@ def api_standings(params):
     """Return league standings."""
     try:
         competition = competition_param(params)
+        limit = min(int(params.get('limit', [100])[0]), 100)
     except RequestValidationError as error:
         return 400, _safe_error('standings', str(error)), 'application/json', 'no-store'
 
@@ -138,6 +146,7 @@ def api_standings(params):
             .select('*')
             .eq('competition', competition)
             .order('position')
+            .limit(limit)
             .execute()
             .data
             or []
@@ -287,6 +296,15 @@ class Handler(SimpleHTTPRequestHandler):
         self._send_security_headers()
         super().end_headers()
 
+    def do_OPTIONS(self):
+        """Handle CORS preflight requests."""
+        self.send_response(204)
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+        self.send_header('Content-Length', '0')
+        self.end_headers()
+
     def do_GET(self):
         parsed = urlparse(self.path)
         path = parsed.path
@@ -338,7 +356,7 @@ if __name__ == '__main__':
         sys.exit(1)
 
     if not SUPABASE_URL or not SUPABASE_KEY:
-        print('ERROR: SUPABASE_URL and SUPABASE_KEY/SUPABASE_ANON_KEY must be set in .env', file=sys.stderr)
+        print('ERROR: SUPABASE_URL and SUPABASE_ANON_KEY must be set in .env', file=sys.stderr)
         sys.exit(1)
 
     print(f'Palmeiras Agenda running at http://{HOST}:{PORT}')

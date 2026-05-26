@@ -102,55 +102,67 @@ def collect_matches():
         now = datetime.now(timezone.utc).isoformat()
 
         records = []
+        skipped = 0
         for m in matches:
-            home = m.get('homeTeam', {})
-            away = m.get('awayTeam', {})
-            comp = m.get('competition', {})
-            score = m.get('score', {})
-            ft = score.get('fullTime', {})
-            ht = score.get('halfTime', {})
+            try:
+                home = m.get('homeTeam', {})
+                away = m.get('awayTeam', {})
+                comp = m.get('competition', {})
+                score = m.get('score', {})
+                ft = score.get('fullTime', {})
+                ht = score.get('halfTime', {})
 
-            # Cache team crests locally
-            for team in (home, away):
-                tid = team.get('id')
-                if tid:
-                    local_crest = get_or_download_crest(tid, team.get('crest', ''))
-                    if local_crest:
-                        team['crest'] = local_crest
-                    elif tid:  # No crest available
-                        team['crest'] = None
+                # Validate required fields
+                if 'id' not in m:
+                    raise ValueError("Match missing required 'id' field")
 
-            # Determine venue
-            venue = m.get('venue')
-            if not venue and home.get('id') == TEAM_ID:
-                venue = PALMEIRAS_HOME
+                # Cache team crests locally
+                for team in (home, away):
+                    tid = team.get('id')
+                    if tid:
+                        local_crest = get_or_download_crest(tid, team.get('crest', ''))
+                        if local_crest:
+                            team['crest'] = local_crest
+                        elif tid:  # No crest available
+                            team['crest'] = None
 
-            # Broadcast from known map
-            broadcast = _get_broadcast_map().get(comp.get('code'), '')
+                # Determine venue
+                venue = m.get('venue')
+                if not venue and home.get('id') == TEAM_ID:
+                    venue = PALMEIRAS_HOME
 
-            # Referees
-            referees = m.get('referees', [])
+                # Broadcast from known map
+                broadcast = _get_broadcast_map().get(comp.get('code'), '')
 
-            records.append({
-                'external_id': m['id'],
-                'home_team': json.dumps(home),
-                'away_team': json.dumps(away),
-                'home_score': ft.get('home'),
-                'away_score': ft.get('away'),
-                'utc_date': m.get('utcDate'),
-                'status': m.get('status'),
-                'competition': json.dumps(comp),
-                'matchday': m.get('matchday'),
-                'venue': venue,
-                'updated_at': now,
-                'half_time_home': ht.get('home'),
-                'half_time_away': ht.get('away'),
-                'season': json.dumps(m.get('season', {})),
-                'stage': m.get('stage', ''),
-                'area': json.dumps(m.get('area', {})),
-                'referees': json.dumps(referees),
-                'broadcast': broadcast,
-            })
+                # Referees
+                referees = m.get('referees', [])
+
+                records.append({
+                    'external_id': m['id'],
+                    'home_team': json.dumps(home),
+                    'away_team': json.dumps(away),
+                    'home_score': ft.get('home'),
+                    'away_score': ft.get('away'),
+                    'utc_date': m.get('utcDate'),
+                    'status': m.get('status'),
+                    'competition': json.dumps(comp),
+                    'matchday': m.get('matchday'),
+                    'venue': venue,
+                    'updated_at': now,
+                    'half_time_home': ht.get('home'),
+                    'half_time_away': ht.get('away'),
+                    'season': json.dumps(m.get('season', {})),
+                    'stage': m.get('stage', ''),
+                    'area': json.dumps(m.get('area', {})),
+                    'referees': json.dumps(referees),
+                    'broadcast': broadcast,
+                })
+            except Exception as e:
+                skipped += 1
+                _print(f"    Skipping malformed match {m.get('id', '?')}: {e}")
+
+        if skipped:
+            _print(f"    Skipped {skipped} malformed matches out of {len(matches)}")
 
         try:
             client.table('matches').upsert(records, on_conflict='external_id').execute()
@@ -186,30 +198,38 @@ def collect_standings():
         _print(f"    Found {len(table)} teams")
         now = datetime.now(timezone.utc).isoformat()
 
-        # Build all records first, then replace atomically
+        # Build all records first, then upsert atomically
         records = []
+        skipped = 0
         for entry in table:
-            records.append({
-                'competition': 'BSA',
-                'position': entry.get('position'),
-                'team': json.dumps(entry.get('team', {})),
-                'played_games': entry.get('playedGames'),
-                'won': entry.get('won'),
-                'drawn': entry.get('draw'),
-                'lost': entry.get('lost'),
-                'goals_for': entry.get('goalsFor'),
-                'goals_against': entry.get('goalsAgainst'),
-                'goal_difference': entry.get('goalDifference'),
-                'points': entry.get('points'),
-                'form': entry.get('form', ''),
-                'updated_at': now,
-            })
+            try:
+                position = entry.get('position')
+                if position is None:
+                    raise ValueError("Standings entry missing 'position' field")
+                records.append({
+                    'competition': 'BSA',
+                    'position': position,
+                    'team': json.dumps(entry.get('team', {})),
+                    'played_games': entry.get('playedGames'),
+                    'won': entry.get('won'),
+                    'drawn': entry.get('draw'),
+                    'lost': entry.get('lost'),
+                    'goals_for': entry.get('goalsFor'),
+                    'goals_against': entry.get('goalsAgainst'),
+                    'goal_difference': entry.get('goalDifference'),
+                    'points': entry.get('points'),
+                    'form': entry.get('form', ''),
+                    'updated_at': now,
+                })
+            except Exception as e:
+                skipped += 1
+                _print(f"    Skipping malformed standings entry: {e}")
 
-        # Delete old data only after we have new data ready
-        client.table('standings').delete().neq('id', '00000000-0000-0000-0000-000000000000').execute()
+        if skipped:
+            _print(f"    Skipped {skipped} malformed standings entries out of {len(table)}")
 
-        for record in records:
-            client.table('standings').insert(record).execute()
+        # Atomic upsert — replaces old delete-all + insert pattern
+        client.table('standings').upsert(records, on_conflict='competition,position').execute()
 
         _print(f"    Saved {len(records)} standings")
 
@@ -379,9 +399,8 @@ def collect_news():
     # Save all news only if we got results
     if filtered:
         try:
-            client.table('news').delete().neq('id', '00000000-0000-0000-0000-000000000000').execute()
-            for item in filtered:
-                client.table('news').insert(item).execute()
+            # Atomic upsert — replaces old delete-all + insert pattern
+            client.table('news').upsert(filtered, on_conflict='url').execute()
             _print(f"    Saved {len(filtered)} news articles")
         except Exception as e:
             _print(f"    Error saving news: {e}")

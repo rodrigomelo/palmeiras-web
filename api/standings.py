@@ -8,21 +8,25 @@ try:
     from api._shared import (
         RequestValidationError,
         competition_param,
+        int_param,
         is_configured,
         json_response,
         supabase_get,
         transform_standing,
         upstream_status,
+        cors_options_response,
     )
 except ImportError:
     from _shared import (  # type: ignore
         RequestValidationError,
         competition_param,
+        int_param,
         is_configured,
         json_response,
         supabase_get,
         transform_standing,
         upstream_status,
+        cors_options_response,
     )
 
 
@@ -31,10 +35,14 @@ def _safe_error(code='upstream_error'):
 
 
 class handler(BaseHTTPRequestHandler):
+    def do_OPTIONS(self):
+        cors_options_response(self)
+
     def do_GET(self):
         params = parse_qs(urlparse(self.path).query)
         try:
             competition = competition_param(params)
+            limit = int_param(params, 'limit', 100, min_value=1, max_value=100)
         except RequestValidationError as error:
             return json_response(self, 400, _safe_error(str(error)), cache_control='no-store')
 
@@ -47,6 +55,7 @@ class handler(BaseHTTPRequestHandler):
                 select='*',
                 competition=f'eq.{competition}',
                 order='position.asc',
+                limit=str(limit),
             )
             return json_response(self, 200, {'standings': [transform_standing(row) for row in rows]})
         except HTTPError as error:

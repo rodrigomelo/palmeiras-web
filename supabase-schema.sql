@@ -60,6 +60,10 @@ CREATE TABLE IF NOT EXISTS news (
     collected_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Unique constraints for upsert support
+CREATE UNIQUE INDEX IF NOT EXISTS standings_competition_position_uniq ON standings(competition, position);
+CREATE UNIQUE INDEX IF NOT EXISTS news_url_uniq ON news(url);
+
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_matches_status ON matches(status);
 CREATE INDEX IF NOT EXISTS idx_matches_date ON matches(utc_date);
@@ -87,11 +91,23 @@ DO $$ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'standings' AND policyname = 'standings_write') THEN
         CREATE POLICY "standings_write" ON standings FOR INSERT WITH CHECK (true);
     END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'standings' AND policyname = 'standings_update') THEN
+        CREATE POLICY "standings_update" ON standings FOR UPDATE USING (true);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'standings' AND policyname = 'standings_delete') THEN
+        CREATE POLICY "standings_delete" ON standings FOR DELETE USING (true);
+    END IF;
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'news' AND policyname = 'news_read') THEN
         CREATE POLICY "news_read" ON news FOR SELECT USING (true);
     END IF;
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'news' AND policyname = 'news_write') THEN
         CREATE POLICY "news_write" ON news FOR INSERT WITH CHECK (true);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'news' AND policyname = 'news_update') THEN
+        CREATE POLICY "news_update" ON news FOR UPDATE USING (true);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'news' AND policyname = 'news_delete') THEN
+        CREATE POLICY "news_delete" ON news FOR DELETE USING (true);
     END IF;
 END $$;
 
@@ -106,3 +122,12 @@ COMMIT;
 -- ALTER TABLE matches ADD COLUMN IF NOT EXISTS referees JSONB;
 -- ALTER TABLE matches ADD COLUMN IF NOT EXISTS broadcast VARCHAR(255);
 -- ALTER TABLE standings ADD COLUMN IF NOT EXISTS form VARCHAR(10);
+-- CREATE UNIQUE INDEX IF NOT EXISTS standings_competition_position_uniq ON standings(competition, position);
+-- CREATE UNIQUE INDEX IF NOT EXISTS news_url_uniq ON news(url);
+
+-- M2: CHECK constraints on score columns (migration for existing installations).
+-- Run these ALTER TABLE statements in the Supabase SQL Editor to enforce valid score ranges.
+-- ALTER TABLE matches ADD CONSTRAINT chk_home_score CHECK (home_score IS NULL OR (home_score >= 0 AND home_score <= 30));
+-- ALTER TABLE matches ADD CONSTRAINT chk_away_score CHECK (away_score IS NULL OR (away_score >= 0 AND away_score <= 30));
+-- ALTER TABLE matches ADD CONSTRAINT chk_half_time_home CHECK (half_time_home IS NULL OR (half_time_home >= 0 AND half_time_home <= 30));
+-- ALTER TABLE matches ADD CONSTRAINT chk_half_time_away CHECK (half_time_away IS NULL OR (half_time_away >= 0 AND half_time_away <= 30));

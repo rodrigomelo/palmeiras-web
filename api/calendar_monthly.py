@@ -16,6 +16,7 @@ try:
         supabase_get,
         upstream_status,
         year_month_params,
+        cors_options_response,
     )
 except ImportError:
     from _shared import (  # type: ignore
@@ -28,6 +29,7 @@ except ImportError:
         supabase_get,
         upstream_status,
         year_month_params,
+        cors_options_response,
     )
 
 
@@ -36,6 +38,9 @@ def _safe_error(code='upstream_error'):
 
 
 class handler(BaseHTTPRequestHandler):
+    def do_OPTIONS(self):
+        cors_options_response(self)
+
     def do_GET(self):
         params = parse_qs(urlparse(self.path).query)
         try:

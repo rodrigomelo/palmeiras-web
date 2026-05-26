@@ -474,8 +474,8 @@
 
         allMatches.forEach(m => {
             const isHome = m.homeTeam.id === TEAM_ID;
-            const our = isHome ? m.score.fullTime.home : m.score.fullTime.away;
-            const opp = isHome ? m.score.fullTime.away : m.score.fullTime.home;
+            const our = isHome ? (m.score?.fullTime?.home ?? 0) : (m.score?.fullTime?.away ?? 0);
+            const opp = isHome ? (m.score?.fullTime?.away ?? 0) : (m.score?.fullTime?.home ?? 0);
 
             goalsFor += our;
             goalsAgainst += opp;
@@ -572,8 +572,8 @@
 
             bsaMatches.forEach((m, i) => {
                 const isHome = m.homeTeam.id === TEAM_ID;
-                const our = isHome ? m.score.fullTime.home : m.score.fullTime.away;
-                const opp = isHome ? m.score.fullTime.away : m.score.fullTime.home;
+                const our = isHome ? (m.score?.fullTime?.home ?? 0) : (m.score?.fullTime?.away ?? 0);
+                const opp = isHome ? (m.score?.fullTime?.away ?? 0) : (m.score?.fullTime?.home ?? 0);
                 const r = our > opp ? 3 : our < opp ? 0 : 1;
                 pts += r;
                 pontos.push(r);
@@ -596,6 +596,7 @@
             const ctx = document.getElementById('performanceCanvas')?.getContext('2d');
             if (!ctx) return;
 
+            if (performanceChart) { performanceChart.destroy(); performanceChart = null; }
             performanceChart = new Chart(ctx, {
                 type: 'line',
                 data: {
@@ -1069,14 +1070,6 @@
 
         grid.innerHTML = html;
 
-        // Attach click listeners
-        grid.querySelectorAll('.cal-day:not(.other-month)').forEach(cell => {
-            cell.addEventListener('click', () => {
-                const day = parseInt(cell.dataset.day);
-                toggleDay(day);
-            });
-        });
-
         // Auto-select today's date if no day is selected and today is in current month
         if (!_calSelectedDay && _calYear === todayYear && _calMonth === todayMonth) {
             const todayDay = parseInt(todayStr.split('-')[2]);
@@ -1146,7 +1139,7 @@
             </div>
             ${matches.filter(m => m?.homeTeam && m?.awayTeam).map(m => {
                 const time = new Date(m.utcDate).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: CONFIG.BR_TZ });
-                const isHome = m.homeTeam.id === CONFIG.TEAM_ID;
+                const isHome = m.homeTeam?.id === CONFIG.TEAM_ID;
                 const ourTeam = isHome ? m.homeTeam : m.awayTeam;
                 const oppTeam = isHome ? m.awayTeam : m.homeTeam;
                 const ourScore = isHome ? m.homeScore : m.awayScore;
@@ -1277,6 +1270,18 @@
         });
         document.getElementById('downloadCalendarButton')?.addEventListener('click', window.downloadCalendar);
         document.getElementById('copyCalendarUrlButton')?.addEventListener('click', window.copyCalendarUrl);
+
+        // Calendar day click — event delegation (set up once, not per render)
+        const grid = document.getElementById('calendar-grid');
+        if (grid && !grid._delegated) {
+            grid.addEventListener('click', (e) => {
+                const day = e.target.closest('.cal-day:not(.other-month)');
+                if (day) {
+                    toggleDay(parseInt(day.dataset.day));
+                }
+            });
+            grid._delegated = true;
+        }
     }
 
     // --- Public API ---

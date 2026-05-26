@@ -15,6 +15,8 @@ try:
         supabase_get,
         transform_match,
         upstream_status,
+        cors_options_response,
+        validate_date,
     )
 except ImportError:  # Vercel loads handlers from the api directory.
     from _shared import (  # type: ignore
@@ -26,6 +28,8 @@ except ImportError:  # Vercel loads handlers from the api directory.
         supabase_get,
         transform_match,
         upstream_status,
+        cors_options_response,
+        validate_date,
     )
 
 
@@ -34,6 +38,9 @@ def _safe_error(collection='matches', code='upstream_error'):
 
 
 class handler(BaseHTTPRequestHandler):
+    def do_OPTIONS(self):
+        cors_options_response(self)
+
     def do_GET(self):
         params = parse_qs(urlparse(self.path).query)
 
@@ -42,6 +49,9 @@ class handler(BaseHTTPRequestHandler):
             statuses = parse_statuses(status)
             limit = int_param(params, 'limit', 50, min_value=1, max_value=100)
             from_date = params.get('from_date', [None])[0]
+            from_date, date_error = validate_date(from_date)
+            if date_error:
+                raise RequestValidationError(date_error)
         except RequestValidationError as error:
             return json_response(self, 400, _safe_error(code=str(error)), cache_control='no-store')
 

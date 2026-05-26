@@ -17,7 +17,6 @@ SUPABASE_ANON_KEY = (
     or os.environ.get('SUPABASE_PUBLIC_KEY')
     or os.environ.get('SUPABASE_KEY', '')
 )
-SUPABASE_SERVICE_ROLE_KEY = os.environ.get('SUPABASE_SERVICE_ROLE_KEY') or os.environ.get('SUPABASE_KEY', '')
 BR_TZ = timezone(timedelta(hours=-3))
 TEAM_ID = 1769
 REQUEST_TIMEOUT = 10
@@ -90,6 +89,16 @@ def year_month_params(params):
     year = int_param(params, 'year', datetime.now(BR_TZ).year, min_value=2020, max_value=2035)
     month = int_param(params, 'month', datetime.now(BR_TZ).month, min_value=1, max_value=12)
     return year, month
+
+
+def validate_date(value, param_name='from_date'):
+    """Validate a date query parameter matches YYYY-MM-DD format."""
+    if not value:
+        return None, None
+    import re
+    if not re.match(r'^\d{4}-\d{2}-\d{2}$', value):
+        return None, f'Invalid {param_name} format, expected YYYY-MM-DD'
+    return value, None
 
 
 def parse_json(value, default=None):
@@ -226,22 +235,28 @@ def month_window(year, month):
 
 
 def json_response(handler, status, data, *, cache_control='public, max-age=300'):
-    """Send a JSON response with safe defaults."""
+    """Send a JSON response with safe defaults and CORS headers."""
     body = json.dumps(data, ensure_ascii=False).encode('utf-8')
     handler.send_response(status)
     handler.send_header('Content-Type', 'application/json; charset=utf-8')
     handler.send_header('Cache-Control', cache_control)
     handler.send_header('X-Content-Type-Options', 'nosniff')
+    handler.send_header('Access-Control-Allow-Origin', '*')
+    handler.send_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
+    handler.send_header('Access-Control-Allow-Headers', 'Content-Type')
     handler.end_headers()
     handler.wfile.write(body)
 
 
 def text_response(handler, status, text, *, content_type='text/plain; charset=utf-8', cache_control='public, max-age=300'):
-    """Send a text response with safe defaults."""
+    """Send a text response with safe defaults and CORS headers."""
     handler.send_response(status)
     handler.send_header('Content-Type', content_type)
     handler.send_header('Cache-Control', cache_control)
     handler.send_header('X-Content-Type-Options', 'nosniff')
+    handler.send_header('Access-Control-Allow-Origin', '*')
+    handler.send_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
+    handler.send_header('Access-Control-Allow-Headers', 'Content-Type')
     handler.end_headers()
     handler.wfile.write(str(text).encode('utf-8'))
 
@@ -251,3 +266,13 @@ def upstream_status(error):
     if isinstance(error, HTTPError) and 400 <= error.code < 500:
         return error.code
     return 502
+
+
+def cors_options_response(handler):
+    """Respond to a CORS preflight OPTIONS request."""
+    handler.send_response(204)
+    handler.send_header('Access-Control-Allow-Origin', '*')
+    handler.send_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
+    handler.send_header('Access-Control-Allow-Headers', 'Content-Type')
+    handler.send_header('Content-Length', '0')
+    handler.end_headers()

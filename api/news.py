@@ -5,9 +5,9 @@ from urllib.error import HTTPError
 from urllib.parse import parse_qs, urlparse
 
 try:
-    from api._shared import RequestValidationError, int_param, is_configured, json_response, supabase_get, upstream_status
+    from api._shared import RequestValidationError, int_param, is_configured, json_response, supabase_get, upstream_status, cors_options_response
 except ImportError:
-    from _shared import RequestValidationError, int_param, is_configured, json_response, supabase_get, upstream_status  # type: ignore
+    from _shared import RequestValidationError, int_param, is_configured, json_response, supabase_get, upstream_status, cors_options_response  # type: ignore
 
 
 def _safe_error(code='upstream_error'):
@@ -15,6 +15,9 @@ def _safe_error(code='upstream_error'):
 
 
 class handler(BaseHTTPRequestHandler):
+    def do_OPTIONS(self):
+        cors_options_response(self)
+
     def do_GET(self):
         params = parse_qs(urlparse(self.path).query)
         try:
