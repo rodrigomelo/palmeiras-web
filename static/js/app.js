@@ -182,17 +182,6 @@
         }
     }
 
-    function updateFullUrlState() {
-        updateUrlState({
-            tab: currentTabId(),
-            year: _calYear,
-            month: _calMonth,
-            comp: _calCompFilter,
-            day: _calSelectedDay,
-            wc: worldCupFilter,
-        });
-    }
-
     function hydrateUrlState() {
         _isApplyingUrlState = true;
         const params = new URL(window.location.href).searchParams;
@@ -1724,17 +1713,6 @@
         }
     };
 
-    window.copyStateUrl = async function () {
-        updateFullUrlState();
-        const url = window.location.href;
-        try {
-            await navigator.clipboard.writeText(url);
-            alert('Estado copiado!');
-        } catch {
-            prompt('Copie:', url);
-        }
-    };
-
     function bindStaticControls() {
         document.getElementById('themeToggle')?.addEventListener('click', window.toggleTheme);
         document.getElementById('refreshButton')?.addEventListener('click', () => window.location.reload());
@@ -1743,7 +1721,6 @@
         });
         document.getElementById('downloadCalendarButton')?.addEventListener('click', window.downloadCalendar);
         document.getElementById('copyCalendarUrlButton')?.addEventListener('click', window.copyCalendarUrl);
-        document.getElementById('copyStateUrlButton')?.addEventListener('click', window.copyStateUrl);
         document.getElementById('worldcupFilterCalendar')?.addEventListener('click', openWorldCupCalendar);
         document.getElementById('worldcupIcsButton')?.addEventListener('click', window.downloadCalendar);
         document.getElementById('worldcupBrazilFilter')?.addEventListener('click', () => setWorldCupFilter('brazil'));

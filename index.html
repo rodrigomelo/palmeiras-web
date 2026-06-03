@@ -20,7 +20,12 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800&display=swap" rel="stylesheet">
     <link rel="icon" type="image/png" href="/static/favicon.png">
-    <link rel="apple-touch-icon" href="/static/favicon.png">
+    <link rel="apple-touch-icon" href="/static/icon-192.png">
+    <link rel="apple-touch-icon" sizes="192x192" href="/static/icon-192.png">
+    <link rel="apple-touch-icon" sizes="512x512" href="/static/icon-512.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Palmeiras">
     <link rel="manifest" href="/manifest.webmanifest">
     <link rel="alternate" type="text/calendar" title="Palmeiras Agenda" href="/api/calendar.ics">
     <link rel="stylesheet" href="/static/css/styles.css?v=36">
@@ -284,11 +289,17 @@
         <div class="footer-actions">
             <button type="button" id="downloadCalendarButton" class="footer-btn">Baixar ICS</button>
             <button type="button" id="copyCalendarUrlButton" class="footer-btn">Copiar link</button>
-            <button type="button" id="copyStateUrlButton" class="footer-btn">Copiar estado</button>
         </div>
     </footer>
 
     <script src="/static/js/config.js?v=17"></script>
-    <script src="/static/js/app.js?v=25"></script>
+    <script src="/static/js/app.js?v=26"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').catch(() => {});
+        });
+      }
+    </script>
 </body>
 </html>

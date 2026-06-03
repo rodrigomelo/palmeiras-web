@@ -379,6 +379,18 @@ class Handler(SimpleHTTPRequestHandler):
 
         if path == '/':
             self.path = '/index.html'
+
+        # Service worker must be served with correct MIME type
+        if path == '/sw.js':
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/javascript')
+            self.send_header('Service-Worker-Allowed', '/')
+            self.send_header('Cache-Control', 'no-cache')
+            self.end_headers()
+            sw_path = DIRECTORY / 'sw.js'
+            self.wfile.write(sw_path.read_bytes())
+            return
+
         return super().do_GET()
 
     def log_message(self, fmt, *args):
