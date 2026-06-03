@@ -221,9 +221,17 @@ body.dark .theme-toggle {
     flex: 0 0 auto;
     border-radius: 50%;
     background: rgba(255, 255, 255, 0.92);
+    color: inherit;
     display: grid;
     place-items: center;
+    text-decoration: none;
     box-shadow: 0 14px 30px rgba(0, 0, 0, 0.22);
+    transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+
+.logo:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 16px 34px rgba(0, 0, 0, 0.24);
 }
 
 .logo svg {
