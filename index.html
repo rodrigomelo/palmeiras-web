@@ -23,7 +23,7 @@
     <link rel="apple-touch-icon" href="/static/favicon.png">
     <link rel="manifest" href="/manifest.webmanifest">
     <link rel="alternate" type="text/calendar" title="Palmeiras Agenda" href="/api/calendar.ics">
-    <link rel="stylesheet" href="/static/css/styles.css?v=33">
+    <link rel="stylesheet" href="/static/css/styles.css?v=34">
 </head>
 <body>
     <a class="skip-link" href="#main-content">Pular para o conteúdo</a>
@@ -229,6 +229,17 @@
                     </div>
                 </div>
 
+                <div class="worldcup-brazil-panel">
+                    <div class="worldcup-board-head">
+                        <div>
+                            <h3>Próximos jogos do Brasil</h3>
+                            <p id="worldcup-brazil-summary">Carregando agenda da Seleção...</p>
+                        </div>
+                        <button type="button" class="worldcup-action" id="worldcupBrazilFilter">Ver Brasil</button>
+                    </div>
+                    <div id="worldcup-brazil-matches"><div class="empty">Carregando...</div></div>
+                </div>
+
                 <div class="worldcup-board">
                     <div class="worldcup-board-head">
                         <div>
@@ -269,10 +280,11 @@
         <div class="footer-actions">
             <button type="button" id="downloadCalendarButton" class="footer-btn">Baixar ICS</button>
             <button type="button" id="copyCalendarUrlButton" class="footer-btn">Copiar link</button>
+            <button type="button" id="copyStateUrlButton" class="footer-btn">Copiar estado</button>
         </div>
     </footer>
 
     <script src="/static/js/config.js?v=17"></script>
-    <script src="/static/js/app.js?v=23"></script>
+    <script src="/static/js/app.js?v=24"></script>
 </body>
 </html>

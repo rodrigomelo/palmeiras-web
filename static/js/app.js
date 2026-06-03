@@ -49,6 +49,12 @@
     const UPCOMING_STATUSES = new Set(['SCHEDULED', 'TIMED']);
     const WORLD_CUP_FROM = '2026-06-11';
     const WORLD_CUP_TO = '2026-07-19';
+    const DEFAULT_TAB = 'classificacao';
+    const VALID_TABS = new Set(['classificacao', 'estatisticas', 'prediction', 'worldcup', 'news']);
+    const VALID_COMP_FILTERS = new Set(['all', 'BSA', 'CLI', 'COPA', 'WC']);
+    const VALID_WC_FILTERS = new Set(['all', 'upcoming', 'finished', 'brazil']);
+    let _initialTab = null;
+    let _isApplyingUrlState = false;
 
     function formatStage(stage) {
         if (!stage || stage === 'REGULAR_SEASON') return '';
@@ -114,6 +120,89 @@
         if (elapsedMin <= 60) return '~Intervalo';
         if (elapsedMin <= 105) return `~${elapsedMin - 15}'`;
         return '~Encerrando';
+    }
+
+    function isValidDateKey(value) {
+        return /^\d{4}-\d{2}-\d{2}$/.test(String(value || ''));
+    }
+
+    function normalizeMonthParam(value) {
+        const month = parseInt(value, 10);
+        return month >= 1 && month <= 12 ? month : null;
+    }
+
+    function normalizeYearParam(value) {
+        const year = parseInt(value, 10);
+        return year >= 2020 && year <= 2035 ? year : null;
+    }
+
+    function currentTabId() {
+        return document.querySelector('.tab-btn.active')?.dataset.tab || DEFAULT_TAB;
+    }
+
+    function updateUrlState(patch = {}) {
+        if (_isApplyingUrlState) return;
+        const url = new URL(window.location.href);
+        const params = url.searchParams;
+
+        Object.entries(patch).forEach(([key, value]) => {
+            if (value == null || value === '') {
+                params.delete(key);
+                return;
+            }
+            if (key === 'tab' && value === DEFAULT_TAB) {
+                params.delete(key);
+                return;
+            }
+            if ((key === 'comp' || key === 'wc') && value === 'all') {
+                params.delete(key);
+                return;
+            }
+            if (key === 'month') {
+                params.set(key, String(value).padStart(2, '0'));
+                return;
+            }
+            params.set(key, String(value));
+        });
+
+        const nextUrl = `${url.pathname}${params.toString() ? `?${params.toString()}` : ''}${url.hash}`;
+        const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+        if (nextUrl !== currentUrl) {
+            window.history.replaceState(null, '', nextUrl);
+        }
+    }
+
+    function updateFullUrlState() {
+        updateUrlState({
+            tab: currentTabId(),
+            year: _calYear,
+            month: _calMonth,
+            comp: _calCompFilter,
+            day: _calSelectedDay,
+            wc: worldCupFilter,
+        });
+    }
+
+    function hydrateUrlState() {
+        _isApplyingUrlState = true;
+        const params = new URL(window.location.href).searchParams;
+        const tab = params.get('tab');
+        const year = normalizeYearParam(params.get('year'));
+        const month = normalizeMonthParam(params.get('month'));
+        const comp = String(params.get('comp') || '').toUpperCase();
+        const day = params.get('day');
+        const wc = String(params.get('wc') || '').toLowerCase();
+
+        if (tab && VALID_TABS.has(tab)) _initialTab = tab;
+        if (year) _calYear = year;
+        if (month) _calMonth = month;
+        if (comp && VALID_COMP_FILTERS.has(comp)) _calCompFilter = comp;
+        if (day && isValidDateKey(day)) _calSelectedDay = day;
+        if (wc && VALID_WC_FILTERS.has(wc)) worldCupFilter = wc;
+
+        syncYearSelect();
+        syncCompLegend();
+        _isApplyingUrlState = false;
     }
 
     // --- Theme ---
@@ -239,6 +328,7 @@
             if (btn.dataset.tab === 'worldcup') {
                 loadWorldCup();
             }
+            updateUrlState({ tab: btn.dataset.tab });
         }
 
         tabs.forEach((btn, index) => {
@@ -259,7 +349,7 @@
             });
         });
 
-        activateTab(tabs.find(tab => tab.getAttribute('aria-selected') === 'true') || tabs[0]);
+        activateTab(tabs.find(tab => tab.dataset.tab === _initialTab) || tabs.find(tab => tab.getAttribute('aria-selected') === 'true') || tabs[0]);
     }
 
     // --- Live Refresh ---
@@ -996,9 +1086,19 @@
     function isBrazilMatch(match) {
         const teams = [match.homeTeam, match.awayTeam];
         return teams.some(team => {
-            const id = `${team?.tla || ''} ${team?.name || ''} ${team?.shortName || ''}`.toLowerCase();
-            return id.includes('bra') || id.includes('brazil') || id.includes('brasil');
+            const tla = String(team?.tla || '').toUpperCase();
+            const name = String(team?.name || '').toLowerCase();
+            const shortName = String(team?.shortName || '').toLowerCase();
+            return tla === 'BRA' || name === 'brazil' || name === 'brasil' || shortName === 'brazil' || shortName === 'brasil';
         });
+    }
+
+    function nextBrazilMatches(limit = 3) {
+        return worldCupMatches
+            .filter(isBrazilMatch)
+            .filter(m => UPCOMING_STATUSES.has(m.status) || LIVE_STATUSES.has(m.status))
+            .sort((a, b) => new Date(a.utcDate) - new Date(b.utcDate))
+            .slice(0, limit);
     }
 
     function filteredWorldCupMatches() {
@@ -1029,6 +1129,8 @@
                 ? `${total} jogos carregados · ${finished} resultados · ${upcoming} próximos${liveText}`
                 : 'Nenhum jogo da Copa 2026 encontrado no banco ainda.';
         }
+
+        renderBrazilNextGames();
 
         document.querySelectorAll('.worldcup-filter').forEach(btn => {
             const selected = btn.dataset.wcFilter === worldCupFilter;
@@ -1104,9 +1206,64 @@
         </article>`;
     }
 
+    function renderBrazilNextGames() {
+        const container = document.getElementById('worldcup-brazil-matches');
+        const summary = document.getElementById('worldcup-brazil-summary');
+        if (!container) return;
+
+        const allBrazil = worldCupMatches.filter(isBrazilMatch).sort((a, b) => new Date(a.utcDate) - new Date(b.utcDate));
+        const upcomingBrazil = nextBrazilMatches(3);
+
+        if (summary) {
+            summary.textContent = allBrazil.length
+                ? `${upcomingBrazil.length} próximos · ${allBrazil.length} jogos do Brasil na tabela`
+                : 'A tabela atual ainda não trouxe jogos do Brasil.';
+        }
+
+        if (!allBrazil.length) {
+            container.innerHTML = '<div class="empty">Brasil ainda não aparece na tabela carregada</div>';
+            return;
+        }
+
+        const matches = upcomingBrazil.length ? upcomingBrazil : allBrazil.slice(-3);
+        container.innerHTML = `<div class="worldcup-brazil-list">
+            ${matches.map(renderBrazilMatchCard).join('')}
+        </div>`;
+    }
+
+    function renderBrazilMatchCard(match) {
+        const dt = new Date(match.utcDate);
+        const date = dt.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', timeZone: BR_TZ });
+        const time = formatTime(match.utcDate);
+        const stageLabel = formatStage(match.stage) || `Rodada ${match.matchday || '-'}`;
+        const opponent = match.homeTeam?.tla === 'BRA' ? match.awayTeam : match.homeTeam;
+        const brazilHome = match.homeTeam?.tla === 'BRA';
+        const scoreReady = (FINISHED_STATUSES.has(match.status) || LIVE_STATUSES.has(match.status)) && match.homeScore != null && match.awayScore != null;
+        const score = scoreReady ? `${match.homeScore}–${match.awayScore}` : '×';
+
+        return `<article class="worldcup-brazil-card">
+            <div class="worldcup-brazil-date">
+                <strong>${escapeHtml(date)}</strong>
+                <span>${escapeHtml(time)}</span>
+            </div>
+            <div class="worldcup-brazil-main">
+                <div class="worldcup-brazil-teams">
+                    <span>${brazilHome ? 'Brasil' : escapeHtml(CONFIG.teamName(opponent))}</span>
+                    <strong>${escapeHtml(score)}</strong>
+                    <span>${brazilHome ? escapeHtml(CONFIG.teamName(opponent)) : 'Brasil'}</span>
+                </div>
+                <div class="worldcup-match-meta">
+                    <span>${escapeHtml(stageLabel)}</span>
+                    <span>${escapeHtml(STATUS_LABEL[match.status] || match.status || 'Agendado')}</span>
+                </div>
+            </div>
+        </article>`;
+    }
+
     function setWorldCupFilter(filter) {
         worldCupFilter = filter || 'all';
         renderWorldCup();
+        updateUrlState({ tab: 'worldcup', wc: worldCupFilter });
     }
 
     function openWorldCupCalendar() {
@@ -1116,6 +1273,7 @@
         document.getElementById('calendar-expanded').innerHTML = '';
         syncYearSelect();
         window.filterSharedComp('WC');
+        updateUrlState({ tab: currentTabId(), year: _calYear, month: _calMonth, comp: 'WC', day: null });
         document.getElementById('calendar-hub')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
@@ -1254,8 +1412,11 @@
 
         grid.innerHTML = html;
 
-        // Auto-select today's date if no day is selected and today is in current month
-        if (!_calSelectedDay && _calYear === todayYear && _calMonth === todayMonth) {
+        const selectedInMonth = _calSelectedDay && _calSelectedDay.startsWith(`${_calYear}-${String(_calMonth).padStart(2, '0')}-`);
+        if (selectedInMonth) {
+            renderExpandedDay(_calSelectedDay);
+        } else if (!_calSelectedDay && _calYear === todayYear && _calMonth === todayMonth) {
+            // Auto-select today's date if no day is selected and today is in current month
             const todayDay = parseInt(todayStr.split('-')[2]);
             if (todayDay >= 1 && todayDay <= daysInMonth) {
                 _calSelectedDay = todayStr;
@@ -1266,6 +1427,8 @@
                 // Show expanded view for today's matches
                 renderExpandedDay(todayStr);
             }
+        } else {
+            document.getElementById('calendar-expanded').innerHTML = '';
         }
     }
 
@@ -1299,6 +1462,7 @@
             selectedCell?.classList.add('selected');
             selectedCell?.setAttribute('aria-pressed', 'true');
         }
+        updateUrlState({ year: _calYear, month: _calMonth, day: _calSelectedDay });
     }
 
     function renderExpandedDay(dayStr) {
@@ -1361,18 +1525,23 @@
     let _calCompFilter = 'all';
 
     // --- Shared Competition Filter (syncs calendar + list views) ---
+    function syncCompLegend() {
+        document.querySelectorAll('.comp-legend-item').forEach(b => {
+            const selected = b.dataset.comp === _calCompFilter;
+            b.classList.toggle('active', selected);
+            b.setAttribute('aria-pressed', String(selected));
+        });
+    }
+
     window.filterSharedComp = function (comp, btn) {
         _calCompFilter = comp;
 
         // Update legend items
-        document.querySelectorAll('.comp-legend-item').forEach(b => {
-            const selected = b.dataset.comp === comp;
-            b.classList.toggle('active', selected);
-            b.setAttribute('aria-pressed', String(selected));
-        });
+        syncCompLegend();
 
         // Re-render calendar view with filter
         loadCalendar();
+        updateUrlState({ year: _calYear, month: _calMonth, comp: _calCompFilter, day: _calSelectedDay });
     };
 
     document.querySelectorAll('.comp-legend-item').forEach(btn => {
@@ -1387,6 +1556,7 @@
         document.getElementById('calendar-expanded').innerHTML = '';
         syncYearSelect();
         loadCalendar();
+        updateUrlState({ year: _calYear, month: _calMonth, day: null });
     });
     document.getElementById('cal-next')?.addEventListener('click', () => {
         _calMonth++;
@@ -1395,6 +1565,7 @@
         document.getElementById('calendar-expanded').innerHTML = '';
         syncYearSelect();
         loadCalendar();
+        updateUrlState({ year: _calYear, month: _calMonth, day: null });
     });
 
     function syncYearSelect() {
@@ -1408,6 +1579,7 @@
         _calSelectedDay = null;
         document.getElementById('calendar-expanded').innerHTML = '';
         loadCalendar();
+        updateUrlState({ year: _calYear, month: _calMonth, day: null });
     };
 
     // Populate year select and keep the World Cup year available.
@@ -1443,6 +1615,17 @@
         }
     };
 
+    window.copyStateUrl = async function () {
+        updateFullUrlState();
+        const url = window.location.href;
+        try {
+            await navigator.clipboard.writeText(url);
+            alert('Estado copiado!');
+        } catch {
+            prompt('Copie:', url);
+        }
+    };
+
     function bindStaticControls() {
         document.getElementById('themeToggle')?.addEventListener('click', window.toggleTheme);
         document.getElementById('refreshButton')?.addEventListener('click', () => window.location.reload());
@@ -1451,8 +1634,10 @@
         });
         document.getElementById('downloadCalendarButton')?.addEventListener('click', window.downloadCalendar);
         document.getElementById('copyCalendarUrlButton')?.addEventListener('click', window.copyCalendarUrl);
+        document.getElementById('copyStateUrlButton')?.addEventListener('click', window.copyStateUrl);
         document.getElementById('worldcupFilterCalendar')?.addEventListener('click', openWorldCupCalendar);
         document.getElementById('worldcupIcsButton')?.addEventListener('click', window.downloadCalendar);
+        document.getElementById('worldcupBrazilFilter')?.addEventListener('click', () => setWorldCupFilter('brazil'));
         document.querySelectorAll('.worldcup-filter').forEach(btn => {
             btn.addEventListener('click', () => setWorldCupFilter(btn.dataset.wcFilter || 'all'));
         });
@@ -1481,6 +1666,7 @@
     document.addEventListener('DOMContentLoaded', () => {
         initTheme();
         bindStaticControls();
+        hydrateUrlState();
         const el = document.getElementById('last-updated');
         if (el) el.textContent = 'Atualizado: ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
         initTabs();

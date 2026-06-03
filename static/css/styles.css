@@ -1500,6 +1500,86 @@ body.dark .tabs {
     padding: 18px;
 }
 
+.worldcup-brazil-panel {
+    border: 1px solid rgba(139, 63, 104, 0.26);
+    border-radius: var(--radius-card);
+    background: var(--bg-card);
+    padding: 18px;
+}
+
+.worldcup-brazil-list {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.worldcup-brazil-card {
+    min-width: 0;
+    border: 1px solid var(--line);
+    border-left: 4px solid var(--comp-wc);
+    border-radius: var(--radius-card);
+    background: var(--bg-soft);
+    padding: 12px;
+    display: grid;
+    grid-template-columns: 54px minmax(0, 1fr);
+    gap: 10px;
+    align-items: center;
+}
+
+.worldcup-brazil-date {
+    display: grid;
+    justify-items: start;
+    gap: 4px;
+}
+
+.worldcup-brazil-date strong {
+    color: var(--ink);
+    font-size: 0.82rem;
+    line-height: 1;
+    font-weight: 800;
+    text-transform: capitalize;
+}
+
+.worldcup-brazil-date span {
+    color: var(--text-muted);
+    font-size: 0.7rem;
+    line-height: 1;
+    font-weight: 800;
+}
+
+.worldcup-brazil-main {
+    min-width: 0;
+}
+
+.worldcup-brazil-teams {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 34px minmax(0, 1fr);
+    align-items: center;
+    gap: 6px;
+    color: var(--text);
+    font-size: 0.78rem;
+    font-weight: 800;
+}
+
+.worldcup-brazil-teams span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.worldcup-brazil-teams span:last-child {
+    text-align: right;
+}
+
+.worldcup-brazil-teams strong {
+    justify-self: center;
+    color: var(--comp-wc);
+    font-size: 0.9rem;
+    line-height: 1;
+    font-weight: 800;
+}
+
 .worldcup-board-head {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
@@ -2077,6 +2157,25 @@ body.dark .tabs {
 
     .worldcup-info-item strong {
         font-size: 0.82rem;
+    }
+
+    .worldcup-brazil-panel {
+        padding: 16px;
+    }
+
+    .worldcup-brazil-list {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+
+    .worldcup-brazil-card {
+        grid-template-columns: 46px minmax(0, 1fr);
+        padding: 10px;
+    }
+
+    .worldcup-brazil-teams {
+        grid-template-columns: minmax(0, 1fr) 30px minmax(0, 1fr);
+        font-size: 0.72rem;
     }
 
     .worldcup-match {
