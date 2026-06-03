@@ -49,12 +49,15 @@
     const UPCOMING_STATUSES = new Set(['SCHEDULED', 'TIMED']);
     const WORLD_CUP_FROM = '2026-06-11';
     const WORLD_CUP_TO = '2026-07-19';
+    const WORLD_CUP_REFRESH_MS = 15 * 60 * 1000;
     const DEFAULT_TAB = 'classificacao';
     const VALID_TABS = new Set(['classificacao', 'estatisticas', 'prediction', 'worldcup', 'news']);
     const VALID_COMP_FILTERS = new Set(['all', 'BSA', 'CLI', 'COPA', 'WC']);
     const VALID_WC_FILTERS = new Set(['all', 'upcoming', 'finished', 'brazil']);
     let _initialTab = null;
     let _isApplyingUrlState = false;
+    let _heroMode = 'palmeiras';
+    let _worldCupRefreshInterval = null;
 
     function formatStage(stage) {
         if (!stage || stage === 'REGULAR_SEASON') return '';
@@ -108,6 +111,13 @@
 
     function formatTime(d) {
         return new Date(d).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: BR_TZ });
+    }
+
+    function setLastUpdated() {
+        const el = document.getElementById('last-updated');
+        if (el) {
+            el.textContent = 'Atualizado: ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        }
     }
 
     function estimateMinute(utcDate) {
@@ -354,33 +364,93 @@
 
     // --- Live Refresh ---
     function startLiveRefresh() {
-        if (!liveInterval) liveInterval = setInterval(loadHero, 15000);
+        if (!liveInterval) liveInterval = setInterval(loadHero, WORLD_CUP_REFRESH_MS);
     }
 
     function stopLiveRefresh() {
         if (liveInterval) { clearInterval(liveInterval); liveInterval = null; }
     }
 
+    function clearWorldCupCaches() {
+        Object.keys(_apiCache).forEach(key => {
+            if (key.includes('competition=WC') || key.startsWith('calendar_monthly?')) {
+                delete _apiCache[key];
+            }
+        });
+    }
+
+    function refreshWorldCupData() {
+        clearWorldCupCaches();
+        loadHero();
+        loadCalendar();
+        if (currentTabId() === 'worldcup' || worldCupLoaded) {
+            worldCupLoaded = false;
+            loadWorldCup();
+        }
+        setLastUpdated();
+    }
+
+    function startWorldCupRefresh() {
+        if (!_worldCupRefreshInterval) {
+            _worldCupRefreshInterval = setInterval(refreshWorldCupData, WORLD_CUP_REFRESH_MS);
+        }
+    }
+
     // --- Hero ---
-    async function loadHero() {
+    async function loadBrazilHero() {
+        const path = `matches?competition=WC&from_date=${WORLD_CUP_FROM}&to_date=${WORLD_CUP_TO}&limit=200`;
+        const data = await api(path, WORLD_CUP_REFRESH_MS);
+        const matches = (data?.matches || []).filter(isBrazilMatch).sort((a, b) => new Date(a.utcDate) - new Date(b.utcDate));
+        if (!matches.length) return null;
+
+        const now = Date.now();
+        const live = matches.find(m => LIVE_STATUSES.has(m.status));
+        const upcoming = matches.find(m => isNextCandidate(m, now));
+        const nextMatches = matches
+            .filter(m => isNextCandidate(m, now))
+            .slice(0, 3);
+
+        return {
+            mode: 'brazil',
+            match: live || upcoming || matches[matches.length - 1],
+            nextMatches,
+        };
+    }
+
+    async function loadPalmeirasHero() {
         const data = await api(palmeirasQuery('matches?status=SCHEDULED,TIMED,IN_PLAY,PAUSED&limit=5'));
-        if (!data) {
+        return {
+            mode: 'palmeiras',
+            match: data?.matches?.[0] || null,
+            nextMatches: [],
+            loaded: Boolean(data),
+        };
+    }
+
+    async function loadHero() {
+        const brazilHero = await loadBrazilHero();
+        const heroData = brazilHero?.match ? brazilHero : await loadPalmeirasHero();
+        if (!heroData?.match && heroData?.loaded === false) {
             document.getElementById('hero-comp-badge').textContent = 'Erro ao carregar';
             return;
         }
-        const match = data.matches?.[0];
+
+        const match = heroData?.match;
+        _heroMode = heroData?.mode || 'palmeiras';
+
         if (!match) {
             document.getElementById('hero-comp-badge').textContent = 'Nenhum jogo agendado';
             document.getElementById('hero-teams-area').style.display = 'none';
             document.getElementById('hero-date-area').style.display = 'none';
+            renderHeroBrazilNext([]);
             return;
         }
 
         const home = match.homeTeam, away = match.awayTeam;
-        const comp = CONFIG.formatComp(match.competition);
+        const comp = _heroMode === 'brazil' ? 'Copa do Mundo 2026 · Brasil' : CONFIG.formatComp(match.competition);
         const dt = new Date(match.utcDate);
         const dayOfWeek = dt.toLocaleDateString('pt-BR', { weekday: 'long', timeZone: BR_TZ });
-        const isLive = match.status === 'IN_PLAY' || match.status === 'PAUSED';
+        const isLive = LIVE_STATUSES.has(match.status);
         const isPaused = match.status === 'PAUSED';
         const score = match.score?.fullTime || {};
         const ht = match.score?.halfTime || {};
@@ -389,6 +459,8 @@
 
         const heroCard = document.getElementById('hero-match');
         heroCard?.classList.toggle('live', isLive);
+        document.getElementById('hero-teams-area').style.display = '';
+        document.getElementById('hero-date-area').style.display = '';
 
         // Competition badge
         const liveBadge = isLive
@@ -437,7 +509,7 @@
         pillRound.textContent = 'Rodada ' + (match.matchday || '-');
 
         if (stageLabel) {
-            pillStage.textContent = 'Fase ' + stageLabel;
+            pillStage.textContent = stageLabel;
             pillStage.style.display = '';
         } else {
             pillStage.style.display = 'none';
@@ -451,6 +523,33 @@
         } else {
             document.getElementById('hero-countdown').style.display = 'none';
         }
+
+        renderHeroBrazilNext(_heroMode === 'brazil' ? heroData.nextMatches : []);
+    }
+
+    function renderHeroBrazilNext(matches) {
+        const widget = document.getElementById('hero-brazil-next');
+        const list = document.getElementById('hero-brazil-list');
+        const formWidget = document.getElementById('form-widget');
+        if (!widget || !list) return;
+
+        if (!matches.length) {
+            widget.style.display = 'none';
+            if (_heroMode !== 'brazil' && formWidget?.querySelector('.form-dot')) formWidget.style.display = '';
+            return;
+        }
+
+        if (formWidget) formWidget.style.display = 'none';
+        list.innerHTML = matches.map(match => {
+            const date = new Date(match.utcDate).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', timeZone: BR_TZ });
+            const home = CONFIG.teamName(match.homeTeam);
+            const away = CONFIG.teamName(match.awayTeam);
+            return `<div class="hero-brazil-item">
+                <span>${escapeHtml(date)} · ${escapeHtml(formatTime(match.utcDate))}</span>
+                <strong>${escapeHtml(home)} x ${escapeHtml(away)}</strong>
+            </div>`;
+        }).join('');
+        widget.style.display = '';
     }
 
     // --- Countdown Timer ---
@@ -490,11 +589,15 @@
     // --- Form Widget (last 5 results) ---
     async function loadFormWidget() {
         const data = await api(palmeirasQuery('matches?status=FINISHED&limit=5'));
-        if (!data?.matches?.length) return;
 
         const widget = document.getElementById('form-widget');
         const dots = document.getElementById('form-dots');
         if (!widget || !dots) return;
+        if (_heroMode === 'brazil') {
+            widget.style.display = 'none';
+            return;
+        }
+        if (!data?.matches?.length) return;
 
         dots.innerHTML = '';
         data.matches.forEach(m => {
@@ -1072,7 +1175,7 @@
 
         showSkeleton('worldcup-matches');
         const path = `matches?competition=WC&from_date=${WORLD_CUP_FROM}&to_date=${WORLD_CUP_TO}&limit=200`;
-        const data = await api(path, 15 * 60 * 1000);
+        const data = await api(path, WORLD_CUP_REFRESH_MS);
         if (!data) {
             showError('worldcup-matches', 'Erro ao carregar a Copa 2026', 'loadWorldCup');
             return;
@@ -1084,19 +1187,25 @@
     }
 
     function isBrazilMatch(match) {
-        const teams = [match.homeTeam, match.awayTeam];
-        return teams.some(team => {
-            const tla = String(team?.tla || '').toUpperCase();
-            const name = String(team?.name || '').toLowerCase();
-            const shortName = String(team?.shortName || '').toLowerCase();
-            return tla === 'BRA' || name === 'brazil' || name === 'brasil' || shortName === 'brazil' || shortName === 'brasil';
-        });
+        return isBrazilTeam(match.homeTeam) || isBrazilTeam(match.awayTeam);
+    }
+
+    function isBrazilTeam(team) {
+        const tla = String(team?.tla || '').toUpperCase();
+        const name = String(team?.name || '').toLowerCase();
+        const shortName = String(team?.shortName || '').toLowerCase();
+        return tla === 'BRA' || name === 'brazil' || name === 'brasil' || shortName === 'brazil' || shortName === 'brasil';
+    }
+
+    function isNextCandidate(match, now = Date.now()) {
+        if (LIVE_STATUSES.has(match.status)) return true;
+        return UPCOMING_STATUSES.has(match.status) && new Date(match.utcDate).getTime() >= now - 3 * 60 * 60 * 1000;
     }
 
     function nextBrazilMatches(limit = 3) {
         return worldCupMatches
             .filter(isBrazilMatch)
-            .filter(m => UPCOMING_STATUSES.has(m.status) || LIVE_STATUSES.has(m.status))
+            .filter(m => isNextCandidate(m))
             .sort((a, b) => new Date(a.utcDate) - new Date(b.utcDate))
             .slice(0, limit);
     }
@@ -1236,8 +1345,8 @@
         const date = dt.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', timeZone: BR_TZ });
         const time = formatTime(match.utcDate);
         const stageLabel = formatStage(match.stage) || `Rodada ${match.matchday || '-'}`;
-        const opponent = match.homeTeam?.tla === 'BRA' ? match.awayTeam : match.homeTeam;
-        const brazilHome = match.homeTeam?.tla === 'BRA';
+        const home = CONFIG.teamName(match.homeTeam);
+        const away = CONFIG.teamName(match.awayTeam);
         const scoreReady = (FINISHED_STATUSES.has(match.status) || LIVE_STATUSES.has(match.status)) && match.homeScore != null && match.awayScore != null;
         const score = scoreReady ? `${match.homeScore}–${match.awayScore}` : '×';
 
@@ -1248,9 +1357,9 @@
             </div>
             <div class="worldcup-brazil-main">
                 <div class="worldcup-brazil-teams">
-                    <span>${brazilHome ? 'Brasil' : escapeHtml(CONFIG.teamName(opponent))}</span>
+                    <span>${escapeHtml(home)}</span>
                     <strong>${escapeHtml(score)}</strong>
-                    <span>${brazilHome ? escapeHtml(CONFIG.teamName(opponent)) : 'Brasil'}</span>
+                    <span>${escapeHtml(away)}</span>
                 </div>
                 <div class="worldcup-match-meta">
                     <span>${escapeHtml(stageLabel)}</span>
@@ -1667,13 +1776,13 @@
         initTheme();
         bindStaticControls();
         hydrateUrlState();
-        const el = document.getElementById('last-updated');
-        if (el) el.textContent = 'Atualizado: ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        setLastUpdated();
         initTabs();
         loadHero();
         loadFormWidget();
         loadStandings();
         loadNews();
         loadCalendar();
+        startWorldCupRefresh();
     });
 })();

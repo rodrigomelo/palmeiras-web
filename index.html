@@ -23,7 +23,7 @@
     <link rel="apple-touch-icon" href="/static/favicon.png">
     <link rel="manifest" href="/manifest.webmanifest">
     <link rel="alternate" type="text/calendar" title="Palmeiras Agenda" href="/api/calendar.ics">
-    <link rel="stylesheet" href="/static/css/styles.css?v=35">
+    <link rel="stylesheet" href="/static/css/styles.css?v=36">
 </head>
 <body>
     <a class="skip-link" href="#main-content">Pular para o conteúdo</a>
@@ -55,7 +55,7 @@
         <!-- HERO — Live match + Countdown + Form         -->
         <!-- ============================================ -->
         <section class="hero-hub" id="hero-hub" aria-labelledby="hero-title">
-            <h2 class="sr-only" id="hero-title">Próximo jogo do Palmeiras</h2>
+            <h2 class="sr-only" id="hero-title">Próximo jogo em destaque</h2>
             <!-- Match Card -->
             <div class="hero-card" id="hero-match">
                 <!-- Competition badge -->
@@ -104,6 +104,10 @@
                 <div class="form-widget" id="form-widget" style="display:none">
                     <span class="form-label">Sequência</span>
                     <div class="form-dots" id="form-dots"></div>
+                </div>
+                <div class="hero-brazil-next" id="hero-brazil-next" style="display:none">
+                    <span class="form-label">Próximos do Brasil</span>
+                    <div class="hero-brazil-list" id="hero-brazil-list"></div>
                 </div>
             </div>
         </section>
@@ -285,6 +289,6 @@
     </footer>
 
     <script src="/static/js/config.js?v=17"></script>
-    <script src="/static/js/app.js?v=24"></script>
+    <script src="/static/js/app.js?v=25"></script>
 </body>
 </html>

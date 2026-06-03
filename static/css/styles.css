@@ -622,6 +622,50 @@ body.dark .theme-toggle {
     background: rgba(255, 255, 255, 0.08);
 }
 
+.hero-brazil-next {
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    padding-top: 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.hero-brazil-list {
+    display: grid;
+    gap: 8px;
+}
+
+.hero-brazil-item {
+    min-width: 0;
+    border: 1px solid rgba(255, 255, 255, 0.13);
+    border-radius: var(--radius-control);
+    background: rgba(255, 255, 255, 0.08);
+    padding: 9px 10px;
+}
+
+.hero-brazil-item span,
+.hero-brazil-item strong {
+    display: block;
+    min-width: 0;
+}
+
+.hero-brazil-item span {
+    color: rgba(255, 255, 255, 0.58);
+    font-size: 0.66rem;
+    line-height: 1;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.hero-brazil-item strong {
+    margin-top: 5px;
+    color: #fff;
+    font-size: 0.82rem;
+    line-height: 1.2;
+    font-weight: 800;
+    overflow-wrap: anywhere;
+}
+
 .main-layout {
     display: grid;
     grid-template-columns: minmax(360px, 430px) minmax(0, 1fr);
@@ -1994,6 +2038,18 @@ body.dark .tabs {
     .hero-bottom {
         padding: 18px;
         gap: 18px;
+    }
+
+    .hero-brazil-next {
+        padding-top: 16px;
+    }
+
+    .hero-brazil-item {
+        padding: 8px;
+    }
+
+    .hero-brazil-item strong {
+        font-size: 0.76rem;
     }
 
     .countdown-digits {
