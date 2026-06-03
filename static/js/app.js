@@ -193,6 +193,14 @@
         const wc = String(params.get('wc') || '').toLowerCase();
 
         if (tab && VALID_TABS.has(tab)) _initialTab = tab;
+
+        // Default to current year/month before applying URL overrides
+        const todayParts = getTodayStr().split('-');
+        const todayYr = parseInt(todayParts[0]);
+        const todayMo = parseInt(todayParts[1]);
+        if (_calYear === null) _calYear = todayYr;
+        if (_calMonth === null) _calMonth = todayMo;
+
         if (year) _calYear = year;
         if (month) _calMonth = month;
         if (comp && VALID_COMP_FILTERS.has(comp)) _calCompFilter = comp;
