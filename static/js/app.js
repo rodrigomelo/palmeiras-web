@@ -19,6 +19,7 @@
         BSA: ['BSA'],
         CLI: ['CLI', 'LIBERTADORES', 'COPA_LIBERTADORES'],
         COPA: ['COPA', 'COPA_DO_BRASIL'],
+        WC: ['WC', 'WORLD_CUP', 'FIFA_WORLD_CUP'],
     };
 
     // --- Stage Name Translation (API enums → Portuguese) ---
@@ -34,12 +35,20 @@
         'FINAL': 'Final',
         'ROUND_OF_16': 'Oitavas de Final',
         'ROUND_OF_32': '2ª Fase',
+        'THIRD_PLACE': 'Disputa de 3º lugar',
+        'THIRD_PLACE_PLAY_OFF': 'Disputa de 3º lugar',
         'PLAYOFF_ROUND': 'Repescagem',
         'QUALIFYING_ROUND': 'Eliminatória',
         'PRELIMINARY_ROUND': 'Fase Preliminar',
         'REGULAR_SEASON': '',
         'LEAGUE_PHASE': 'Fase de Liga',
     };
+
+    const FINISHED_STATUSES = new Set(['FINISHED', 'PLAYING_TIME_FINISHED']);
+    const LIVE_STATUSES = new Set(['IN_PLAY', 'PAUSED']);
+    const UPCOMING_STATUSES = new Set(['SCHEDULED', 'TIMED']);
+    const WORLD_CUP_FROM = '2026-06-11';
+    const WORLD_CUP_TO = '2026-07-19';
 
     function formatStage(stage) {
         if (!stage || stage === 'REGULAR_SEASON') return '';
@@ -48,6 +57,37 @@
 
     function getCompCode(comp) {
         return comp?.code || '';
+    }
+
+    function palmeirasQuery(path) {
+        const joiner = path.includes('?') ? '&' : '?';
+        return `${path}${joiner}team_id=${TEAM_ID}`;
+    }
+
+    function isPalmeirasMatch(match) {
+        return match?.homeTeam?.id === TEAM_ID || match?.awayTeam?.id === TEAM_ID;
+    }
+
+    function matchDisplaySides(match) {
+        const palmeirasMatch = isPalmeirasMatch(match);
+        if (!palmeirasMatch) {
+            return {
+                leftTeam: match.homeTeam,
+                rightTeam: match.awayTeam,
+                leftScore: match.homeScore,
+                rightScore: match.awayScore,
+                perspective: 'neutral',
+            };
+        }
+
+        const isHome = match.homeTeam?.id === TEAM_ID;
+        return {
+            leftTeam: isHome ? match.homeTeam : match.awayTeam,
+            rightTeam: isHome ? match.awayTeam : match.homeTeam,
+            leftScore: isHome ? match.homeScore : match.awayScore,
+            rightScore: isHome ? match.awayScore : match.homeScore,
+            perspective: 'palmeiras',
+        };
     }
 
     // --- Helpers ---
@@ -87,10 +127,10 @@
         const toggle = document.getElementById('themeToggle');
         if (theme === 'dark') {
             document.body.classList.add('dark');
-            if (toggle) toggle.textContent = '☀️';
+            if (toggle) toggle.textContent = '☼';
         } else {
             document.body.classList.remove('dark');
-            if (toggle) toggle.textContent = '🌙';
+            if (toggle) toggle.textContent = '◐';
         }
         localStorage.setItem('theme', theme);
         if (performanceChart) updateChartColors();
@@ -127,7 +167,7 @@
     function showError(id, msg, fn) {
         const el = document.getElementById(id);
         if (!el) return;
-        el.innerHTML = `<div class="error-state"><div class="error-icon" aria-hidden="true">⚠️</div><div class="error-message">${escapeHtml(msg)}</div>${fn ? `<button type="button" class="retry-btn" data-retry-fn="${escapeHtml(fn)}">Tentar novamente</button>` : ''}</div>`;
+        el.innerHTML = `<div class="error-state"><div class="error-icon" aria-hidden="true">!</div><div class="error-message">${escapeHtml(msg)}</div>${fn ? `<button type="button" class="retry-btn" data-retry-fn="${escapeHtml(fn)}">Tentar novamente</button>` : ''}</div>`;
         const retry = el.querySelector('[data-retry-fn]');
         if (retry) {
             retry.addEventListener('click', () => {
@@ -196,6 +236,9 @@
             if (btn.dataset.tab === 'prediction') {
                 loadPrediction();
             }
+            if (btn.dataset.tab === 'worldcup') {
+                loadWorldCup();
+            }
         }
 
         tabs.forEach((btn, index) => {
@@ -230,7 +273,7 @@
 
     // --- Hero ---
     async function loadHero() {
-        const data = await api('matches?status=SCHEDULED,TIMED,IN_PLAY,PAUSED&limit=5');
+        const data = await api(palmeirasQuery('matches?status=SCHEDULED,TIMED,IN_PLAY,PAUSED&limit=5'));
         if (!data) {
             document.getElementById('hero-comp-badge').textContent = 'Erro ao carregar';
             return;
@@ -290,7 +333,7 @@
 
         // Date
         document.getElementById('hero-date-area').innerHTML =
-            isLive ? (isPaused ? '⏸️ INTERVALO' : '🔴 JOGANDO AGORA') :
+            isLive ? (isPaused ? 'INTERVALO' : 'AO VIVO') :
             `${formatDate(match.utcDate)} · ${formatTime(match.utcDate)} <span class="hero-day">${dayOfWeek}</span>`;
 
         // Detail pills
@@ -299,12 +342,12 @@
         const pillRound = document.getElementById('pill-round');
         const pillStage = document.getElementById('pill-stage');
 
-        pillStadium.textContent = '🏟️ ' + (venue || 'A definir');
-        pillBroadcast.textContent = '📺 ' + (match.broadcast || 'A confirmar');
-        pillRound.textContent = '🔢 Rodada ' + (match.matchday || '-');
+        pillStadium.textContent = 'Estádio ' + (venue || 'A definir');
+        pillBroadcast.textContent = 'TV ' + (match.broadcast || 'A confirmar');
+        pillRound.textContent = 'Rodada ' + (match.matchday || '-');
 
         if (stageLabel) {
-            pillStage.textContent = '🏷️ ' + stageLabel;
+            pillStage.textContent = 'Fase ' + stageLabel;
             pillStage.style.display = '';
         } else {
             pillStage.style.display = 'none';
@@ -356,7 +399,7 @@
 
     // --- Form Widget (last 5 results) ---
     async function loadFormWidget() {
-        const data = await api('matches?status=FINISHED&limit=5');
+        const data = await api(palmeirasQuery('matches?status=FINISHED&limit=5'));
         if (!data?.matches?.length) return;
 
         const widget = document.getElementById('form-widget');
@@ -371,7 +414,7 @@
             const r = our > opp ? 'W' : our < opp ? 'L' : 'D';
             const label = r === 'W' ? 'V' : r === 'L' ? 'D' : 'E';
             const cls = r === 'W' ? 'win' : r === 'L' ? 'loss' : 'draw';
-            const tooltip = `${isHome ? '🏠' : '✈️'} ${our}-${opp} vs ${escapeHtml(isHome ? CONFIG.teamName(m.awayTeam) : CONFIG.teamName(m.homeTeam))}`;
+            const tooltip = `${isHome ? 'Casa' : 'Fora'} ${our}-${opp} vs ${escapeHtml(isHome ? CONFIG.teamName(m.awayTeam) : CONFIG.teamName(m.homeTeam))}`;
             dots.innerHTML += `<span class="form-dot ${cls}" title="${tooltip}">${label}</span>`;
         });
         widget.style.display = '';
@@ -450,12 +493,12 @@
         if (!chartJsLoaded) {
             container.innerHTML = '<div class="empty" style="padding:2rem">Carregando gráficos...</div>';
             try { await loadChartJs(); } catch {
-                container.innerHTML = '<div class="empty" style="padding:2rem">⚠️ Erro ao carregar gráficos</div>';
+                container.innerHTML = '<div class="empty" style="padding:2rem">Erro ao carregar gráficos</div>';
                 return;
             }
         }
 
-        const data = await api('matches?status=FINISHED&limit=38');
+        const data = await api(palmeirasQuery('matches?status=FINISHED&limit=38'));
         if (!data || !data.matches?.length) {
             container.innerHTML = '<div class="empty" style="padding:2rem">Sem dados suficientes</div>';
             return;
@@ -526,7 +569,7 @@
         </div>
         <div class="stats-row">
             <div class="stats-col">
-                <div class="stats-col-title">🏠 Casa (${homeTotal}J)</div>
+                <div class="stats-col-title">Casa (${homeTotal}J)</div>
                 <div class="mini-stats">
                     <span style="color:var(--win)">${homeWins}V</span>
                     <span style="color:var(--draw)">${homeDraws}E</span>
@@ -536,7 +579,7 @@
                 </div>
             </div>
             <div class="stats-col">
-                <div class="stats-col-title">✈️ Fora (${awayTotal}J)</div>
+                <div class="stats-col-title">Fora (${awayTotal}J)</div>
                 <div class="mini-stats">
                     <span style="color:var(--win)">${awayWins}V</span>
                     <span style="color:var(--draw)">${awayDraws}E</span>
@@ -548,7 +591,7 @@
         </div>
         <div class="stats-row">
             <div class="stats-col">
-                <div class="stats-col-title">📊 Médias</div>
+                <div class="stats-col-title">Médias</div>
                 <div class="mini-stats">
                     <span>${avgGF} gpj</span>
                     <span>${avgGA} gcj</span>
@@ -558,7 +601,7 @@
             <div class="stats-col">
                 <div class="stats-col-title">📋 Forma Recente</div>
                 <div class="form-guide">
-                    ${lastFive.map(f => `<span class="form-badge ${f.result === 'V' ? 'win' : f.result === 'D' ? 'loss' : 'draw'}" title="${f.home ? '🏠' : '✈️'} vs ${escapeHtml(f.opp)} (${f.score})">${f.result}</span>`).join('')}
+                    ${lastFive.map(f => `<span class="form-badge ${f.result === 'V' ? 'win' : f.result === 'D' ? 'loss' : 'draw'}" title="${f.home ? 'Casa' : 'Fora'} vs ${escapeHtml(f.opp)} (${f.score})">${f.result}</span>`).join('')}
                 </div>
             </div>
         </div>`;
@@ -656,7 +699,7 @@
                                 afterLabel: (item) => {
                                     if (item.datasetIndex === 0) {
                                         const p = item.raw;
-                                        return p === 3 ? '✅ Vitória' : p === 1 ? '➖ Empate' : '❌ Derrota';
+                                        return p === 3 ? 'Vitória' : p === 1 ? 'Empate' : 'Derrota';
                                     }
                                     return `Total: ${item.raw} pts`;
                                 }
@@ -666,7 +709,7 @@
                 }
             });
         } else {
-            html += '<div style="text-align:center;padding:1rem;font-size:0.85rem;color:var(--text-muted)">📈 Gráfico disponível com mínimo 3 jogos do Brasileirão</div>';
+            html += '<div style="text-align:center;padding:1rem;font-size:0.85rem;color:var(--text-muted)">Gráfico disponível com mínimo 3 jogos do Brasileirão</div>';
             container.innerHTML = html;
         }
     }
@@ -678,21 +721,13 @@
         const items = Array.isArray(data) ? data : (data?.news || []);
         if (!items.length) { showEmpty('news-list', 'Nenhuma notícia'); return; }
 
-        const sourceIcons = {
-            'ge.globo': '🔴',
-            'lance.com.br': '🔵',
-            'gazetaesportiva.com': '🟡',
-            'uol.com.br': '🟠',
-        };
-
         document.getElementById('news-list').innerHTML = items.slice(0, 12).map(n => {
             const source = n.source || 'ge.globo';
-            const icon = sourceIcons[source] || '📰';
             const safeTitle = escapeHtml(n.title);
             const safeSource = escapeHtml(source);
             return `<a class="news-item" href="${escapeHtml(n.url || '#')}" target="_blank" rel="noopener noreferrer">
                 <div class="news-title">${safeTitle}</div>
-                <div class="news-meta">${icon} <span class="news-source">${safeSource}</span></div>
+                <div class="news-meta"><span class="news-source">${safeSource}</span></div>
             </a>`;
         }).join('');
 
@@ -706,8 +741,8 @@
         try {
             // Fetch all required data in parallel
             const [upcomingData, recentData, standingsData] = await Promise.all([
-                api('matches?status=SCHEDULED,TIMED&limit=5'),
-                api('matches?status=FINISHED&limit=8'),
+                api(palmeirasQuery('matches?status=SCHEDULED,TIMED&limit=5')),
+                api(palmeirasQuery('matches?status=FINISHED&limit=8')),
                 api('standings?competition=BSA')
             ]);
 
@@ -878,11 +913,11 @@
         const maxProb = Math.max(probs.win, probs.draw, probs.loss);
         let confidenceBadge;
         if (maxProb >= 0.60) {
-            confidenceBadge = '<div class="prediction-badge likely">🟢 Provável</div>';
+            confidenceBadge = '<div class="prediction-badge likely">Provável</div>';
         } else if (maxProb >= 0.45) {
-            confidenceBadge = '<div class="prediction-badge maybe">🟡 Possível</div>';
+            confidenceBadge = '<div class="prediction-badge maybe">Possível</div>';
         } else {
-            confidenceBadge = '<div class="prediction-badge risky">🔴 Arriscado</div>';
+            confidenceBadge = '<div class="prediction-badge risky">Arriscado</div>';
         }
 
         // Match title
@@ -934,18 +969,169 @@
         document.getElementById('prediction-content').innerHTML = '<div class="empty">Nenhum jogo agendado para palpite</div>';
     }
 
+    // --- World Cup 2026 ---
+    let worldCupLoaded = false;
+    let worldCupMatches = [];
+    let worldCupFilter = 'all';
+
+    async function loadWorldCup() {
+        if (worldCupLoaded) {
+            renderWorldCup();
+            return;
+        }
+
+        showSkeleton('worldcup-matches');
+        const path = `matches?competition=WC&from_date=${WORLD_CUP_FROM}&to_date=${WORLD_CUP_TO}&limit=200`;
+        const data = await api(path, 15 * 60 * 1000);
+        if (!data) {
+            showError('worldcup-matches', 'Erro ao carregar a Copa 2026', 'loadWorldCup');
+            return;
+        }
+
+        worldCupMatches = (data.matches || []).sort((a, b) => new Date(a.utcDate) - new Date(b.utcDate));
+        worldCupLoaded = true;
+        renderWorldCup();
+    }
+
+    function isBrazilMatch(match) {
+        const teams = [match.homeTeam, match.awayTeam];
+        return teams.some(team => {
+            const id = `${team?.tla || ''} ${team?.name || ''} ${team?.shortName || ''}`.toLowerCase();
+            return id.includes('bra') || id.includes('brazil') || id.includes('brasil');
+        });
+    }
+
+    function filteredWorldCupMatches() {
+        if (worldCupFilter === 'finished') {
+            return worldCupMatches.filter(m => FINISHED_STATUSES.has(m.status));
+        }
+        if (worldCupFilter === 'upcoming') {
+            return worldCupMatches.filter(m => UPCOMING_STATUSES.has(m.status) || LIVE_STATUSES.has(m.status));
+        }
+        if (worldCupFilter === 'brazil') {
+            return worldCupMatches.filter(isBrazilMatch);
+        }
+        return worldCupMatches;
+    }
+
+    function renderWorldCup() {
+        const total = worldCupMatches.length;
+        const finished = worldCupMatches.filter(m => FINISHED_STATUSES.has(m.status)).length;
+        const live = worldCupMatches.filter(m => LIVE_STATUSES.has(m.status)).length;
+        const upcoming = worldCupMatches.filter(m => UPCOMING_STATUSES.has(m.status)).length;
+        const totalEl = document.getElementById('worldcup-total');
+        if (totalEl) totalEl.textContent = total ? String(total) : '104';
+
+        const summary = document.getElementById('worldcup-summary');
+        if (summary) {
+            const liveText = live ? ` · ${live} ao vivo` : '';
+            summary.textContent = total
+                ? `${total} jogos carregados · ${finished} resultados · ${upcoming} próximos${liveText}`
+                : 'Nenhum jogo da Copa 2026 encontrado no banco ainda.';
+        }
+
+        document.querySelectorAll('.worldcup-filter').forEach(btn => {
+            const selected = btn.dataset.wcFilter === worldCupFilter;
+            btn.classList.toggle('active', selected);
+            btn.setAttribute('aria-pressed', String(selected));
+        });
+
+        const container = document.getElementById('worldcup-matches');
+        if (!container) return;
+
+        const matches = filteredWorldCupMatches();
+        if (!matches.length) {
+            container.innerHTML = '<div class="empty">Nenhum jogo neste filtro</div>';
+            return;
+        }
+
+        const groups = new Map();
+        matches.forEach(match => {
+            const key = new Date(match.utcDate).toLocaleDateString('en-CA', { timeZone: BR_TZ });
+            if (!groups.has(key)) groups.set(key, []);
+            groups.get(key).push(match);
+        });
+
+        container.innerHTML = [...groups.entries()].map(([dateKey, dayMatches]) => {
+            const dayLabel = new Date(`${dateKey}T12:00:00`).toLocaleDateString('pt-BR', {
+                weekday: 'long',
+                day: '2-digit',
+                month: 'short',
+                timeZone: BR_TZ,
+            });
+
+            return `<section class="worldcup-day-group" aria-label="${escapeHtml(dayLabel)}">
+                <div class="worldcup-day-heading">
+                    <span>${escapeHtml(dayLabel)}</span>
+                    <strong>${dayMatches.length} ${dayMatches.length === 1 ? 'jogo' : 'jogos'}</strong>
+                </div>
+                <div class="worldcup-match-list">
+                    ${dayMatches.map(renderWorldCupMatch).join('')}
+                </div>
+            </section>`;
+        }).join('');
+    }
+
+    function renderWorldCupMatch(match) {
+        const time = formatTime(match.utcDate);
+        const statusText = STATUS_LABEL[match.status] || match.status || 'Agendado';
+        const stageLabel = formatStage(match.stage) || `Rodada ${match.matchday || '-'}`;
+        const scoreReady = (FINISHED_STATUSES.has(match.status) || LIVE_STATUSES.has(match.status)) && match.homeScore != null && match.awayScore != null;
+        const score = scoreReady ? `${match.homeScore}–${match.awayScore}` : '×';
+        const liveClass = LIVE_STATUSES.has(match.status) ? ' live' : '';
+        const venue = match.venue || 'A definir';
+
+        return `<article class="worldcup-match${liveClass}">
+            <div class="worldcup-match-time">${time}</div>
+            <div class="worldcup-match-body">
+                <div class="worldcup-teams">
+                    <span class="worldcup-team">
+                        <img src="${CONFIG.getCrest(match.homeTeam)}" alt="">
+                        <span>${escapeHtml(CONFIG.teamName(match.homeTeam))}</span>
+                    </span>
+                    <strong class="worldcup-score">${escapeHtml(score)}</strong>
+                    <span class="worldcup-team away">
+                        <span>${escapeHtml(CONFIG.teamName(match.awayTeam))}</span>
+                        <img src="${CONFIG.getCrest(match.awayTeam)}" alt="">
+                    </span>
+                </div>
+                <div class="worldcup-match-meta">
+                    <span>${escapeHtml(stageLabel)}</span>
+                    <span>${escapeHtml(statusText)}</span>
+                    <span>${escapeHtml(venue)}</span>
+                </div>
+            </div>
+        </article>`;
+    }
+
+    function setWorldCupFilter(filter) {
+        worldCupFilter = filter || 'all';
+        renderWorldCup();
+    }
+
+    function openWorldCupCalendar() {
+        _calYear = 2026;
+        _calMonth = 6;
+        _calSelectedDay = null;
+        document.getElementById('calendar-expanded').innerHTML = '';
+        syncYearSelect();
+        window.filterSharedComp('WC');
+        document.getElementById('calendar-hub')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
     // --- Calendar ---
     const COMP_DOT_CLASS = {
         BSA: 'bsa',
         CLI: 'cli',
         COPA: 'copa',
-        COPADO_BRASIL: 'copa',
+        COPA_DO_BRASIL: 'copa',
+        WC: 'wc',
     };
 
     const STATUS_LABEL = {
         SCHEDULED: 'Agendado',
         TIMED: 'Agendado',
-        IN_PLAY: '🔴 AO VIVO',
+        IN_PLAY: 'AO VIVO',
         FINISHED: 'Finalizado',
         PAUSED: 'Intervalo',
         POSTPONED: 'Adiado',
@@ -1030,21 +1216,19 @@
             const scoreLabels = [];
             if (live.length > 0) {
                 const m = live[0];
-                const isHome = m.homeTeam?.id === TEAM_ID;
-                const ourScore = isHome ? m.homeScore : m.awayScore;
-                const oppScore = isHome ? m.awayScore : m.homeScore;
-                const scoreText = `🔴 ${ourScore ?? 0}–${oppScore ?? 0}`;
+                const sides = matchDisplaySides(m);
+                const scoreText = `AO VIVO ${sides.leftScore ?? 0}–${sides.rightScore ?? 0}`;
                 scoreLabels.push(scoreText);
                 scoreHtml = `<div class="cal-score live">${escapeHtml(scoreText)}</div>`;
             } else if (finished.length > 0) {
                 // Show result badge for each finished game
                 scoreHtml = finished.map(m => {
-                    const isHome = m.homeTeam?.id === TEAM_ID;
-                    const ourScore = isHome ? m.homeScore : m.awayScore;
-                    const oppScore = isHome ? m.awayScore : m.homeScore;
-                    const result = ourScore > oppScore ? 'V' : ourScore < oppScore ? 'D' : 'E';
-                    const cls = result === 'V' ? 'win' : result === 'D' ? 'loss' : 'draw';
-                    const scoreText = `${ourScore}–${oppScore}`;
+                    const sides = matchDisplaySides(m);
+                    const result = sides.leftScore > sides.rightScore ? 'V' : sides.leftScore < sides.rightScore ? 'D' : 'E';
+                    const cls = sides.perspective === 'palmeiras'
+                        ? (result === 'V' ? 'win' : result === 'D' ? 'loss' : 'draw')
+                        : 'neutral';
+                    const scoreText = `${sides.leftScore}–${sides.rightScore}`;
                     scoreLabels.push(scoreText);
                     return `<div class="cal-score ${cls}">${escapeHtml(scoreText)}</div>`;
                 }).join('');
@@ -1139,29 +1323,26 @@
             </div>
             ${matches.filter(m => m?.homeTeam && m?.awayTeam).map(m => {
                 const time = new Date(m.utcDate).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: CONFIG.BR_TZ });
-                const isHome = m.homeTeam?.id === CONFIG.TEAM_ID;
-                const ourTeam = isHome ? m.homeTeam : m.awayTeam;
-                const oppTeam = isHome ? m.awayTeam : m.homeTeam;
-                const ourScore = isHome ? m.homeScore : m.awayScore;
-                const oppScore = isHome ? m.awayScore : m.homeScore;
+                const sides = matchDisplaySides(m);
+                const stageLabel = formatStage(m.stage);
 
-                const scoreHtml = (m.status === 'FINISHED' || m.status === 'PLAYING_TIME_FINISHED') && ourScore != null
-                    ? `<span class="cal-match-score">${ourScore}–${oppScore}</span>`
+                const scoreHtml = FINISHED_STATUSES.has(m.status) && sides.leftScore != null
+                    ? `<span class="cal-match-score">${sides.leftScore}–${sides.rightScore}</span>`
                     : '';
 
                 const statusText = STATUS_LABEL[m.status] || m.status;
                 const compClass = getCompBadgeClass(m.competition?.code);
-                const statusClass = (m.status === 'IN_PLAY' || m.status === 'PAUSED') ? 'live' : '';
+                const statusClass = LIVE_STATUSES.has(m.status) ? 'live' : '';
 
                 return `<div class="cal-match ${compClass}">
                     <div class="cal-match-time">${time}</div>
-                    <div class="cal-match-comp ${compClass}">${escapeHtml(CONFIG.formatComp(m.competition))}</div>
+                    <div class="cal-match-comp ${compClass}">${escapeHtml(stageLabel || CONFIG.formatComp(m.competition))}</div>
                     <div class="cal-match-teams">
-                        <img class="cal-match-crest" src="${CONFIG.getCrest(ourTeam)}" alt="">
-                        <span class="cal-match-team-name">${escapeHtml(CONFIG.teamName(ourTeam))}</span>
+                        <img class="cal-match-crest" src="${CONFIG.getCrest(sides.leftTeam)}" alt="">
+                        <span class="cal-match-team-name">${escapeHtml(CONFIG.teamName(sides.leftTeam))}</span>
                         <span class="cal-match-vs">×</span>
-                        <span class="cal-match-team-name">${escapeHtml(CONFIG.teamName(oppTeam))}</span>
-                        <img class="cal-match-crest" src="${CONFIG.getCrest(oppTeam)}" alt="">
+                        <span class="cal-match-team-name">${escapeHtml(CONFIG.teamName(sides.rightTeam))}</span>
+                        <img class="cal-match-crest" src="${CONFIG.getCrest(sides.rightTeam)}" alt="">
                         ${scoreHtml}
                     </div>
                     <div class="cal-match-status ${statusClass}">${statusText}</div>
@@ -1229,12 +1410,12 @@
         loadCalendar();
     };
 
-    // Populate year select (current year -1 to +2)
+    // Populate year select and keep the World Cup year available.
     (function populateYearSelect() {
         const sel = document.getElementById('cal-year-select');
         if (!sel) return;
         const currentYear = new Date().getFullYear();
-        const years = [currentYear, currentYear + 1];
+        const years = [...new Set([currentYear - 1, currentYear, currentYear + 1, 2026])].sort();
         sel.innerHTML = years.map(y => `<option value="${y}">${y}</option>`).join('');
         sel.value = currentYear;
     })();
@@ -1270,6 +1451,11 @@
         });
         document.getElementById('downloadCalendarButton')?.addEventListener('click', window.downloadCalendar);
         document.getElementById('copyCalendarUrlButton')?.addEventListener('click', window.copyCalendarUrl);
+        document.getElementById('worldcupFilterCalendar')?.addEventListener('click', openWorldCupCalendar);
+        document.getElementById('worldcupIcsButton')?.addEventListener('click', window.downloadCalendar);
+        document.querySelectorAll('.worldcup-filter').forEach(btn => {
+            btn.addEventListener('click', () => setWorldCupFilter(btn.dataset.wcFilter || 'all'));
+        });
 
         // Calendar day click — event delegation (set up once, not per render)
         const grid = document.getElementById('calendar-grid');
@@ -1289,6 +1475,7 @@
     window.loadStandings = loadStandings;
     window.loadNews = loadNews;
     window.loadPrediction = loadPrediction;
+    window.loadWorldCup = loadWorldCup;
 
     // --- Init ---
     document.addEventListener('DOMContentLoaded', () => {

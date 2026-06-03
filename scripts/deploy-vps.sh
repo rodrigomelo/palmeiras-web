@@ -25,6 +25,7 @@ rsync -az --delete \
   --exclude='/.vercel/' \
   --exclude='/.pytest_cache/' \
   --exclude='/.ruff_cache/' \
+  --exclude='/screenshots/' \
   --exclude='**/__pycache__/' \
   --exclude='*.py[cod]' \
   --exclude='*.log' \

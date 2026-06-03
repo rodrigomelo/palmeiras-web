@@ -32,7 +32,18 @@ ALLOWED_STATUSES = {
     'SUSPENDED',
     'CANCELLED',
 }
-ALLOWED_COMPETITIONS = {'BSA', 'CLI', 'LIBERTADORES', 'COPA', 'COPA_DO_BRASIL'}
+COMPETITION_ALIASES = {
+    'BSA': 'BSA',
+    'CLI': 'CLI',
+    'LIBERTADORES': 'CLI',
+    'COPA_LIBERTADORES': 'CLI',
+    'COPA': 'COPA',
+    'COPA_DO_BRASIL': 'COPA',
+    'WC': 'WC',
+    'WORLD_CUP': 'WC',
+    'FIFA_WORLD_CUP': 'WC',
+}
+ALLOWED_COMPETITIONS = set(COMPETITION_ALIASES)
 
 
 class RequestValidationError(ValueError):
@@ -76,12 +87,28 @@ def parse_statuses(status):
     return statuses
 
 
+def normalize_competition_code(code):
+    """Normalize known competition aliases to their stored canonical code."""
+    return COMPETITION_ALIASES.get(str(code or '').strip().upper(), str(code or '').strip().upper())
+
+
 def competition_param(params, default='BSA'):
     """Validate a competition code query parameter."""
     competition = str(get_first(params, 'competition', default) or default).strip().upper()
     if competition not in ALLOWED_COMPETITIONS:
         raise RequestValidationError('invalid competition')
-    return competition
+    return normalize_competition_code(competition)
+
+
+def optional_competition_param(params):
+    """Validate an optional competition code query parameter."""
+    raw = get_first(params, 'competition', None)
+    if not raw:
+        return None
+    competition = str(raw).strip().upper()
+    if competition not in ALLOWED_COMPETITIONS:
+        raise RequestValidationError('invalid competition')
+    return normalize_competition_code(competition)
 
 
 def year_month_params(params):
@@ -147,6 +174,16 @@ def supabase_get(table, *, filters=None, timeout=REQUEST_TIMEOUT, key=None, **pa
 
 def transform_match(row):
     """Convert a Supabase match row to the public frontend contract."""
+    home_team = parse_json(row.get('home_team', '{}'))
+    away_team = parse_json(row.get('away_team', '{}'))
+
+    def clean_team(team):
+        name = team.get('name') or team.get('shortName') or 'A definir'
+        cleaned = dict(team)
+        cleaned['name'] = name
+        cleaned['shortName'] = team.get('shortName') or name
+        return cleaned
+
     return {
         'id': row.get('external_id'),
         'utcDate': row.get('utc_date'),
@@ -155,8 +192,8 @@ def transform_match(row):
         'stage': row.get('stage'),
         'venue': row.get('venue'),
         'broadcast': row.get('broadcast'),
-        'homeTeam': parse_json(row.get('home_team', '{}')),
-        'awayTeam': parse_json(row.get('away_team', '{}')),
+        'homeTeam': clean_team(home_team),
+        'awayTeam': clean_team(away_team),
         'competition': parse_json(row.get('competition', '{}')),
         'season': parse_json(row.get('season', '{}')),
         'referees': parse_json(row.get('referees', '[]'), []),
@@ -193,6 +230,8 @@ def transform_standing(row):
 def calendar_match(row):
     """Convert a match row to the compact calendar-month contract."""
     match = transform_match(row)
+    home_name = match['homeTeam'].get('name') or match['homeTeam'].get('shortName') or 'A definir'
+    away_name = match['awayTeam'].get('name') or match['awayTeam'].get('shortName') or 'A definir'
     return {
         'utcDate': match['utcDate'],
         'status': match['status'] or 'SCHEDULED',
@@ -202,14 +241,14 @@ def calendar_match(row):
         },
         'homeTeam': {
             'id': match['homeTeam'].get('id'),
-            'name': match['homeTeam'].get('name', 'Home'),
-            'shortName': match['homeTeam'].get('shortName', ''),
+            'name': home_name,
+            'shortName': match['homeTeam'].get('shortName') or home_name,
             'crest': match['homeTeam'].get('crest', ''),
         },
         'awayTeam': {
             'id': match['awayTeam'].get('id'),
-            'name': match['awayTeam'].get('name', 'Away'),
-            'shortName': match['awayTeam'].get('shortName', ''),
+            'name': away_name,
+            'shortName': match['awayTeam'].get('shortName') or away_name,
             'crest': match['awayTeam'].get('crest', ''),
         },
         'matchday': match['matchday'],

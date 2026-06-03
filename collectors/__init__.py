@@ -13,6 +13,7 @@ Usage:
 import os
 import json
 import requests
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -36,6 +37,29 @@ TEAM_ID = 1769
 API_BASE = 'https://api.football-data.org/v4'
 HEADERS = {'X-Auth-Token': FOOTBALL_API_KEY} if FOOTBALL_API_KEY else {}
 PALMEIRAS_HOME = 'Allianz Parque'
+WORLD_CUP_SEASON = 2026
+WORLD_CUP_EXPECTED_MATCHES = 104
+
+MATCH_COLUMNS = {
+    'external_id',
+    'home_team',
+    'away_team',
+    'home_score',
+    'away_score',
+    'half_time_home',
+    'half_time_away',
+    'utc_date',
+    'status',
+    'competition',
+    'season',
+    'matchday',
+    'stage',
+    'venue',
+    'area',
+    'referees',
+    'broadcast',
+    'updated_at',
+}
 
 # Known broadcast partners — single source of truth lives in broadcast_scraper.py
 # Imported lazily below to avoid circular imports at module load
@@ -62,6 +86,97 @@ def get_supabase():
     return create_client(SUPABASE_URL, SUPABASE_KEY)
 
 
+def _json(value):
+    return json.dumps(value or {}, ensure_ascii=False)
+
+
+def _football_data_get(path, *, params=None, timeout=30, retries=2):
+    """Fetch football-data.org JSON with small retry/backoff for transient errors."""
+    url = path if path.startswith('http') else f'{API_BASE}{path}'
+    last_error = None
+    for attempt in range(retries + 1):
+        try:
+            resp = requests.get(url, headers=HEADERS, params=params, timeout=timeout)
+            if resp.status_code in (429, 500, 502, 503, 504) and attempt < retries:
+                time.sleep(2 * (attempt + 1))
+                continue
+            resp.raise_for_status()
+            return resp.json()
+        except requests.RequestException as error:
+            last_error = error
+            if attempt < retries:
+                time.sleep(2 * (attempt + 1))
+                continue
+            raise last_error
+
+
+def _cache_crests_for_match(home, away):
+    for team in (home, away):
+        tid = team.get('id')
+        if tid:
+            local_crest = get_or_download_crest(tid, team.get('crest', ''))
+            if local_crest:
+                team['crest'] = local_crest
+            else:
+                team['crest'] = None
+
+
+def _match_to_record(match, now, *, cache_crests=True, broadcast=None):
+    """Convert a football-data.org match object to the matches table schema."""
+    if 'id' not in match:
+        raise ValueError("Match missing required 'id' field")
+
+    home = dict(match.get('homeTeam') or {})
+    away = dict(match.get('awayTeam') or {})
+    comp = dict(match.get('competition') or {})
+    score = match.get('score') or {}
+    ft = score.get('fullTime') or {}
+    ht = score.get('halfTime') or {}
+
+    if cache_crests:
+        _cache_crests_for_match(home, away)
+
+    venue = match.get('venue')
+    if not venue and home.get('id') == TEAM_ID:
+        venue = PALMEIRAS_HOME
+
+    if broadcast is None:
+        broadcast = _get_broadcast_map().get(comp.get('code'), '')
+
+    return {
+        'external_id': int(match['id']),
+        'home_team': _json(home),
+        'away_team': _json(away),
+        'home_score': ft.get('home'),
+        'away_score': ft.get('away'),
+        'utc_date': match.get('utcDate'),
+        'status': match.get('status'),
+        'competition': _json(comp),
+        'matchday': match.get('matchday'),
+        'venue': venue,
+        'updated_at': now,
+        'half_time_home': ht.get('home'),
+        'half_time_away': ht.get('away'),
+        'season': _json(match.get('season', {})),
+        'stage': match.get('stage', ''),
+        'area': _json(match.get('area', {})),
+        'referees': json.dumps(match.get('referees', []) or [], ensure_ascii=False),
+        'broadcast': broadcast or '',
+    }
+
+
+def _sanitize_match_record(record):
+    """Drop collector-only fields before writing to Supabase."""
+    return {key: value for key, value in record.items() if key in MATCH_COLUMNS}
+
+
+def _deterministic_external_id(*parts):
+    """Create a stable positive integer id for scraped fixtures without API ids."""
+    import hashlib
+    digest = hashlib.md5('|'.join(str(part) for part in parts).encode()).hexdigest()
+    return 980_000_000 + (int(digest[:8], 16) % 100_000_000)
+
+
 def collect_matches():
     """Fetch all Palmeiras matches with enhanced data."""
     _print("  Fetching matches...")
@@ -71,32 +186,31 @@ def collect_matches():
 
     try:
         # Past + current matches
-        resp = requests.get(f"{API_BASE}/teams/{TEAM_ID}/matches?limit=100", headers=HEADERS, timeout=30)
-        resp.raise_for_status()
-        matches = resp.json().get('matches', [])
+        matches = _football_data_get(f"/teams/{TEAM_ID}/matches", params={'limit': 100}).get('matches', [])
 
         # Future scheduled
-        resp2 = requests.get(f"{API_BASE}/teams/{TEAM_ID}/matches?status=SCHEDULED,TIMED", headers=HEADERS, timeout=30)
-        if resp2.status_code == 200:
+        try:
+            resp2 = _football_data_get(f"/teams/{TEAM_ID}/matches", params={'status': 'SCHEDULED,TIMED'})
             existing = {m['id'] for m in matches}
-            for m in resp2.json().get('matches', []):
+            for m in resp2.get('matches', []):
                 if m['id'] not in existing:
                     matches.append(m)
+        except Exception as error:
+            _print(f"    Upcoming matches fetch warning: {error}")
 
         # Also fetch from other competitions (Libertadores, Copa do Brasil)
         for comp in ['CBC', 'CL']:
             try:
-                resp3 = requests.get(
-                    f"{API_BASE}/teams/{TEAM_ID}/matches?competitions={comp}&limit=50",
-                    headers=HEADERS, timeout=30
+                resp3 = _football_data_get(
+                    f"/teams/{TEAM_ID}/matches",
+                    params={'competitions': comp, 'limit': 50},
                 )
-                if resp3.status_code == 200:
-                    existing = {m['id'] for m in matches}
-                    for m in resp3.json().get('matches', []):
-                        if m['id'] not in existing:
-                            matches.append(m)
-            except Exception:
-                pass
+                existing = {m['id'] for m in matches}
+                for m in resp3.get('matches', []):
+                    if m['id'] not in existing:
+                        matches.append(m)
+            except Exception as error:
+                _print(f"    {comp} fetch warning: {error}")
 
         _print(f"    Found {len(matches)} matches")
         now = datetime.now(timezone.utc).isoformat()
@@ -105,58 +219,7 @@ def collect_matches():
         skipped = 0
         for m in matches:
             try:
-                home = m.get('homeTeam', {})
-                away = m.get('awayTeam', {})
-                comp = m.get('competition', {})
-                score = m.get('score', {})
-                ft = score.get('fullTime', {})
-                ht = score.get('halfTime', {})
-
-                # Validate required fields
-                if 'id' not in m:
-                    raise ValueError("Match missing required 'id' field")
-
-                # Cache team crests locally
-                for team in (home, away):
-                    tid = team.get('id')
-                    if tid:
-                        local_crest = get_or_download_crest(tid, team.get('crest', ''))
-                        if local_crest:
-                            team['crest'] = local_crest
-                        elif tid:  # No crest available
-                            team['crest'] = None
-
-                # Determine venue
-                venue = m.get('venue')
-                if not venue and home.get('id') == TEAM_ID:
-                    venue = PALMEIRAS_HOME
-
-                # Broadcast from known map
-                broadcast = _get_broadcast_map().get(comp.get('code'), '')
-
-                # Referees
-                referees = m.get('referees', [])
-
-                records.append({
-                    'external_id': m['id'],
-                    'home_team': json.dumps(home),
-                    'away_team': json.dumps(away),
-                    'home_score': ft.get('home'),
-                    'away_score': ft.get('away'),
-                    'utc_date': m.get('utcDate'),
-                    'status': m.get('status'),
-                    'competition': json.dumps(comp),
-                    'matchday': m.get('matchday'),
-                    'venue': venue,
-                    'updated_at': now,
-                    'half_time_home': ht.get('home'),
-                    'half_time_away': ht.get('away'),
-                    'season': json.dumps(m.get('season', {})),
-                    'stage': m.get('stage', ''),
-                    'area': json.dumps(m.get('area', {})),
-                    'referees': json.dumps(referees),
-                    'broadcast': broadcast,
-                })
+                records.append(_match_to_record(m, now, cache_crests=True))
             except Exception as e:
                 skipped += 1
                 _print(f"    Skipping malformed match {m.get('id', '?')}: {e}")
@@ -165,13 +228,54 @@ def collect_matches():
             _print(f"    Skipped {skipped} malformed matches out of {len(matches)}")
 
         try:
-            client.table('matches').upsert(records, on_conflict='external_id').execute()
+            if records:
+                client.table('matches').upsert(records, on_conflict='external_id').execute()
             _print(f"    Saved {len(records)} matches")
         except Exception as e:
             _print(f"    Error saving matches: {e}")
 
     except Exception as e:
         _print(f"    Error: {e}")
+
+
+def collect_world_cup():
+    """Fetch all FIFA World Cup 2026 fixtures/results."""
+    _print("  FIFA World Cup 2026...")
+    client = get_supabase()
+    if not client or not FOOTBALL_API_KEY:
+        return
+
+    try:
+        payload = _football_data_get(
+            '/competitions/WC/matches',
+            params={'season': WORLD_CUP_SEASON},
+        )
+        matches = payload.get('matches', [])
+        result_count = payload.get('resultSet', {}).get('count')
+        expected = result_count or WORLD_CUP_EXPECTED_MATCHES
+
+        if len(matches) != expected:
+            _print(f"    Warning: expected {expected} matches, got {len(matches)}")
+        if len(matches) != WORLD_CUP_EXPECTED_MATCHES:
+            _print(f"    Warning: World Cup fixture count should be {WORLD_CUP_EXPECTED_MATCHES}")
+
+        now = datetime.now(timezone.utc).isoformat()
+        records = []
+        skipped = 0
+        for match in matches:
+            try:
+                records.append(_match_to_record(match, now, cache_crests=False, broadcast=''))
+            except Exception as error:
+                skipped += 1
+                _print(f"    Skipping malformed WC match {match.get('id', '?')}: {error}")
+
+        if records:
+            client.table('matches').upsert(records, on_conflict='external_id').execute()
+        if skipped:
+            _print(f"    Skipped {skipped} malformed World Cup matches")
+        _print(f"    Saved {len(records)} World Cup matches")
+    except Exception as error:
+        _print(f"    World Cup error: {error}")
 
 
 def collect_standings():
@@ -445,20 +549,22 @@ def collect_copa_brasil():
             if 'external_id' in m:
                 # Already Supabase-ready (known data)
                 ext_id = m.get('external_id')
+                source = m.get('source')
+                record = _sanitize_match_record(m)
                 existing = client.table('matches').select('external_id').eq('external_id', ext_id).execute()
                 if not existing.data:
-                    client.table('matches').insert(m).execute()
+                    client.table('matches').insert(record).execute()
                     saved += 1
                 else:
                     # Protect manual entries (external_id >= 990000):
                     # Only update scores/status, never overwrite date/venue/teams
-                    is_manual = isinstance(ext_id, int) and ext_id >= 990000
-                    if is_manual and m.get('source') != 'manual':
+                    is_manual = source == 'manual' or (isinstance(ext_id, int) and 990000 <= ext_id < 991000)
+                    if is_manual and source != 'manual':
                         # Collector trying to overwrite a manual entry — skip
                         _print(f"    Manual entry {ext_id} protected from overwrite")
                         continue
                     # Normal update
-                    client.table('matches').update(m).eq('external_id', ext_id).execute()
+                    client.table('matches').update(record).eq('external_id', ext_id).execute()
                     saved += 1
             else:
                 # Raw scraper output — convert to Supabase format
@@ -471,10 +577,8 @@ def collect_copa_brasil():
                 if not utc_date:
                     continue
 
-                # Create a deterministic ID
-                import hashlib
-                id_str = f"{comp_code}_{h_name}_{a_name}_{utc_date[:10]}"
-                ext_id = f"CBC_{hashlib.md5(id_str.encode()).hexdigest()[:8]}"
+                # Create a deterministic integer ID that matches the DB schema.
+                ext_id = _deterministic_external_id(comp_code, h_name, a_name, utc_date[:10])
 
                 record = {
                     'external_id': ext_id,
@@ -508,6 +612,7 @@ def collect_copa_brasil():
 if __name__ == '__main__':
     _print(f"Palmeiras Collector v2 — {datetime.now().strftime('%Y-%m-%d %H:%M')}")
     collect_matches()
+    collect_world_cup()
     collect_standings()
     collect_news()
     collect_copa_brasil()

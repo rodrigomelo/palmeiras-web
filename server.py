@@ -12,7 +12,7 @@ Usage:
 import json
 import os
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -34,8 +34,12 @@ from api._shared import (  # noqa: E402
     BR_TZ,
     calendar_match,
     competition_param,
+    get_first,
     int_param,
     month_window,
+    normalize_competition_code,
+    optional_competition_param,
+    parse_json,
     parse_statuses,
     transform_match,
     transform_standing,
@@ -90,14 +94,39 @@ def _safe_error(collection, code):
     return {collection: [], 'error': code}
 
 
+def _exclusive_end_date(value):
+    if not value:
+        return None
+    return (datetime.strptime(value, '%Y-%m-%d').date() + timedelta(days=1)).isoformat()
+
+
+def _row_competition_code(row):
+    comp = parse_json(row.get('competition', '{}'))
+    return normalize_competition_code(comp.get('code'))
+
+
+def _row_has_team(row, team_id):
+    home = parse_json(row.get('home_team', '{}'))
+    away = parse_json(row.get('away_team', '{}'))
+    return home.get('id') == team_id or away.get('id') == team_id
+
+
 def api_matches(params):
     """Return match rows in the public frontend contract."""
     try:
         status = params.get('status', [None])[0]
         statuses = parse_statuses(status)
-        limit = int_param(params, 'limit', 50, min_value=1, max_value=100)
+        limit = int_param(params, 'limit', 50, min_value=1, max_value=250)
+        competition = optional_competition_param(params)
+        team_id = None
+        if get_first(params, 'team_id', None):
+            team_id = int_param(params, 'team_id', 1769, min_value=1, max_value=999999)
         from_date = params.get('from_date', [None])[0]
         from_date, date_error = validate_date(from_date)
+        if date_error:
+            raise RequestValidationError(date_error)
+        to_date = params.get('to_date', [None])[0]
+        to_date, date_error = validate_date(to_date, 'to_date')
         if date_error:
             raise RequestValidationError(date_error)
     except RequestValidationError as error:
@@ -109,6 +138,7 @@ def api_matches(params):
 
     try:
         query = client.table('matches').select('*')
+        finished_only = bool(statuses) and all(s in ('FINISHED', 'PLAYING_TIME_FINISHED') for s in statuses)
         if statuses:
             if len(statuses) == 1:
                 query = query.eq('status', statuses[0])
@@ -118,9 +148,22 @@ def api_matches(params):
                 from_date = datetime.now(timezone.utc).strftime('%Y-%m-%d')
         if from_date:
             query = query.gte('utc_date', from_date)
+        if to_date:
+            query = query.lt('utc_date', _exclusive_end_date(to_date))
 
-        rows = query.order('utc_date').limit(max(limit * 3, 50)).execute().data or []
-        if any(row.get('status') == 'FINISHED' for row in rows):
+        rows = (
+            query
+            .order('utc_date', desc=finished_only)
+            .limit(600 if (competition or team_id) else max(limit * 3, 50))
+            .execute()
+            .data
+            or []
+        )
+        if competition:
+            rows = [row for row in rows if _row_competition_code(row) == competition]
+        if team_id:
+            rows = [row for row in rows if _row_has_team(row, team_id)]
+        if finished_only:
             rows.sort(key=lambda row: row.get('utc_date', ''), reverse=True)
         return 200, {'matches': [transform_match(row) for row in rows[:limit]]}
     except Exception as error:
@@ -195,7 +238,7 @@ def api_calendar_monthly(params):
             .gte('utc_date', start_utc)
             .lt('utc_date', end_utc)
             .order('utc_date')
-            .limit(80)
+            .limit(250)
             .execute()
             .data
             or []
@@ -226,7 +269,7 @@ def api_calendar(params):
         return 503, 'Calendar unavailable', 'text/plain; charset=utf-8', 'no-store'
 
     try:
-        rows = client.table('matches').select('*').order('utc_date', desc=True).limit(150).execute().data or []
+        rows = client.table('matches').select('*').order('utc_date').limit(500).execute().data or []
         return 200, render_calendar(rows), 'text/calendar; charset=utf-8', 'public, max-age=900'
     except Exception as error:
         print(f'[api_calendar] unexpected error: {type(error).__name__}', file=sys.stderr)

@@ -58,7 +58,7 @@ class handler(BaseHTTPRequestHandler):
                 filters=[('utc_date', f'gte.{start_utc}'), ('utc_date', f'lt.{end_utc}')],
                 select='*',
                 order='utc_date.asc',
-                limit='80',
+                limit='250',
             )
 
             days = {}

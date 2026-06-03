@@ -67,6 +67,10 @@ const CONFIG = {
         COPA_DO_BRASIL: 'Copa do Brasil',
         CLI: 'Libertadores',
         LIBERTADORES: 'Libertadores',
+        COPA_LIBERTADORES: 'Libertadores',
+        WC: 'Copa do Mundo 2026',
+        WORLD_CUP: 'Copa do Mundo 2026',
+        FIFA_WORLD_CUP: 'Copa do Mundo 2026',
     },
 
     /** Get venue for a match object */
@@ -80,7 +84,7 @@ const CONFIG = {
     /** Best display name — prefer shortName if it's not a 3-letter code */
     teamName(team) {
         if (team?.shortName && team.shortName.length > 3) return team.shortName;
-        return team?.name || team?.shortName || '?';
+        return team?.name || team?.shortName || 'A definir';
     },
 
     /** Competition display name */

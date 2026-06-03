@@ -1,6 +1,6 @@
 # Palmeiras Agenda
 
-Agenda web para acompanhar o Palmeiras — jogos, classificação, notícias e calendário.
+Agenda web para acompanhar o Palmeiras, a Copa do Mundo FIFA 2026, classificação, notícias e calendário.
 
 ## Architecture
 
@@ -24,7 +24,7 @@ palmeiras-web/
 │   ├── news.py
 │   └── calendar.py
 ├── collectors/                → Data collection scripts
-│   ├── __init__.py            → Main collector (matches, standings, news, broadcast)
+│   ├── __init__.py            → Main collector (matches, World Cup, standings, news, broadcast)
 │   ├── crest_manager.py       → Logo download & cache
 │   └── requirements.txt
 ├── data/                      → Raw data
@@ -36,6 +36,7 @@ palmeiras-web/
 
 ```
 [football-data.org API] ──→ [Collector] ──→ [Supabase] ──→ [API] ──→ [Frontend]
+[FIFA World Cup WC API] ──→                                         
 [ge.globo scraping]     ──→                                         
 [lance.com.br scraping] ──→                                         
 ```
@@ -78,6 +79,12 @@ apply_broadcast_info()
 "
 ```
 
+To refresh the FIFA World Cup 2026 schedule/results:
+
+```bash
+/opt/homebrew/bin/python3 -c "from collectors import collect_world_cup; collect_world_cup()"
+```
+
 ### Deploy to Vercel
 
 ```bash
@@ -111,10 +118,12 @@ Keep Supabase credentials outside the web root in `/etc/palmeiras-web.env` on th
 |---|---|
 | `GET /api/matches?status=FINISHED&limit=50` | Match results |
 | `GET /api/matches?status=SCHEDULED,TIMED&limit=10` | Upcoming matches |
+| `GET /api/matches?competition=WC&from_date=2026-06-11&to_date=2026-07-19&limit=200` | FIFA World Cup 2026 matches/results |
+| `GET /api/matches?team_id=1769&status=SCHEDULED,TIMED&limit=10` | Palmeiras-only upcoming matches |
 | `GET /api/matches?status=IN_PLAY` | Live matches |
 | `GET /api/standings?competition=BSA` | League standings |
 | `GET /api/news?limit=10` | Recent news |
-| `GET /api/calendar.ics` | iCal feed for calendar apps |
+| `GET /api/calendar.ics` | iCal feed for Palmeiras + World Cup 2026 calendar apps |
 
 ## Environment Variables
 

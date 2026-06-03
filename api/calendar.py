@@ -1,4 +1,4 @@
-"""GET /api/calendar.ics — iCal feed for Palmeiras matches."""
+"""GET /api/calendar.ics — iCal feed for Palmeiras and World Cup matches."""
 import sys
 from datetime import datetime, timezone, timedelta
 from http.server import BaseHTTPRequestHandler
@@ -46,7 +46,7 @@ def render_calendar(matches):
         'BEGIN:VCALENDAR',
         'VERSION:2.0',
         'PRODID:-//Palmeiras//Agenda//PT-BR',
-        'X-WR-CALNAME:Palmeiras Agenda',
+        'X-WR-CALNAME:Palmeiras Agenda + Copa 2026',
         'X-WR-TIMEZONE:America/Sao_Paulo',
         'CALSCALE:GREGORIAN',
         'METHOD:PUBLISH',
@@ -76,8 +76,8 @@ def render_calendar(matches):
         comp = parse_json(match.get('competition', '{}'))
         referees = parse_json(match.get('referees', '[]'), [])
 
-        home_name = home.get('name', 'Home')
-        away_name = away.get('name', 'Away')
+        home_name = home.get('name') or home.get('shortName') or 'A definir'
+        away_name = away.get('name') or away.get('shortName') or 'A definir'
         is_home = home.get('id') == TEAM_ID
         status = match.get('status', '')
         home_score = match.get('home_score')
@@ -138,7 +138,7 @@ class handler(BaseHTTPRequestHandler):
             return text_response(self, 503, 'Calendar unavailable', cache_control='no-store')
 
         try:
-            matches = supabase_get('matches', select='*', order='utc_date.desc', limit='150')
+            matches = supabase_get('matches', select='*', order='utc_date.asc', limit='500')
             body = render_calendar(matches)
             return text_response(self, 200, body, content_type='text/calendar; charset=utf-8', cache_control='public, max-age=900')
         except HTTPError as error:

@@ -168,6 +168,8 @@ def _competition_tokens(match):
         tokens.extend(['Libertadores', 'CONMEBOL Libertadores'])
     if code == 'BSA' or 'brasileir' in normalized_name or 'serie a' in normalized_name:
         tokens.extend(['Brasileirão', 'Brasileirao', 'Série A', 'Serie A', 'Campeonato Brasileiro'])
+    if code == 'WC' or 'world cup' in normalized_name or 'copa do mundo' in normalized_name:
+        tokens.extend(['FIFA World Cup', 'World Cup', 'Copa do Mundo'])
 
     return [token for token in dict.fromkeys(tokens) if token]
 
@@ -272,6 +274,27 @@ class FootballAPI:
     def available(self):
         return bool(FOOTBALL_API_KEY)
 
+    def _add_finished_results(self, results, url, *, params=None):
+        import requests
+
+        resp = requests.get(url, headers=self.headers, params=params, timeout=20)
+        if resp.status_code != 200:
+            _print(f"    [{self.name}] HTTP {resp.status_code}")
+            return
+
+        for m in resp.json().get('matches', []):
+            ext_id = m.get('id')
+            ft = m.get('score', {}).get('fullTime', {})
+            ht = m.get('score', {}).get('halfTime', {})
+
+            if ext_id and ft.get('home') is not None:
+                results[ext_id] = {
+                    'home_score': ft['home'],
+                    'away_score': ft['away'],
+                    'half_time_home': ht.get('home'),
+                    'half_time_away': ht.get('away'),
+                }
+
     def resolve_batch(self, matches):
         """
         Query finished matches from the API. Returns dict keyed by external_id.
@@ -280,30 +303,24 @@ class FootballAPI:
         if not self.available():
             return {}
 
-        import requests
-
         try:
-            resp = requests.get(
-                f'{API_BASE}/teams/{TEAM_ID}/matches?status=FINISHED&limit=15',
-                headers=self.headers, timeout=20,
-            )
-            if resp.status_code != 200:
-                _print(f"    [{self.name}] HTTP {resp.status_code}")
-                return {}
-
             results = {}
-            for m in resp.json().get('matches', []):
-                ext_id = m.get('id')
-                ft = m.get('score', {}).get('fullTime', {})
-                ht = m.get('score', {}).get('halfTime', {})
+            self._add_finished_results(
+                results,
+                f'{API_BASE}/teams/{TEAM_ID}/matches',
+                params={'status': 'FINISHED', 'limit': 25},
+            )
 
-                if ext_id and ft.get('home') is not None:
-                    results[ext_id] = {
-                        'home_score': ft['home'],
-                        'away_score': ft['away'],
-                        'half_time_home': ht.get('home'),
-                        'half_time_away': ht.get('away'),
-                    }
+            comp_codes = {
+                str(_parse_json_field(match, 'competition').get('code') or '').upper()
+                for match in matches
+            }
+            if 'WC' in comp_codes:
+                self._add_finished_results(
+                    results,
+                    f'{API_BASE}/competitions/WC/matches',
+                    params={'season': 2026, 'status': 'FINISHED'},
+                )
             return results
 
         except Exception as e:
