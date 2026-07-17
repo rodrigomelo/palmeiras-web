@@ -75,41 +75,36 @@ ALTER TABLE matches ENABLE ROW LEVEL SECURITY;
 ALTER TABLE standings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE news ENABLE ROW LEVEL SECURITY;
 
-DO $$ BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'matches' AND policyname = 'matches_read') THEN
-        CREATE POLICY "matches_read" ON matches FOR SELECT USING (true);
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'matches' AND policyname = 'matches_write') THEN
-        CREATE POLICY "matches_write" ON matches FOR INSERT WITH CHECK (true);
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'matches' AND policyname = 'matches_update') THEN
-        CREATE POLICY "matches_update" ON matches FOR UPDATE USING (true);
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'standings' AND policyname = 'standings_read') THEN
-        CREATE POLICY "standings_read" ON standings FOR SELECT USING (true);
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'standings' AND policyname = 'standings_write') THEN
-        CREATE POLICY "standings_write" ON standings FOR INSERT WITH CHECK (true);
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'standings' AND policyname = 'standings_update') THEN
-        CREATE POLICY "standings_update" ON standings FOR UPDATE USING (true);
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'standings' AND policyname = 'standings_delete') THEN
-        CREATE POLICY "standings_delete" ON standings FOR DELETE USING (true);
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'news' AND policyname = 'news_read') THEN
-        CREATE POLICY "news_read" ON news FOR SELECT USING (true);
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'news' AND policyname = 'news_write') THEN
-        CREATE POLICY "news_write" ON news FOR INSERT WITH CHECK (true);
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'news' AND policyname = 'news_update') THEN
-        CREATE POLICY "news_update" ON news FOR UPDATE USING (true);
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'news' AND policyname = 'news_delete') THEN
-        CREATE POLICY "news_delete" ON news FOR DELETE USING (true);
-    END IF;
-END $$;
+DROP POLICY IF EXISTS matches_read ON matches;
+DROP POLICY IF EXISTS matches_write ON matches;
+DROP POLICY IF EXISTS matches_update ON matches;
+DROP POLICY IF EXISTS standings_read ON standings;
+DROP POLICY IF EXISTS standings_write ON standings;
+DROP POLICY IF EXISTS standings_update ON standings;
+DROP POLICY IF EXISTS standings_delete ON standings;
+DROP POLICY IF EXISTS news_read ON news;
+DROP POLICY IF EXISTS news_write ON news;
+DROP POLICY IF EXISTS news_update ON news;
+DROP POLICY IF EXISTS news_delete ON news;
+
+CREATE POLICY matches_read ON matches FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY standings_read ON standings FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY news_read ON news FOR SELECT TO anon, authenticated USING (true);
+
+REVOKE INSERT, UPDATE, DELETE ON matches FROM anon, authenticated;
+REVOKE INSERT, UPDATE, DELETE ON standings FROM anon, authenticated;
+REVOKE INSERT, UPDATE, DELETE ON news FROM anon, authenticated;
+GRANT SELECT ON matches, standings, news TO anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON matches, standings, news TO service_role;
+
+ALTER TABLE matches DROP CONSTRAINT IF EXISTS chk_home_score;
+ALTER TABLE matches DROP CONSTRAINT IF EXISTS chk_away_score;
+ALTER TABLE matches DROP CONSTRAINT IF EXISTS chk_half_time_home;
+ALTER TABLE matches DROP CONSTRAINT IF EXISTS chk_half_time_away;
+ALTER TABLE matches ADD CONSTRAINT chk_home_score CHECK (home_score IS NULL OR (home_score >= 0 AND home_score <= 30)) NOT VALID;
+ALTER TABLE matches ADD CONSTRAINT chk_away_score CHECK (away_score IS NULL OR (away_score >= 0 AND away_score <= 30)) NOT VALID;
+ALTER TABLE matches ADD CONSTRAINT chk_half_time_home CHECK (half_time_home IS NULL OR (half_time_home >= 0 AND half_time_home <= 30)) NOT VALID;
+ALTER TABLE matches ADD CONSTRAINT chk_half_time_away CHECK (half_time_away IS NULL OR (half_time_away >= 0 AND half_time_away <= 30)) NOT VALID;
 
 COMMIT;
 
@@ -125,9 +120,5 @@ COMMIT;
 -- CREATE UNIQUE INDEX IF NOT EXISTS standings_competition_position_uniq ON standings(competition, position);
 -- CREATE UNIQUE INDEX IF NOT EXISTS news_url_uniq ON news(url);
 
--- M2: CHECK constraints on score columns (migration for existing installations).
--- Run these ALTER TABLE statements in the Supabase SQL Editor to enforce valid score ranges.
--- ALTER TABLE matches ADD CONSTRAINT chk_home_score CHECK (home_score IS NULL OR (home_score >= 0 AND home_score <= 30));
--- ALTER TABLE matches ADD CONSTRAINT chk_away_score CHECK (away_score IS NULL OR (away_score >= 0 AND away_score <= 30));
--- ALTER TABLE matches ADD CONSTRAINT chk_half_time_home CHECK (half_time_home IS NULL OR (half_time_home >= 0 AND half_time_home <= 30));
--- ALTER TABLE matches ADD CONSTRAINT chk_half_time_away CHECK (half_time_away IS NULL OR (half_time_away >= 0 AND half_time_away <= 30));
+-- M2: CHECK constraints on score columns are added above as NOT VALID, so new
+-- writes are protected without forcing a full scan of existing rows.

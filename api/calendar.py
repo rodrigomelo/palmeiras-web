@@ -1,23 +1,65 @@
-"""GET /api/calendar.ics — iCal feed for Palmeiras and World Cup matches."""
+"""GET /api/calendar.ics — iCal feed for filtered football matches."""
 import sys
 from datetime import datetime, timezone, timedelta
 from http.server import BaseHTTPRequestHandler
 from urllib.error import HTTPError
+from urllib.parse import parse_qs, urlparse
 
 try:
-    from api._shared import BR_TZ, TEAM_ID, is_configured, parse_json, supabase_get, text_response, upstream_status, cors_options_response
+    from api._shared import (
+        BR_TZ,
+        TEAM_ID,
+        RequestValidationError,
+        get_first,
+        int_param,
+        is_configured,
+        normalize_competition_code,
+        optional_competition_param,
+        parse_json,
+        supabase_get_filtered,
+        text_response,
+        upstream_status,
+        validate_date,
+        cors_options_response,
+    )
 except ImportError:
-    from _shared import BR_TZ, TEAM_ID, is_configured, parse_json, supabase_get, text_response, upstream_status, cors_options_response  # type: ignore
+    from _shared import (  # type: ignore
+        BR_TZ,
+        TEAM_ID,
+        RequestValidationError,
+        get_first,
+        int_param,
+        is_configured,
+        normalize_competition_code,
+        optional_competition_param,
+        parse_json,
+        supabase_get_filtered,
+        text_response,
+        upstream_status,
+        validate_date,
+        cors_options_response,
+    )
 
 AWAY_STADIUMS = {
-    1776: 'Morumbi',
-    1777: 'Fonte Nova',
-    1770: 'Nilton Santos',
-    1779: 'Maracanã',
-    1783: 'Beira-Rio',
-    1766: 'Mineirão',
-    1780: 'Castelão',
-    1765: 'Arena MRV',
+    1765: 'Maracanã',
+    1766: 'Arena MRV',
+    1767: 'Arena do Grêmio',
+    1768: 'Ligga Arena',
+    1770: 'Estádio Nilton Santos',
+    1771: 'Mineirão',
+    1772: 'Arena Condá',
+    1776: 'MorumBIS',
+    1777: 'Arena Fonte Nova',
+    1779: 'Neo Química Arena',
+    1780: 'São Januário',
+    1782: 'Barradão',
+    1783: 'Maracanã',
+    4241: 'Couto Pereira',
+    4286: 'Nabi Abi Chedid',
+    4287: 'Baenão',
+    4364: 'Maião',
+    6684: 'Beira-Rio',
+    6685: 'Vila Belmiro',
 }
 
 
@@ -40,13 +82,89 @@ def escape_ics(text):
     return str(text).replace('\\', '\\\\').replace(';', '\\;').replace(',', '\\,').replace('\r', '').replace('\n', '\\n')
 
 
+def _exclusive_end_date(value):
+    if not value:
+        return None
+    return (datetime.strptime(value, '%Y-%m-%d').date() + timedelta(days=1)).isoformat()
+
+
+def _row_competition_code(row):
+    comp = parse_json(row.get('competition', '{}'))
+    return normalize_competition_code(comp.get('code'))
+
+
+def _row_has_team_id(row, team_id):
+    home = parse_json(row.get('home_team', '{}'))
+    away = parse_json(row.get('away_team', '{}'))
+    return home.get('id') == team_id or away.get('id') == team_id
+
+
+def _row_has_team_tla(row, team_tla):
+    home = parse_json(row.get('home_team', '{}'))
+    away = parse_json(row.get('away_team', '{}'))
+    return str(home.get('tla', '')).upper() == team_tla or str(away.get('tla', '')).upper() == team_tla
+
+
+def _row_is_world_cup(row):
+    return _row_competition_code(row) == 'WC'
+
+
+def calendar_filters_from_path(path):
+    """Parse and validate optional iCalendar feed filters."""
+    params = parse_qs(urlparse(path).query)
+    competition = optional_competition_param(params)
+    team_id = None
+    if get_first(params, 'team_id', None):
+        team_id = int_param(params, 'team_id', TEAM_ID, min_value=1, max_value=999999)
+
+    team_tla = str(get_first(params, 'team_tla', '') or '').strip().upper()
+    if team_tla and (not team_tla.isalpha() or len(team_tla) > 4):
+        raise RequestValidationError('invalid team_tla')
+
+    from_date = get_first(params, 'from_date', None)
+    from_date, date_error = validate_date(from_date)
+    if date_error:
+        raise RequestValidationError(date_error)
+
+    to_date = get_first(params, 'to_date', None)
+    to_date, date_error = validate_date(to_date, 'to_date')
+    if date_error:
+        raise RequestValidationError(date_error)
+
+    return {
+        'competition': competition,
+        'team_id': team_id,
+        'team_tla': team_tla,
+        'from_date': from_date,
+        'to_date': to_date,
+    }
+
+
+def filter_calendar_rows(rows, filters):
+    """Apply JSON-field filters that Supabase REST cannot express portably."""
+    return [row for row in rows if calendar_row_matches(row, filters)]
+
+
+def calendar_row_matches(row, filters):
+    """Return True when a row matches optional calendar JSON-field filters."""
+    if filters.get('competition') and _row_competition_code(row) != filters['competition']:
+        return False
+    if filters.get('team_id') and not _row_has_team_id(row, filters['team_id']):
+        return False
+    if filters.get('team_tla') and not _row_has_team_tla(row, filters['team_tla']):
+        return False
+    if not filters.get('competition') and not filters.get('team_id') and not filters.get('team_tla'):
+        return _row_has_team_id(row, TEAM_ID) or _row_is_world_cup(row)
+    return True
+
+
 def render_calendar(matches):
     """Render Supabase match rows as a complete VCALENDAR string."""
     lines = [
         'BEGIN:VCALENDAR',
         'VERSION:2.0',
         'PRODID:-//Palmeiras//Agenda//PT-BR',
-        'X-WR-CALNAME:Palmeiras Agenda + Copa 2026',
+        'X-WR-CALNAME:Palmeiras Agenda',
         'X-WR-TIMEZONE:America/Sao_Paulo',
         'CALSCALE:GREGORIAN',
         'METHOD:PUBLISH',
@@ -133,14 +251,38 @@ class handler(BaseHTTPRequestHandler):
     def do_OPTIONS(self):
         cors_options_response(self)
 
+    def do_HEAD(self):
+        self._suppress_body = True
+        try:
+            return self.do_GET()
+        finally:
+            self._suppress_body = False
+
     def do_GET(self):
         if not is_configured():
             return text_response(self, 503, 'Calendar unavailable', cache_control='no-store')
 
         try:
-            matches = supabase_get('matches', select='*', order='utc_date.asc', limit='500')
+            filters = calendar_filters_from_path(self.path)
+            query_filters = []
+            if filters.get('from_date'):
+                query_filters.append(('utc_date', f"gte.{filters['from_date']}"))
+            if filters.get('to_date'):
+                query_filters.append(('utc_date', f"lt.{_exclusive_end_date(filters['to_date'])}"))
+
+            matches = supabase_get_filtered(
+                'matches',
+                filters=query_filters,
+                row_filter=lambda row: calendar_row_matches(row, filters),
+                select='*',
+                order='utc_date.asc',
+                page_size=500,
+                max_rows=5000,
+            )
             body = render_calendar(matches)
             return text_response(self, 200, body, content_type='text/calendar; charset=utf-8', cache_control='public, max-age=900')
+        except RequestValidationError as error:
+            return text_response(self, 400, str(error), cache_control='no-store')
         except HTTPError as error:
             print(f'[api.calendar] Supabase HTTP {error.code}', file=sys.stderr)
             return text_response(self, upstream_status(error), 'Calendar unavailable', cache_control='no-store')

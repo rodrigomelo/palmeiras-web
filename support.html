@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Suporte - Palmeiras Agenda</title>
+    <meta name="description" content="Suporte do Palmeiras Agenda para web, iOS e Android.">
+    <meta name="robots" content="index,follow">
+    <meta name="theme-color" content="#075C3B">
+    <link rel="canonical" href="https://palmeiras.rodrigolanna.com.br/support.html">
+    <link rel="icon" type="image/svg+xml" href="/static/brand/palmeiras-agenda-mark.svg">
+    <link rel="alternate icon" type="image/png" sizes="32x32" href="/static/favicon-32.png">
+    <link rel="stylesheet" href="/static/css/styles.css?v=56">
+    <style>
+        .support-shell {
+            width: min(100% - 32px, 860px);
+            margin: -38px auto 32px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .support-card {
+            background: var(--bg-card);
+            border: 1px solid var(--line);
+            border-radius: var(--radius-card);
+            box-shadow: var(--shadow-tight);
+            padding: clamp(22px, 4vw, 42px);
+        }
+
+        .support-card h2 {
+            color: var(--brand);
+            margin-top: 30px;
+        }
+
+        .support-card p,
+        .support-card li {
+            color: var(--text-secondary);
+            line-height: 1.65;
+        }
+
+        .support-card a {
+            color: var(--brand);
+            font-weight: 800;
+        }
+
+        .support-meta {
+            color: var(--text-muted);
+            font-weight: 800;
+            margin-bottom: 20px;
+        }
+
+        .support-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 28px;
+        }
+    </style>
+</head>
+<body>
+    <a class="skip-link" href="#support-content">Pular para o conteúdo</a>
+    <header class="header">
+        <div class="header-content">
+            <a class="logo" href="/" aria-label="Palmeiras Agenda - voltar para a página inicial">
+                <img src="/static/brand/palmeiras-agenda-mark.svg" alt="" width="56" height="56" decoding="async">
+            </a>
+            <div class="header-text">
+                <h1>Suporte</h1>
+                <div class="subtitle">Palmeiras Agenda para web, iOS e Android</div>
+            </div>
+        </div>
+    </header>
+
+    <main class="support-shell" id="support-content" tabindex="-1">
+        <article class="support-card">
+            <p class="support-meta">Última atualização: 5 de julho de 2026</p>
+
+            <p>O Palmeiras Agenda é uma agenda esportiva independente para acompanhar jogos, tabela, notícias, lembretes e calendário. Salvo autorização formal documentada, ele não é o aplicativo oficial da Sociedade Esportiva Palmeiras e não representa afiliação, patrocínio ou endosso do clube.</p>
+
+            <h2>Como pedir suporte</h2>
+            <p>Para relatar erro, pedir ajuda, informar problema de privacidade ou solicitar análise relacionada a dados, abra uma solicitação no repositório público do projeto.</p>
+
+            <div class="support-actions">
+                <a class="footer-btn" href="https://github.com/rodrigomelo/palmeiras-web/issues/new">Abrir solicitação</a>
+                <a class="footer-btn" href="https://github.com/rodrigomelo/palmeiras-web/issues">Ver solicitações</a>
+            </div>
+
+            <h2>Problemas comuns</h2>
+            <ul>
+                <li><strong>Notificações:</strong> verifique se o sistema permitiu notificações para o app.</li>
+                <li><strong>Calendário:</strong> autorize o calendário apenas se quiser criar eventos de partidas no aparelho.</li>
+                <li><strong>Dados de jogos:</strong> horários, tabela e notícias dependem das fontes públicas e do serviço de API do projeto.</li>
+                <li><strong>Links externos:</strong> notícias abrem sites de terceiros e ficam sujeitas às políticas desses sites.</li>
+            </ul>
+
+            <h2>Privacidade e dados</h2>
+            <p>O app não cria conta e não envia dados pessoais do usuário para o servidor no produto inicial. Lembretes e eventos de calendário criados no aparelho podem ser removidos pelo próprio sistema operacional. A política completa está em <a href="/privacy.html">palmeiras.rodrigolanna.com.br/privacy.html</a>.</p>
+
+            <h2>Informações do produto</h2>
+            <ul>
+                <li><strong>Desenvolvedor:</strong> Rodrigo Melo</li>
+                <li><strong>Site:</strong> <a href="https://palmeiras.rodrigolanna.com.br">palmeiras.rodrigolanna.com.br</a></li>
+                <li><strong>Política de privacidade:</strong> <a href="/privacy.html">/privacy.html</a></li>
+            </ul>
+
+            <div class="support-actions">
+                <a class="footer-btn" href="/">Voltar ao Palmeiras Agenda</a>
+                <a class="footer-btn" href="/privacy.html">Política de Privacidade</a>
+                <a class="footer-btn" href="/api/calendar.ics">Abrir feed de calendário</a>
+            </div>
+        </article>
+    </main>
+
+    <footer class="footer">
+        <p>Palmeiras Agenda</p>
+        <p><a href="/support.html">Suporte</a> · <a href="/privacy.html">Política de Privacidade</a></p>
+    </footer>
+</body>
+</html>

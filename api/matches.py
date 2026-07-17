@@ -17,13 +17,14 @@ try:
         optional_competition_param,
         parse_json,
         parse_statuses,
+        supabase_get_filtered,
         supabase_get,
         transform_match,
         upstream_status,
         cors_options_response,
         validate_date,
     )
-except ImportError:  # Vercel loads handlers from the api directory.
+except ImportError:  # Direct handler execution loads modules from the api directory.
     from _shared import (  # type: ignore
         RequestValidationError,
         TEAM_ID,
@@ -35,6 +36,7 @@ except ImportError:  # Vercel loads handlers from the api directory.
         optional_competition_param,
         parse_json,
         parse_statuses,
+        supabase_get_filtered,
         supabase_get,
         transform_match,
         upstream_status,
@@ -68,6 +70,13 @@ class handler(BaseHTTPRequestHandler):
     def do_OPTIONS(self):
         cors_options_response(self)
 
+    def do_HEAD(self):
+        self._suppress_body = True
+        try:
+            return self.do_GET()
+        finally:
+            self._suppress_body = False
+
     def do_GET(self):
         params = parse_qs(urlparse(self.path).query)
 
@@ -95,11 +104,9 @@ class handler(BaseHTTPRequestHandler):
 
         try:
             finished_only = bool(statuses) and all(s in ('FINISHED', 'PLAYING_TIME_FINISHED') for s in statuses)
-            fetch_limit = 600 if (competition or team_id) else max(limit * 3, 50)
             query_params = {
                 'select': '*',
                 'order': 'utc_date.desc' if finished_only else 'utc_date.asc',
-                'limit': str(fetch_limit),
             }
             filters = []
 
@@ -116,11 +123,30 @@ class handler(BaseHTTPRequestHandler):
             if to_date:
                 filters.append(('utc_date', f'lt.{_exclusive_end_date(to_date)}'))
 
-            matches = supabase_get('matches', filters=filters, **query_params)
-            if competition:
-                matches = [m for m in matches if _row_competition_code(m) == competition]
-            if team_id:
-                matches = [m for m in matches if _row_has_team(m, team_id)]
+            def row_matches(match):
+                if competition and _row_competition_code(match) != competition:
+                    return False
+                if team_id and not _row_has_team(match, team_id):
+                    return False
+                return True
+
+            if competition or team_id:
+                matches = supabase_get_filtered(
+                    'matches',
+                    filters=filters,
+                    row_filter=row_matches,
+                    stop_after=limit,
+                    page_size=500,
+                    max_rows=5000,
+                    **query_params,
+                )
+            else:
+                matches = supabase_get(
+                    'matches',
+                    filters=filters,
+                    limit=str(max(limit * 3, 50)),
+                    **query_params,
+                )
             if finished_only:
                 matches.sort(key=lambda x: x.get('utc_date', ''), reverse=True)
             matches = matches[:limit]

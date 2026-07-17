@@ -168,8 +168,6 @@ def _competition_tokens(match):
         tokens.extend(['Libertadores', 'CONMEBOL Libertadores'])
     if code == 'BSA' or 'brasileir' in normalized_name or 'serie a' in normalized_name:
         tokens.extend(['Brasileirão', 'Brasileirao', 'Série A', 'Serie A', 'Campeonato Brasileiro'])
-    if code == 'WC' or 'world cup' in normalized_name or 'copa do mundo' in normalized_name:
-        tokens.extend(['FIFA World Cup', 'World Cup', 'Copa do Mundo'])
 
     return [token for token in dict.fromkeys(tokens) if token]
 
@@ -311,16 +309,6 @@ class FootballAPI:
                 params={'status': 'FINISHED', 'limit': 25},
             )
 
-            comp_codes = {
-                str(_parse_json_field(match, 'competition').get('code') or '').upper()
-                for match in matches
-            }
-            if 'WC' in comp_codes:
-                self._add_finished_results(
-                    results,
-                    f'{API_BASE}/competitions/WC/matches',
-                    params={'season': 2026, 'status': 'FINISHED'},
-                )
             return results
 
         except Exception as e:
@@ -414,9 +402,12 @@ class GoogleSearch:
 SOURCES = [FootballAPI, GoogleSearch]
 
 
-def resolve_scores():
+def resolve_scores(*, max_age_days=None):
     """
     Main entry point. Find unresolved past matches and backfill their scores.
+
+    max_age_days limits scheduled/lightweight runs to recent fixtures while
+    keeping the default behavior suitable for manual historical backfills.
 
     Returns (resolved, total) tuple.
     """
@@ -428,13 +419,16 @@ def resolve_scores():
     now_utc = datetime.now(timezone.utc)
     cutoff = (now_utc - timedelta(hours=GRACE_HOURS)).isoformat()
 
-    # Find matches past their scheduled time but still unresolved
+    # Find matches past their scheduled time but still unresolved. Include stale
+    # live statuses so a collector crash during a match does not strand a row.
     try:
-        result = client.table('matches').select('*') \
-            .in_('status', ['SCHEDULED', 'TIMED']) \
-            .lt('utc_date', cutoff) \
-            .order('utc_date') \
-            .execute()
+        query = client.table('matches').select('*') \
+            .in_('status', ['SCHEDULED', 'TIMED', 'IN_PLAY', 'PAUSED']) \
+            .lt('utc_date', cutoff)
+        if max_age_days is not None:
+            recent_floor = (now_utc - timedelta(days=max_age_days)).isoformat()
+            query = query.gte('utc_date', recent_floor)
+        result = query.order('utc_date').execute()
         unresolved = result.data
     except Exception as e:
         _print(f"    DB query error: {e}")

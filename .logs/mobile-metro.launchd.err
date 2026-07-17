@@ -1,0 +1,40 @@
+shell-init: error retrieving current directory: getcwd: cannot access parent directories: Operation not permitted
+job-working-directory: error retrieving current directory: getcwd: cannot access parent directories: Operation not permitted
+chdir: error retrieving current directory: getcwd: cannot access parent directories: Operation not permitted
+/bin/sh: /Users/rodrigomelo/.cache/codex-runtimes/codex-primary-runtime/dependencies/bin/pnpm: No such file or directory
+/bin/sh: line 0: exec: /Users/rodrigomelo/.cache/codex-runtimes/codex-primary-runtime/dependencies/bin/pnpm: cannot execute: No such file or directory
+shell-init: error retrieving current directory: getcwd: cannot access parent directories: Operation not permitted
+job-working-directory: error retrieving current directory: getcwd: cannot access parent directories: Operation not permitted
+chdir: error retrieving current directory: getcwd: cannot access parent directories: Operation not permitted
+/bin/sh: /Users/rodrigomelo/.cache/codex-runtimes/codex-primary-runtime/dependencies/bin/pnpm: No such file or directory
+/bin/sh: line 0: exec: /Users/rodrigomelo/.cache/codex-runtimes/codex-primary-runtime/dependencies/bin/pnpm: cannot execute: No such file or directory
+shell-init: error retrieving current directory: getcwd: cannot access parent directories: Operation not permitted
+job-working-directory: error retrieving current directory: getcwd: cannot access parent directories: Operation not permitted
+chdir: error retrieving current directory: getcwd: cannot access parent directories: Operation not permitted
+/bin/sh: /Users/rodrigomelo/.cache/codex-runtimes/codex-primary-runtime/dependencies/bin/pnpm: No such file or directory
+/bin/sh: line 0: exec: /Users/rodrigomelo/.cache/codex-runtimes/codex-primary-runtime/dependencies/bin/pnpm: cannot execute: No such file or directory
+shell-init: error retrieving current directory: getcwd: cannot access parent directories: Operation not permitted
+job-working-directory: error retrieving current directory: getcwd: cannot access parent directories: Operation not permitted
+chdir: error retrieving current directory: getcwd: cannot access parent directories: Operation not permitted
+/bin/sh: /Users/rodrigomelo/.cache/codex-runtimes/codex-primary-runtime/dependencies/bin/pnpm: No such file or directory
+/bin/sh: line 0: exec: /Users/rodrigomelo/.cache/codex-runtimes/codex-primary-runtime/dependencies/bin/pnpm: cannot execute: No such file or directory
+shell-init: error retrieving current directory: getcwd: cannot access parent directories: Operation not permitted
+job-working-directory: error retrieving current directory: getcwd: cannot access parent directories: Operation not permitted
+chdir: error retrieving current directory: getcwd: cannot access parent directories: Operation not permitted
+/bin/sh: /Users/rodrigomelo/.cache/codex-runtimes/codex-primary-runtime/dependencies/bin/pnpm: No such file or directory
+/bin/sh: line 0: exec: /Users/rodrigomelo/.cache/codex-runtimes/codex-primary-runtime/dependencies/bin/pnpm: cannot execute: No such file or directory
+shell-init: error retrieving current directory: getcwd: cannot access parent directories: Operation not permitted
+job-working-directory: error retrieving current directory: getcwd: cannot access parent directories: Operation not permitted
+chdir: error retrieving current directory: getcwd: cannot access parent directories: Operation not permitted
+/bin/sh: /Users/rodrigomelo/.cache/codex-runtimes/codex-primary-runtime/dependencies/bin/pnpm: No such file or directory
+/bin/sh: line 0: exec: /Users/rodrigomelo/.cache/codex-runtimes/codex-primary-runtime/dependencies/bin/pnpm: cannot execute: No such file or directory
+shell-init: error retrieving current directory: getcwd: cannot access parent directories: Operation not permitted
+job-working-directory: error retrieving current directory: getcwd: cannot access parent directories: Operation not permitted
+chdir: error retrieving current directory: getcwd: cannot access parent directories: Operation not permitted
+/bin/sh: /Users/rodrigomelo/.cache/codex-runtimes/codex-primary-runtime/dependencies/bin/pnpm: No such file or directory
+/bin/sh: line 0: exec: /Users/rodrigomelo/.cache/codex-runtimes/codex-primary-runtime/dependencies/bin/pnpm: cannot execute: No such file or directory
+shell-init: error retrieving current directory: getcwd: cannot access parent directories: Operation not permitted
+job-working-directory: error retrieving current directory: getcwd: cannot access parent directories: Operation not permitted
+chdir: error retrieving current directory: getcwd: cannot access parent directories: Operation not permitted
+/bin/sh: /Users/rodrigomelo/.cache/codex-runtimes/codex-primary-runtime/dependencies/bin/pnpm: No such file or directory
+/bin/sh: line 0: exec: /Users/rodrigomelo/.cache/codex-runtimes/codex-primary-runtime/dependencies/bin/pnpm: cannot execute: No such file or directory

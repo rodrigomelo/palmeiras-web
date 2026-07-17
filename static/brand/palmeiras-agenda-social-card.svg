@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">Palmeiras Agenda social card</title>
+  <desc id="desc">Social preview card for Palmeiras Agenda with the PA calendar mark and brand message.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="630" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#043522"/>
+      <stop offset=".6" stop-color="#075c3b"/>
+      <stop offset="1" stop-color="#10231a"/>
+    </linearGradient>
+    <linearGradient id="field" x1="18" y1="12" x2="102" y2="112" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0a7a4a"/>
+      <stop offset=".56" stop-color="#075c3b"/>
+      <stop offset="1" stop-color="#043522"/>
+    </linearGradient>
+    <linearGradient id="paper" x1="34" y1="30" x2="86" y2="88" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fffdf3"/>
+      <stop offset="1" stop-color="#e7f1e9"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <g opacity=".12" stroke="#fffdf3" stroke-width="1">
+    <path d="M0 90h1200M0 180h1200M0 270h1200M0 360h1200M0 450h1200M0 540h1200"/>
+    <path d="M120 0v630M240 0v630M360 0v630M480 0v630M600 0v630M720 0v630M840 0v630M960 0v630M1080 0v630"/>
+    <circle cx="600" cy="315" r="96" fill="none"/>
+    <path d="M600 0v630"/>
+  </g>
+  <g transform="translate(96 95) scale(2.45)">
+    <path d="M24 87V33c0-7 5-12 12-12h48c7 0 12 5 12 12v54c0 7-5 12-12 12H36c-7 0-12-5-12-12Z" fill="url(#field)" stroke="#c99a3d" stroke-width="4"/>
+    <path d="M34 36c0-5 4-9 9-9h34c5 0 9 4 9 9v48c0 5-4 9-9 9H43c-5 0-9-4-9-9V36Z" fill="url(#paper)"/>
+    <path d="M34 41h52v-5c0-5-4-9-9-9H43c-5 0-9 4-9 9v5Z" fill="#c99a3d"/>
+    <path d="M46 22v13M74 22v13" stroke="#fffdf3" stroke-width="5" stroke-linecap="round"/>
+    <path d="M44 53h32M44 65h32M44 77h32M54 47v38M66 47v38" stroke="#0a7a4a" stroke-width="2" stroke-linecap="round" opacity=".36"/>
+    <path d="M43 65h34M60 47v38" stroke="#075c3b" stroke-width="2.7" stroke-linecap="round" opacity=".42"/>
+    <circle cx="60" cy="65" r="12" fill="none" stroke="#075c3b" stroke-width="2.7" opacity=".52"/>
+    <text x="60" y="72" text-anchor="middle" font-family="DM Sans, Arial, sans-serif" font-size="24" font-weight="900" letter-spacing="-1" fill="#043522">PA</text>
+  </g>
+  <g transform="translate(438 178)">
+    <text x="0" y="76" font-family="DM Sans, Arial, sans-serif" font-size="80" font-weight="900" letter-spacing="-1.6" fill="#fffdf3">Palmeiras Agenda</text>
+    <path d="M4 116h520" stroke="#c99a3d" stroke-width="8" stroke-linecap="round"/>
+    <text x="0" y="174" font-family="DM Sans, Arial, sans-serif" font-size="30" font-weight="800" letter-spacing="4.4" fill="#e7f1e9">JOGOS  DESEMPENHO  CALENDÁRIO</text>
+    <text x="0" y="244" font-family="DM Sans, Arial, sans-serif" font-size="25" font-weight="600" fill="#dce9df">Agenda tática de jogos, desempenho e calendário.</text>
+  </g>
+</svg>

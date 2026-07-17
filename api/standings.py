@@ -38,6 +38,13 @@ class handler(BaseHTTPRequestHandler):
     def do_OPTIONS(self):
         cors_options_response(self)
 
+    def do_HEAD(self):
+        self._suppress_body = True
+        try:
+            return self.do_GET()
+        finally:
+            self._suppress_body = False
+
     def do_GET(self):
         params = parse_qs(urlparse(self.path).query)
         try:

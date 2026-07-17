@@ -1,0 +1,18 @@
+[Unit]
+Description=Palmeiras news feed refresh
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/palmeiras-web
+Environment=PYTHONUNBUFFERED=1
+EnvironmentFile=/etc/palmeiras-web.env
+ExecStart=/var/www/palmeiras-web/.venv/bin/python /var/www/palmeiras-web/scripts/refresh-news.py
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=full
+ReadWritePaths=/var/www/palmeiras-web

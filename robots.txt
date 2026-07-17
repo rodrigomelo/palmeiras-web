@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://palmeiras-web.vercel.app/sitemap.xml
+Sitemap: https://palmeiras.rodrigolanna.com.br/sitemap.xml

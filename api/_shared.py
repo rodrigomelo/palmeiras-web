@@ -1,9 +1,11 @@
 """Shared helpers for Palmeiras Web serverless API handlers.
 
-The public API is read-only. It prefers the Supabase anon key so RLS remains
-active in production, while keeping SUPABASE_KEY as a legacy fallback for older
-Vercel environments until SUPABASE_ANON_KEY is configured.
+The public API is read-only and must run with a Supabase anon/publishable key.
+Collector-only service keys are intentionally rejected here so public handlers
+never bypass Row Level Security by accident.
 """
+import base64
+import binascii
 import json
 import os
 from datetime import datetime, timezone, timedelta
@@ -15,11 +17,18 @@ SUPABASE_URL = os.environ.get('SUPABASE_URL', '').rstrip('/')
 SUPABASE_ANON_KEY = (
     os.environ.get('SUPABASE_ANON_KEY')
     or os.environ.get('SUPABASE_PUBLIC_KEY')
-    or os.environ.get('SUPABASE_KEY', '')
+    or (
+        os.environ.get('SUPABASE_KEY', '')
+        if os.environ.get('ALLOW_SERVICE_ROLE_PUBLIC_API') == '1'
+        else ''
+    )
+    or ''
 )
+ALLOW_SERVICE_ROLE_PUBLIC_API = os.environ.get('ALLOW_SERVICE_ROLE_PUBLIC_API') == '1'
 BR_TZ = timezone(timedelta(hours=-3))
 TEAM_ID = 1769
 REQUEST_TIMEOUT = 10
+APP_VERSION = os.environ.get('APP_VERSION', '1.1.37')
 
 ALLOWED_STATUSES = {
     'SCHEDULED',
@@ -35,10 +44,15 @@ ALLOWED_STATUSES = {
 COMPETITION_ALIASES = {
     'BSA': 'BSA',
     'CLI': 'CLI',
+    'CL': 'CLI',
     'LIBERTADORES': 'CLI',
     'COPA_LIBERTADORES': 'CLI',
     'COPA': 'COPA',
+    'CBC': 'COPA',
     'COPA_DO_BRASIL': 'COPA',
+    'CPA': 'CPA',
+    'CAMPEONATO_PAULISTA': 'CPA',
+    'PAULISTA': 'CPA',
     'WC': 'WC',
     'WORLD_CUP': 'WC',
     'FIFA_WORLD_CUP': 'WC',
@@ -50,9 +64,39 @@ class RequestValidationError(ValueError):
     """Raised when an API query parameter is invalid."""
 
 
+def _jwt_payload(token):
+    """Decode a JWT payload without verifying it; used only for role guardrails."""
+    try:
+        payload = token.split('.')[1]
+        payload += '=' * (-len(payload) % 4)
+        return json.loads(base64.urlsafe_b64decode(payload.encode('ascii')).decode('utf-8'))
+    except (IndexError, ValueError, UnicodeDecodeError, binascii.Error, json.JSONDecodeError):
+        return {}
+
+
+def supabase_key_role(token):
+    """Best-effort Supabase JWT role extraction."""
+    if not token or token.count('.') < 2:
+        return ''
+    return str(_jwt_payload(token).get('role', '')).lower()
+
+
+def is_public_supabase_key(token=None):
+    """Return False for keys that are known to be privileged server-side secrets."""
+    token = token or SUPABASE_ANON_KEY
+    if not token:
+        return False
+
+    lowered = token.lower()
+    if lowered.startswith('sb_secret_'):
+        return False
+    return supabase_key_role(token) != 'service_role'
+
+
 def is_configured(key=None):
-    """Return True when the Supabase REST API can be called."""
-    return bool(SUPABASE_URL and (key or SUPABASE_ANON_KEY))
+    """Return True when the Supabase REST API can be called safely."""
+    token = key or SUPABASE_ANON_KEY
+    return bool(SUPABASE_URL and (is_public_supabase_key(token) or (ALLOW_SERVICE_ROLE_PUBLIC_API and token)))
 
 
 def get_first(params, name, default=None):
@@ -119,12 +163,16 @@ def year_month_params(params):
 
 
 def validate_date(value, param_name='from_date'):
-    """Validate a date query parameter matches YYYY-MM-DD format."""
+    """Validate a date query parameter matches a real YYYY-MM-DD date."""
     if not value:
         return None, None
     import re
     if not re.match(r'^\d{4}-\d{2}-\d{2}$', value):
         return None, f'Invalid {param_name} format, expected YYYY-MM-DD'
+    try:
+        datetime.strptime(value, '%Y-%m-%d')
+    except ValueError:
+        return None, f'Invalid {param_name} value, expected a real YYYY-MM-DD date'
     return value, None
 
 
@@ -157,7 +205,7 @@ def supabase_headers(key=None):
 def supabase_get(table, *, filters=None, timeout=REQUEST_TIMEOUT, key=None, **params):
     """GET rows from Supabase REST with optional repeated filters."""
     if not is_configured(key):
-        raise RuntimeError('supabase_not_configured')
+        raise RuntimeError('supabase_public_key_required')
 
     query_parts = []
     for name, value in filters or []:
@@ -170,6 +218,51 @@ def supabase_get(table, *, filters=None, timeout=REQUEST_TIMEOUT, key=None, **pa
     request = Request(url, headers=supabase_headers(key))
     with urlopen(request, timeout=timeout) as response:
         return json.loads(response.read())
+
+
+def supabase_get_filtered(
+    table,
+    *,
+    filters=None,
+    row_filter=None,
+    stop_after=None,
+    page_size=500,
+    max_rows=5000,
+    timeout=REQUEST_TIMEOUT,
+    key=None,
+    **params,
+):
+    """GET rows across pages, applying optional local JSON-field filtering."""
+    collected = []
+    offset = 0
+    page_size = max(1, min(int(page_size), 1000))
+    max_rows = max(page_size, int(max_rows))
+
+    while offset < max_rows:
+        limit = min(page_size, max_rows - offset)
+        page = supabase_get(
+            table,
+            filters=filters,
+            timeout=timeout,
+            key=key,
+            limit=str(limit),
+            offset=str(offset),
+            **params,
+        )
+        if not page:
+            break
+
+        for row in page:
+            if row_filter is None or row_filter(row):
+                collected.append(row)
+                if stop_after and len(collected) >= stop_after:
+                    return collected
+
+        if len(page) < limit:
+            break
+        offset += limit
+
+    return collected
 
 
 def transform_match(row):
@@ -273,6 +366,10 @@ def month_window(year, month):
     )
 
 
+def _should_write_body(handler):
+    return not getattr(handler, '_suppress_body', False)
+
+
 def json_response(handler, status, data, *, cache_control='public, max-age=300'):
     """Send a JSON response with safe defaults and CORS headers."""
     body = json.dumps(data, ensure_ascii=False).encode('utf-8')
@@ -281,10 +378,11 @@ def json_response(handler, status, data, *, cache_control='public, max-age=300')
     handler.send_header('Cache-Control', cache_control)
     handler.send_header('X-Content-Type-Options', 'nosniff')
     handler.send_header('Access-Control-Allow-Origin', '*')
-    handler.send_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
+    handler.send_header('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS')
     handler.send_header('Access-Control-Allow-Headers', 'Content-Type')
     handler.end_headers()
-    handler.wfile.write(body)
+    if _should_write_body(handler):
+        handler.wfile.write(body)
 
 
 def text_response(handler, status, text, *, content_type='text/plain; charset=utf-8', cache_control='public, max-age=300'):
@@ -294,10 +392,11 @@ def text_response(handler, status, text, *, content_type='text/plain; charset=ut
     handler.send_header('Cache-Control', cache_control)
     handler.send_header('X-Content-Type-Options', 'nosniff')
     handler.send_header('Access-Control-Allow-Origin', '*')
-    handler.send_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
+    handler.send_header('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS')
     handler.send_header('Access-Control-Allow-Headers', 'Content-Type')
     handler.end_headers()
-    handler.wfile.write(str(text).encode('utf-8'))
+    if _should_write_body(handler):
+        handler.wfile.write(str(text).encode('utf-8'))
 
 
 def upstream_status(error):
@@ -311,7 +410,7 @@ def cors_options_response(handler):
     """Respond to a CORS preflight OPTIONS request."""
     handler.send_response(204)
     handler.send_header('Access-Control-Allow-Origin', '*')
-    handler.send_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
+    handler.send_header('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS')
     handler.send_header('Access-Control-Allow-Headers', 'Content-Type')
     handler.send_header('Content-Length', '0')
     handler.end_headers()

@@ -5,49 +5,42 @@
 const CONFIG = {
     TEAM_ID: 1769,
     BR_TZ: 'America/Sao_Paulo',
+    API_BASE_URL: (function () {
+        const meta = document.querySelector('meta[name="api-base-url"]');
+        return (
+            window.PALMEIRAS_API_BASE_URL ||
+            (meta ? meta.getAttribute('content') : '') ||
+            ''
+        ).replace(/\/$/, '');
+    })(),
+
+    /** Build an API URL from a path such as "matches?limit=10" */
+    apiUrl(path) {
+        const cleanPath = String(path || '').replace(/^\/+/, '');
+        return `${this.API_BASE_URL}/api/v1/${cleanPath}`;
+    },
 
     /** Known stadium names by opponent team ID */
     STADIUMS: {
-        1765: 'Arena MRV',
-        1766: 'Mineirão',
-        1770: 'Nilton Santos',
-        1776: 'Morumbi',
-        1777: 'Fonte Nova',
-        1779: 'Maracanã',
-        1780: 'Castelão',
-        1783: 'Beira-Rio',
-        1784: 'Arena da Baixada',
-        1785: 'Arena Condá',
-        1786: 'Allianz Parque',
-        1787: 'Arena Pantanal',
-        1788: 'Barradão',
-        1789: 'Perpetuão',
-        1790: 'Arena Amazônia',
-        1791: 'Castelão (CE)',
-        1792: 'Arena Pernambuco',
-        1793: 'Ilha do Retiro',
-        1794: 'Almeidão',
-        1795: 'Mangueirão',
-        1796: 'Lumberman Arena',
-        1797: 'Arena das Dunas',
-        1798: 'Estádio Kleber Andrade',
-        1799: 'Brinco de Ouro',
-        1800: 'Santa Cruz',
-        1801: 'Arruda',
-        1802: 'Centenário',
-        1803: 'Moisés Lucarelli',
-        1804: 'Vila Belmiro',
-        1805: 'São Januário',
-        1806: 'Nabi Abi Chedid',
-        1807: 'Aníbal Torres',
-        1808: 'Monumental (Lima)',
-        1809: 'El Teniente',
-        1810: 'La Portada',
-        1811: 'Defensores del Chaco',
-        1812: 'Monumental (Buenos Aires)',
-        1813: 'Mario Alberto Kempes',
-        1814: 'Libertadores de América',
-        1815: 'Más Monumental',
+        1765: 'Maracanã',
+        1766: 'Arena MRV',
+        1767: 'Arena do Grêmio',
+        1768: 'Ligga Arena',
+        1770: 'Estádio Nilton Santos',
+        1771: 'Mineirão',
+        1772: 'Arena Condá',
+        1776: 'MorumBIS',
+        1777: 'Arena Fonte Nova',
+        1779: 'Neo Química Arena',
+        1780: 'São Januário',
+        1782: 'Barradão',
+        1783: 'Maracanã',
+        4241: 'Couto Pereira',
+        4286: 'Nabi Abi Chedid',
+        4287: 'Baenão',
+        4364: 'Maião',
+        6684: 'Beira-Rio',
+        6685: 'Vila Belmiro',
     },
 
     /** Fallback crest URLs for teams without football-data.org crests */
@@ -60,14 +53,37 @@ const CONFIG = {
         'https://ssl.gstatic.com/lingonautique/paulista_2024/palmeiras.png',
     ]),
 
+    PLACEHOLDER_CREST: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="18" fill="#ccc"/><text x="20" y="25" text-anchor="middle" fill="#666" font-size="14">?</text></svg>'),
+
+    /** Restrict dynamic URLs before rendering them into href/src attributes. */
+    safeUrl(value, fallback = '#') {
+        const raw = String(value || '').trim();
+        if (!raw || raw === '#') return fallback;
+        try {
+            const base = typeof window !== 'undefined' && window.location
+                ? window.location.origin
+                : 'https://palmeiras.rodrigolanna.com.br';
+            const url = new URL(raw, base);
+            if (!['http:', 'https:'].includes(url.protocol)) return fallback;
+            return url.href;
+        } catch {
+            return fallback;
+        }
+    },
+
     /** Competition code display names */
     COMP_NAMES: {
         BSA: 'Brasileirão',
         COPA: 'Copa do Brasil',
+        CBC: 'Copa do Brasil',
         COPA_DO_BRASIL: 'Copa do Brasil',
         CLI: 'Libertadores',
+        CL: 'Libertadores',
         LIBERTADORES: 'Libertadores',
         COPA_LIBERTADORES: 'Libertadores',
+        CPA: 'Paulistão',
+        CAMPEONATO_PAULISTA: 'Paulistão',
+        PAULISTA: 'Paulistão',
         WC: 'Copa do Mundo 2026',
         WORLD_CUP: 'Copa do Mundo 2026',
         FIFA_WORLD_CUP: 'Copa do Mundo 2026',
@@ -94,9 +110,9 @@ const CONFIG = {
 
     /** Get crest URL with fallback */
     getCrest(team) {
-        const crest = team?.crest;
+        const crest = this.safeUrl(team?.crest, '');
         if (crest && !this.BROKEN_CRESTS.has(crest)) return crest;
         if (team?.id != null && this.TEAM_CRESTS[team.id]) return this.TEAM_CRESTS[team.id];
-        return 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="18" fill="#ccc"/><text x="20" y="25" text-anchor="middle" fill="#666" font-size="14">?</text></svg>');
+        return this.PLACEHOLDER_CREST;
     },
 };
