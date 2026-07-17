@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Palmeiras Agenda — Jogos, tabelas, notícias e calendário</title>
+    <meta name="description" content="Acompanhe o Palmeiras com agenda de jogos, placares, tabelas, notícias recentes e calendário ICS com Copa 2026.">
+    <meta name="theme-color" content="#075C3B">
+    <meta name="api-base-url" content="">
+    <meta name="color-scheme" content="light dark">
+    <meta name="robots" content="index,follow">
+    <link rel="canonical" href="https://palmeiras.rodrigolanna.com.br/">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Palmeiras Agenda">
+    <meta property="og:title" content="Palmeiras Agenda — jogos e próximos desafios do Verdão">
+    <meta property="og:description" content="Jogos, placares, tabelas, notícias, calendário do Palmeiras e seção especial da Copa do Mundo 2026.">
+    <meta property="og:url" content="https://palmeiras.rodrigolanna.com.br/">
+    <meta property="og:image" content="https://palmeiras.rodrigolanna.com.br/static/brand/palmeiras-agenda-social-card-v7.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://palmeiras.rodrigolanna.com.br/static/brand/palmeiras-agenda-social-card-v7.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="/static/favicon.png">
+    <link rel="icon" type="image/svg+xml" href="/static/brand/palmeiras-agenda-mark.svg?v=5">
+    <link rel="icon" type="image/png" sizes="16x16" href="/static/brand/palmeiras-agenda-favicon-16-v5.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/brand/palmeiras-agenda-favicon-32-v5.png">
+    <link rel="icon" type="image/png" href="/static/brand/palmeiras-agenda-favicon-v5.png">
+    <link rel="apple-touch-icon" href="/static/brand/palmeiras-agenda-apple-touch-icon-v5.png">
+    <link rel="apple-touch-icon" sizes="192x192" href="/static/brand/palmeiras-agenda-icon-192-v5.png">
+    <link rel="apple-touch-icon" sizes="512x512" href="/static/brand/palmeiras-agenda-icon-512-v5.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Palmeiras">
+    <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="alternate" type="text/calendar" title="Palmeiras Agenda" href="/api/v1/calendar.ics">
+    <link rel="stylesheet" href="/static/css/styles.css?v=56">
+</head>
+<body>
+    <a class="skip-link" href="#main-content">Pular para o conteúdo</a>
+    <button type="button" class="theme-toggle" id="themeToggle" title="Alternar tema" aria-label="Alternar tema claro/escuro" aria-pressed="false">Tema</button>
+
+    <!-- Compact Header -->
+    <header class="header">
+        <div class="header-content">
+            <a class="logo" href="/" aria-label="Voltar para a página inicial">
+                <img src="/static/brand/palmeiras-agenda-mark.svg?v=4" alt="Palmeiras Agenda">
+            </a>
+            <div class="header-text">
+                <h1>Palmeiras Agenda</h1>
+                <div class="subtitle">Agenda tática de jogos, desempenho e calendário</div>
+            </div>
+            <button type="button" id="refreshButton" class="refresh-btn" aria-label="Atualizar dados agora"><span class="refresh-icon" aria-hidden="true">↻</span></button>
+        </div>
+    </header>
+
+    <main class="container" id="main-content" tabindex="-1">
+
+        <!-- ============================================ -->
+        <!-- HERO — Live match + Countdown + Form         -->
+        <!-- ============================================ -->
+        <section class="hero-hub" id="hero-hub" aria-labelledby="hero-title">
+            <h2 class="sr-only" id="hero-title">Próximo jogo em destaque</h2>
+            <!-- Match Card -->
+            <div class="hero-card" id="hero-match">
+                <!-- Competition badge -->
+                <div class="hero-comp" id="hero-comp-badge">Carregando...</div>
+
+                <!-- Teams -->
+                <div class="hero-teams" id="hero-teams-area">
+                    <div class="hero-team" id="hero-home">
+                        <img src="/static/crests/1769.png" alt="">
+                        <div class="hero-team-name">Palmeiras</div>
+                    </div>
+                    <div class="hero-center-score" id="hero-score-area">
+                        <div class="hero-vs">×</div>
+                    </div>
+                    <div class="hero-team" id="hero-away">
+                        <img src="/static/crests/1769.png" alt="">
+                        <div class="hero-team-name">—</div>
+                    </div>
+                </div>
+                <div class="hero-empty-state" id="hero-empty-state" hidden>
+                    <strong>Dados temporariamente indisponíveis</strong>
+                    <span>Tente atualizar em instantes.</span>
+                </div>
+
+                <!-- Date + Detail pills row -->
+                <div class="hero-meta" id="hero-meta-area">
+                    <span class="hero-meta-date" id="hero-date-area">—</span>
+                    <span class="hero-meta-sep">·</span>
+                    <span class="hero-meta-pill" id="pill-stadium">Estádio —</span>
+                    <span class="hero-meta-pill" id="pill-broadcast">TV —</span>
+                    <span class="hero-meta-pill" id="pill-round">Rodada —</span>
+                    <span class="hero-meta-pill" id="pill-stage" style="display:none">Fase —</span>
+                </div>
+            </div>
+
+            <!-- Bottom bar: Countdown + Form -->
+            <div class="hero-bottom" id="hero-bottom">
+                <div class="hero-countdown" id="hero-countdown">
+                    <div class="countdown-label">Jogo em</div>
+                    <div class="countdown-digits">
+                        <span class="cd-unit"><span class="cd-val" id="cd-days">0</span><span class="cd-lbl">dias</span></span>
+                        <span class="cd-sep">:</span>
+                        <span class="cd-unit"><span class="cd-val" id="cd-hours">0</span><span class="cd-lbl">horas</span></span>
+                        <span class="cd-sep">:</span>
+                        <span class="cd-unit"><span class="cd-val" id="cd-mins">0</span><span class="cd-lbl">min</span></span>
+                        <span class="cd-sep">:</span>
+                        <span class="cd-unit"><span class="cd-val" id="cd-secs">0</span><span class="cd-lbl">seg</span></span>
+                    </div>
+                </div>
+                <div class="form-widget" id="form-widget" style="display:none">
+                    <span class="form-label">Sequência</span>
+                    <div class="form-dots" id="form-dots"></div>
+                </div>
+                <div class="hero-brazil-next" id="hero-brazil-next" style="display:none">
+                    <span class="form-label">Próximos do Brasil</span>
+                    <div class="hero-brazil-list" id="hero-brazil-list"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================================ -->
+        <!-- CALENDAR HUB — main view below hero          -->
+        <!-- ============================================ -->
+        <div class="main-layout">
+        <section class="calendar-hub" id="calendar-hub" aria-labelledby="calendar-title">
+            <div class="card">
+                <div class="cal-header">
+                    <div class="cal-title" id="calendar-title">Jogos do mês
+                        <label class="sr-only" for="cal-year-select">Ano do calendário</label>
+                        <select id="cal-year-select"></select>
+                    </div>
+
+                </div>
+                <!-- Competition Legend -->
+                <div class="comp-legend" id="comp-legend" aria-label="Filtrar calendário por competição">
+                    <button type="button" class="comp-legend-item active" data-comp="all" aria-pressed="true">
+                        <span class="comp-legend-dot" style="background:#075C3B" aria-hidden="true"></span>
+                        <span class="comp-legend-label">Todos</span>
+                    </button>
+                    <button type="button" class="comp-legend-item" data-comp="BSA" aria-pressed="false">
+                        <span class="comp-legend-dot" style="background:#0A7A4A" aria-hidden="true"></span>
+                        <span class="comp-legend-label">Brasileirão</span>
+                    </button>
+                    <button type="button" class="comp-legend-item" data-comp="CLI" aria-pressed="false">
+                        <span class="comp-legend-dot" style="background:#DAA520" aria-hidden="true"></span>
+                        <span class="comp-legend-label">Libertadores</span>
+                    </button>
+                    <button type="button" class="comp-legend-item" data-comp="COPA" aria-pressed="false">
+                        <span class="comp-legend-dot" style="background:#1E88E5" aria-hidden="true"></span>
+                        <span class="comp-legend-label">Copa do Brasil</span>
+                    </button>
+                    <button type="button" class="comp-legend-item" data-comp="CPA" aria-pressed="false">
+                        <span class="comp-legend-dot" style="background:#6B7F32" aria-hidden="true"></span>
+                        <span class="comp-legend-label">Paulistão</span>
+                    </button>
+                    <button type="button" class="comp-legend-item" data-comp="WC" aria-pressed="false">
+                        <span class="comp-legend-dot" style="background:#8B5CF6" aria-hidden="true"></span>
+                        <span class="comp-legend-label">Copa 2026</span>
+                    </button>
+                </div>
+                <div class="calendar-nav">
+                    <button type="button" class="cal-nav-btn" id="cal-prev" aria-label="Mês anterior">‹</button>
+                    <span id="cal-month-label" aria-live="polite"></span>
+                    <button type="button" class="cal-nav-btn" id="cal-next" aria-label="Próximo mês">›</button>
+                </div>
+                <div id="calendar-grid" class="calendar-grid" aria-labelledby="calendar-title"></div>
+                <div id="calendar-expanded" aria-live="polite"></div>
+            </div>
+        </section>
+
+        <!-- ============================================ -->
+        <!-- SECONDARY TABS — Tabelas, Estatísticas, etc.  -->
+        <!-- ============================================ -->
+        <div class="main-content">
+        <div class="tabs" role="tablist" aria-label="Seções do aplicativo">
+            <button class="tab-btn active" data-tab="home" role="tab" id="tab-home" aria-selected="true" aria-controls="home">Home</button>
+            <button class="tab-btn" data-tab="classificacao" role="tab" id="tab-classificacao" aria-selected="false" aria-controls="classificacao">Tabelas</button>
+            <button class="tab-btn" data-tab="estatisticas" role="tab" id="tab-estatisticas" aria-selected="false" aria-controls="estatisticas">Estatísticas</button>
+            <button class="tab-btn" data-tab="worldcup" role="tab" id="tab-worldcup" aria-selected="false" aria-controls="worldcup">Copa 2026</button>
+            <button class="tab-btn" data-tab="news" role="tab" id="tab-news" aria-selected="false" aria-controls="news">Notícias</button>
+        </div>
+
+        <!-- ============================================ -->
+        <!-- TAB PANELS                                   -->
+        <!-- ============================================ -->
+        <div class="dashboard-grid">
+
+        <!-- Home -->
+        <div id="home" class="tab-content active" role="tabpanel" aria-labelledby="tab-home">
+        <section class="palmeiras-home-shell" id="palmeiras-home" aria-labelledby="palmeiras-home-title">
+            <div class="palmeiras-home-panel">
+                <div class="palmeiras-board-head">
+                    <div>
+                        <div class="palmeiras-kicker">Agenda do Verdão</div>
+                        <h2 id="palmeiras-home-title">Últimos resultados e próximos jogos</h2>
+                        <p id="palmeiras-home-summary">Carregando jogos do Palmeiras...</p>
+                    </div>
+                    <div class="palmeiras-actions">
+                        <button type="button" class="palmeiras-action primary" id="palmeirasCalendarButton">Ver calendário</button>
+                    </div>
+                </div>
+
+                <div class="palmeiras-snapshot-grid" aria-label="Resumo de jogos do Palmeiras">
+                    <div class="palmeiras-snapshot-panel">
+                        <div class="palmeiras-snapshot-head">
+                            <h3>Próximos jogos</h3>
+                            <p id="palmeiras-next-summary">Carregando agenda...</p>
+                        </div>
+                        <div id="palmeiras-next-matches"><div class="empty">Carregando...</div></div>
+                    </div>
+                    <div class="palmeiras-snapshot-panel results">
+                        <div class="palmeiras-snapshot-head">
+                            <h3>Últimos resultados</h3>
+                            <p id="palmeiras-results-summary">Carregando placares...</p>
+                        </div>
+                        <div id="palmeiras-latest-results"><div class="empty">Carregando...</div></div>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+        <section class="competition-hub card" aria-labelledby="competitions-title">
+            <div class="competition-hub-head">
+                <div>
+                    <div class="card-title" id="competitions-title">Disputas do Palmeiras</div>
+                    <p id="competitions-summary">Consolidando competições do ano selecionado.</p>
+                </div>
+            </div>
+            <div id="competitions-overview"><div class="empty">Carregando...</div></div>
+        </section>
+        </div>
+
+        <!-- Tabelas -->
+        <div id="classificacao" class="tab-content" role="tabpanel" aria-labelledby="tab-classificacao" hidden inert>
+            <div class="card">
+                <div class="section-head standings-head">
+                    <div>
+                        <div class="card-title" id="standings-title">Tabelas</div>
+                        <p id="standings-summary">Escolha uma competição para ver as tabelas e campanhas disponíveis.</p>
+                    </div>
+                    <div class="standings-filter-group" id="standings-filter-group" aria-label="Escolher competição das tabelas">
+                        <button type="button" class="standings-filter active" data-standings-comp="all" aria-pressed="true">Todas</button>
+                    </div>
+                </div>
+                <div id="standings"><div class="empty">Carregando...</div></div>
+            </div>
+        </div>
+
+        <!-- Estatísticas -->
+        <div id="estatisticas" class="tab-content" role="tabpanel" aria-labelledby="tab-estatisticas" hidden inert>
+            <div class="card">
+                <div class="section-head stats-head">
+                    <div>
+                        <div class="card-title" id="stats-title">Estatísticas do Palmeiras</div>
+                        <p id="stats-summary">Desempenho, gols e forma recente em todos os jogos carregados.</p>
+                    </div>
+                </div>
+                <div id="team-stats"><div class="empty">Carregando...</div></div>
+            </div>
+        </div>
+
+        <!-- Copa do Mundo 2026 -->
+        <div id="worldcup" class="tab-content" role="tabpanel" aria-labelledby="tab-worldcup" hidden inert>
+            <section class="worldcup-shell" aria-labelledby="worldcup-title">
+                <div class="worldcup-hero-panel">
+                    <div>
+                        <div class="worldcup-kicker">FIFA World Cup 2026</div>
+                        <h2 id="worldcup-title">Copa 2026 no Palmeiras Agenda</h2>
+                        <p>Os 104 jogos ficam nesta seção dedicada e também aparecem no calendário mensal.</p>
+                    </div>
+                    <div class="worldcup-actions">
+                        <button type="button" class="worldcup-action primary" id="worldcupFilterCalendar">Ver jogos</button>
+                    </div>
+                </div>
+
+                <div class="worldcup-info-grid" aria-label="Informações da Copa do Mundo 2026">
+                    <div class="worldcup-info-item">
+                        <span>Período</span>
+                        <strong>11 jun - 19 jul</strong>
+                    </div>
+                    <div class="worldcup-info-item">
+                        <span>Jogos</span>
+                        <strong id="worldcup-total">104</strong>
+                    </div>
+                    <div class="worldcup-info-item">
+                        <span>Sedes</span>
+                        <strong>Canadá, México, EUA</strong>
+                    </div>
+                    <div class="worldcup-info-item">
+                        <span>Formato</span>
+                        <strong>48 seleções</strong>
+                    </div>
+                </div>
+
+                <div class="worldcup-brazil-panel">
+                    <div class="worldcup-board-head">
+                        <div>
+                            <h3>Próximos jogos do Brasil</h3>
+                            <p id="worldcup-brazil-summary">Carregando agenda da Seleção...</p>
+                        </div>
+                        <button type="button" class="worldcup-action" id="worldcupBrazilFilter">Ver Brasil</button>
+                    </div>
+                    <div id="worldcup-brazil-matches"><div class="empty">Carregando...</div></div>
+                </div>
+
+                <div class="worldcup-board">
+                    <div class="worldcup-board-head">
+                        <div>
+                            <h3>Jogos e resultados</h3>
+                            <p id="worldcup-summary">Carregando jogos da Copa 2026...</p>
+                        </div>
+                        <div class="worldcup-filter-group" aria-label="Filtrar jogos da Copa 2026">
+                            <button type="button" class="worldcup-filter active" data-wc-filter="all" aria-pressed="true">Todos</button>
+                            <button type="button" class="worldcup-filter" data-wc-filter="upcoming" aria-pressed="false">Próximos</button>
+                            <button type="button" class="worldcup-filter" data-wc-filter="finished" aria-pressed="false">Resultados</button>
+                            <button type="button" class="worldcup-filter" data-wc-filter="brazil" aria-pressed="false">Brasil</button>
+                        </div>
+                    </div>
+                    <div id="worldcup-matches"><div class="empty">Carregando...</div></div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Notícias -->
+        <div id="news" class="tab-content" role="tabpanel" aria-labelledby="tab-news" hidden inert>
+            <div class="card">
+                <div class="card-title">Notícias recentes</div>
+                <div id="news-list"><div class="empty">Carregando...</div></div>
+            </div>
+        </div>
+        
+        </div>
+        </div>
+        </div>
+
+    </main>
+
+    <noscript><p style="text-align:center;padding:2rem;color:#666">JavaScript é necessário para exibir os dados do Palmeiras Agenda.</p></noscript>
+
+    <footer class="footer">
+        <p>Fontes: football-data.org · FIFA · ge.globo · lance.com.br · wikipedia.org · palmeiras.com.br</p>
+        <p id="last-updated" class="footer-updated"></p>
+        <div class="footer-actions">
+            <button type="button" id="downloadCalendarButton" class="footer-btn">Baixar ICS</button>
+            <button type="button" id="copyCalendarUrlButton" class="footer-btn">Copiar link</button>
+        </div>
+    </footer>
+
+    <script src="/static/js/config.js?v=20"></script>
+    <script src="/static/js/app.js?v=47"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          let refreshing = false;
+          navigator.serviceWorker.addEventListener('controllerchange', () => {
+            if (refreshing) return;
+            refreshing = true;
+            window.location.reload();
+          });
+          navigator.serviceWorker.register('/sw.js').then((registration) => {
+            if (registration.waiting) {
+              registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+            }
+            registration.addEventListener('updatefound', () => {
+              const worker = registration.installing;
+              if (!worker) return;
+              worker.addEventListener('statechange', () => {
+                if (worker.state === 'installed' && navigator.serviceWorker.controller) {
+                  worker.postMessage({ type: 'SKIP_WAITING' });
+                }
+              });
+            });
+          }).catch(() => {});
+        });
+      }
+    </script>
+</body>
+</html>

@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://palmeiras.rodrigolanna.com.br/sitemap.xml

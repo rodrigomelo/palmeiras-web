@@ -1,0 +1,35 @@
+{
+  "name": "Palmeiras Agenda",
+  "short_name": "Palmeiras",
+  "description": "Agenda de jogos, placares, tabelas, notícias e calendário do Palmeiras.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F3F5EF",
+  "theme_color": "#075C3B",
+  "lang": "pt-BR",
+  "categories": ["sports", "entertainment"],
+  "icons": [
+    {
+      "src": "/static/brand/palmeiras-agenda-icon-192-v5.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/brand/palmeiras-agenda-icon-512-v5.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/brand/palmeiras-agenda-maskable-512-v5.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [],
+  "prefer_related_applications": false
+}

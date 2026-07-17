@@ -11,7 +11,7 @@ WorkingDirectory=/var/www/palmeiras-web
 Environment=HOST=127.0.0.1
 Environment=PORT=5001
 Environment=PYTHONUNBUFFERED=1
-Environment=ALLOWED_ORIGINS=https://palmeiras.rodrigolanna.com.br,https://palmeiras-web.vercel.app
+Environment=ALLOWED_ORIGINS=https://palmeiras.rodrigolanna.com.br
 EnvironmentFile=/etc/palmeiras-web.env
 ExecStart=/var/www/palmeiras-web/.venv/bin/python server.py
 Restart=always

@@ -22,7 +22,6 @@ rsync -az --delete \
   --exclude='/.env.*' \
   --exclude='/.venv/' \
   --exclude='/venv/' \
-  --exclude='/.vercel/' \
   --exclude='/.pytest_cache/' \
   --exclude='/.ruff_cache/' \
   --exclude='/screenshots/' \
@@ -41,6 +40,31 @@ if [[ ! -f /etc/palmeiras-web.env ]]; then
   exit 1
 fi
 
+set -a
+. /etc/palmeiras-web.env
+set +a
+
+missing_env=()
+for required_var in SUPABASE_URL SUPABASE_ANON_KEY; do
+  if [[ -z "${!required_var:-}" ]]; then
+    missing_env+=("${required_var}")
+  fi
+done
+if (( ${#missing_env[@]} )); then
+  echo "Missing required Palmeiras environment variable(s): ${missing_env[*]}" >&2
+  exit 1
+fi
+
+missing_collector_env=()
+for collector_var in SUPABASE_KEY FOOTBALL_API_KEY; do
+  if [[ -z "${!collector_var:-}" ]]; then
+    missing_collector_env+=("${collector_var}")
+  fi
+done
+if (( ${#missing_collector_env[@]} )); then
+  echo "Warning: collector will fail until these variable(s) are added to /etc/palmeiras-web.env: ${missing_collector_env[*]}" >&2
+fi
+
 cd "${REMOTE_DIR}"
 python3 -m venv .venv
 .venv/bin/python -m pip install --upgrade pip
@@ -50,14 +74,24 @@ chown -R root:root "${REMOTE_DIR}"
 find "${REMOTE_DIR}" -path "${REMOTE_DIR}/.venv" -prune -o -type d -exec chmod 755 {} +
 find "${REMOTE_DIR}" -path "${REMOTE_DIR}/.venv" -prune -o -type f -exec chmod 644 {} +
 chmod +x "${REMOTE_DIR}/scripts/deploy-vps.sh"
+install -d -o www-data -g www-data -m 775 "${REMOTE_DIR}/apps/web/static/crests"
+chown -R www-data:www-data "${REMOTE_DIR}/apps/web/static/crests"
+
+install -m 0644 "${REMOTE_DIR}/deploy/palmeiras-web.service" "/etc/systemd/system/${SERVICE_NAME}.service"
+install -m 0644 "${REMOTE_DIR}/deploy/palmeiras-collector.service" "/etc/systemd/system/palmeiras-collector.service"
+install -m 0644 "${REMOTE_DIR}/deploy/palmeiras-collector.timer" "/etc/systemd/system/palmeiras-collector.timer"
 
 systemctl daemon-reload
 systemctl enable "${SERVICE_NAME}" >/dev/null
 systemctl restart "${SERVICE_NAME}"
 systemctl is-active --quiet "${SERVICE_NAME}"
+systemctl enable palmeiras-collector.timer >/dev/null
+systemctl restart palmeiras-collector.timer
+systemctl is-active --quiet palmeiras-collector.timer
+systemctl start --no-block palmeiras-collector.service || true
 
 for attempt in {1..20}; do
-  if curl --fail --silent --show-error "http://127.0.0.1:${APP_PORT}/api/health" >/tmp/palmeiras-web-health.json; then
+  if curl --fail --silent --show-error "http://127.0.0.1:${APP_PORT}/api/v1/health" >/tmp/palmeiras-web-health.json; then
     cat /tmp/palmeiras-web-health.json
     exit 0
   fi

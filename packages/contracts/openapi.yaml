@@ -1,0 +1,606 @@
+openapi: 3.1.0
+info:
+  title: Palmeiras Agenda API
+  version: 1.1.37
+  description: Shared backend contract for Web, iOS, and Android clients.
+servers:
+  - url: https://palmeiras.rodrigolanna.com.br/api/v1
+    description: Production
+  - url: http://localhost:5001/api/v1
+    description: Local development
+paths:
+  /health:
+    get:
+      summary: Backend health
+      operationId: getHealth
+      responses:
+        "200":
+          description: Backend is healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+        "503":
+          description: Backend is reachable but degraded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+  /matches:
+    get:
+      summary: Match list
+      operationId: listMatches
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+          example: SCHEDULED,TIMED
+        - name: competition
+          in: query
+          schema:
+            type: string
+            enum: [BSA, CLI, COPA, CPA, WC]
+        - name: team_id
+          in: query
+          schema:
+            type: integer
+          example: 1769
+        - name: from_date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: to_date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 250
+            default: 50
+      responses:
+        "200":
+          description: Matches
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [matches]
+                properties:
+                  matches:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Match"
+        "400":
+          $ref: "#/components/responses/ApiError"
+        "503":
+          $ref: "#/components/responses/ApiError"
+  /standings:
+    get:
+      summary: Competition standings
+      operationId: listStandings
+      parameters:
+        - name: competition
+          in: query
+          schema:
+            type: string
+            enum: [BSA, CLI, COPA, CPA, WC]
+            default: BSA
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 100
+      responses:
+        "200":
+          description: Standings
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [standings]
+                properties:
+                  standings:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Standing"
+        "400":
+          $ref: "#/components/responses/ApiError"
+        "503":
+          $ref: "#/components/responses/ApiError"
+  /competitions:
+    get:
+      summary: Palmeiras competition summaries
+      operationId: listCompetitionSummaries
+      parameters:
+        - name: year
+          in: query
+          schema:
+            type: integer
+            minimum: 2020
+            maximum: 2035
+          example: 2026
+        - name: team_id
+          in: query
+          schema:
+            type: integer
+            default: 1769
+          example: 1769
+      responses:
+        "200":
+          description: Competitions with Palmeiras match summaries
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [year, teamId, competitions]
+                properties:
+                  year:
+                    type: integer
+                  teamId:
+                    type: integer
+                  competitions:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/CompetitionSummary"
+        "400":
+          $ref: "#/components/responses/ApiError"
+        "503":
+          $ref: "#/components/responses/ApiError"
+  /news:
+    get:
+      summary: Recent news
+      operationId: listNews
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+      responses:
+        "200":
+          description: News
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [news]
+                properties:
+                  news:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/NewsItem"
+        "503":
+          $ref: "#/components/responses/ApiError"
+  /calendar_monthly:
+    get:
+      summary: Matches grouped by Sao Paulo calendar day
+      operationId: getCalendarMonth
+      parameters:
+        - name: year
+          in: query
+          required: true
+          schema:
+            type: integer
+            minimum: 2020
+            maximum: 2035
+        - name: month
+          in: query
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 12
+      responses:
+        "200":
+          description: Monthly calendar
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CalendarMonth"
+        "400":
+          $ref: "#/components/responses/CalendarError"
+        "503":
+          $ref: "#/components/responses/CalendarError"
+  /calendar.ics:
+    get:
+      summary: iCalendar feed
+      operationId: getCalendarFeed
+      responses:
+        "200":
+          description: ICS calendar
+          content:
+            text/calendar:
+              schema:
+                type: string
+        "503":
+          description: Calendar unavailable
+          content:
+            text/plain:
+              schema:
+                type: string
+components:
+  responses:
+    ApiError:
+      description: API error with empty collection fallback
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+    CalendarError:
+      description: Calendar API error
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [error, days]
+            properties:
+              error:
+                type: string
+              days:
+                type: object
+                additionalProperties:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/CalendarMatch"
+  schemas:
+    Health:
+      type: object
+      required: [status, timestamp, services, version]
+      properties:
+        status:
+          type: string
+          enum: [ok, degraded]
+        timestamp:
+          type: string
+          format: date-time
+        version:
+          type: string
+        services:
+          type: object
+          required: [supabase]
+          properties:
+            supabase:
+              type: object
+              required: [status, latency_ms]
+              properties:
+                status:
+                  type: string
+                  enum: [connected, disconnected, error]
+                latency_ms:
+                  type: integer
+            data_freshness:
+              type: object
+              required: [status, tables]
+              properties:
+                status:
+                  type: string
+                  enum: [fresh, stale, unknown]
+                max_age_minutes:
+                  type: integer
+                tables:
+                  type: object
+                  additionalProperties:
+                    type: object
+                    properties:
+                      status:
+                        type: string
+                        enum: [fresh, stale]
+                      latest_at:
+                        type: string
+                        format: date-time
+                        nullable: true
+                      age_minutes:
+                        type: integer
+                        nullable: true
+    Team:
+      type: object
+      properties:
+        id:
+          type: integer
+          nullable: true
+        name:
+          type: string
+        shortName:
+          type: string
+        tla:
+          type: string
+        crest:
+          type: string
+          nullable: true
+    Competition:
+      type: object
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+    CompetitionRecord:
+      type: object
+      required: [played, wins, draws, losses, goalsFor, goalsAgainst, goalDifference, points]
+      properties:
+        played:
+          type: integer
+        wins:
+          type: integer
+        draws:
+          type: integer
+        losses:
+          type: integer
+        goalsFor:
+          type: integer
+        goalsAgainst:
+          type: integer
+        goalDifference:
+          type: integer
+        points:
+          type: integer
+    CompetitionMatchSummary:
+      type: object
+      required: [id, utcDate, status, homeTeam, awayTeam, competition, score]
+      properties:
+        id:
+          type: integer
+        utcDate:
+          type: string
+          format: date-time
+        status:
+          type: string
+        matchday:
+          type: integer
+          nullable: true
+        stage:
+          type: string
+          nullable: true
+        venue:
+          type: string
+          nullable: true
+        broadcast:
+          type: string
+          nullable: true
+        homeTeam:
+          $ref: "#/components/schemas/Team"
+        awayTeam:
+          $ref: "#/components/schemas/Team"
+        competition:
+          $ref: "#/components/schemas/Competition"
+        score:
+          $ref: "#/components/schemas/Score"
+        homeScore:
+          type: integer
+          nullable: true
+        awayScore:
+          type: integer
+          nullable: true
+    CompetitionSummary:
+      type: object
+      required: [code, name, year, totalMatches, finished, upcoming, live, record]
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+        year:
+          type: integer
+        totalMatches:
+          type: integer
+        finished:
+          type: integer
+        upcoming:
+          type: integer
+        live:
+          type: integer
+        record:
+          $ref: "#/components/schemas/CompetitionRecord"
+        nextMatch:
+          anyOf:
+            - $ref: "#/components/schemas/CompetitionMatchSummary"
+            - type: "null"
+        lastMatch:
+          anyOf:
+            - $ref: "#/components/schemas/CompetitionMatchSummary"
+            - type: "null"
+        currentStage:
+          type: string
+          nullable: true
+        standing:
+          anyOf:
+            - $ref: "#/components/schemas/Standing"
+            - type: "null"
+    Score:
+      type: object
+      properties:
+        fullTime:
+          type: object
+          properties:
+            home:
+              type: integer
+              nullable: true
+            away:
+              type: integer
+              nullable: true
+        halfTime:
+          type: object
+          properties:
+            home:
+              type: integer
+              nullable: true
+            away:
+              type: integer
+              nullable: true
+    Match:
+      type: object
+      required: [id, utcDate, status, homeTeam, awayTeam, competition, score]
+      properties:
+        id:
+          type: integer
+        utcDate:
+          type: string
+          format: date-time
+        status:
+          type: string
+        matchday:
+          type: integer
+          nullable: true
+        stage:
+          type: string
+          nullable: true
+        venue:
+          type: string
+          nullable: true
+        broadcast:
+          type: string
+          nullable: true
+        homeTeam:
+          $ref: "#/components/schemas/Team"
+        awayTeam:
+          $ref: "#/components/schemas/Team"
+        competition:
+          $ref: "#/components/schemas/Competition"
+        season:
+          type: object
+        referees:
+          type: array
+          items:
+            type: object
+        score:
+          $ref: "#/components/schemas/Score"
+        homeScore:
+          type: integer
+          nullable: true
+        awayScore:
+          type: integer
+          nullable: true
+    CalendarMatch:
+      type: object
+      required: [utcDate, status, competition, homeTeam, awayTeam, score]
+      properties:
+        utcDate:
+          type: string
+          format: date-time
+        status:
+          type: string
+        competition:
+          $ref: "#/components/schemas/Competition"
+        homeTeam:
+          $ref: "#/components/schemas/Team"
+        awayTeam:
+          $ref: "#/components/schemas/Team"
+        matchday:
+          type: integer
+          nullable: true
+        stage:
+          type: string
+          nullable: true
+        venue:
+          type: string
+        broadcast:
+          type: string
+        homeScore:
+          type: integer
+          nullable: true
+        awayScore:
+          type: integer
+          nullable: true
+        score:
+          type: object
+          properties:
+            fullTime:
+              type: object
+              properties:
+                home:
+                  type: integer
+                  nullable: true
+                away:
+                  type: integer
+                  nullable: true
+            halfTime:
+              type: object
+              properties:
+                home:
+                  type: integer
+                  nullable: true
+                away:
+                  type: integer
+                  nullable: true
+    CalendarMonth:
+      type: object
+      required: [year, month, days]
+      properties:
+        year:
+          type: integer
+        month:
+          type: integer
+        days:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              $ref: "#/components/schemas/CalendarMatch"
+    Standing:
+      type: object
+      properties:
+        position:
+          type: integer
+        teamId:
+          type: integer
+        teamName:
+          type: string
+        teamShort:
+          type: string
+        teamTla:
+          type: string
+        crest:
+          type: string
+        playedGames:
+          type: integer
+        won:
+          type: integer
+        draw:
+          type: integer
+        lost:
+          type: integer
+        points:
+          type: integer
+        goalsFor:
+          type: integer
+        goalsAgainst:
+          type: integer
+        goalDifference:
+          type: integer
+    NewsItem:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        summary:
+          type: string
+          nullable: true
+        url:
+          type: string
+        image:
+          type: string
+          nullable: true
+        source:
+          type: string
+        published_at:
+          type: string
+          format: date-time
+          nullable: true
+        collected_at:
+          type: string
+          format: date-time

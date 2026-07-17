@@ -1,1 +1,1 @@
-"""Palmeiras Web API helpers and Vercel serverless handlers."""
+"""Palmeiras Web API compatibility helpers."""

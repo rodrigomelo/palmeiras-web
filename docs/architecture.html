@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Palmeiras Web — System Diagram</title>
+<title>Palmeiras Agenda — System Diagram</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8f9fa; color: #333; padding: 2rem; }
@@ -22,8 +22,12 @@ h1 { text-align: center; color: #006B3F; font-size: 1.8rem; margin-bottom: 0.5re
 </head>
 <body>
 
-<h1>⚽ Palmeiras Web — System Diagram</h1>
-<p class="subtitle">Architecture Overview • March 2026</p>
+<h1>⚽ Palmeiras Agenda — System Diagram</h1>
+<p class="subtitle">Architecture Overview • updated for shared Web, iOS, and Android backend</p>
+<div class="section">
+  <h2>Current Source Of Truth</h2>
+  <p>This historical diagram is kept for visual context. The maintained architecture reference is <code>docs/ARCHITECTURE.md</code>, with API contracts in <code>packages/contracts/openapi.yaml</code>.</p>
+</div>
 
 <div class="diagram-container">
 <svg viewBox="0 0 960 700" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">
@@ -102,8 +106,8 @@ h1 { text-align: center; color: #006B3F; font-size: 1.8rem; margin-bottom: 0.5re
 
   <!-- ====== LAYER 4: API — PRODUCTION ====== -->
   <rect x="20" y="370" width="440" height="140" rx="12" fill="white" stroke="#2196F3" stroke-width="2" filter="url(#shadow)"/>
-  <text x="240" y="398" text-anchor="middle" fill="#2196F3" font-size="14" font-weight="700">☁️ Vercel Serverless</text>
-  <text x="240" y="415" text-anchor="middle" fill="#999" font-size="10">palmeiras-web.vercel.app</text>
+  <text x="240" y="398" text-anchor="middle" fill="#2196F3" font-size="14" font-weight="700">☁️ VPS + Nginx</text>
+  <text x="240" y="415" text-anchor="middle" fill="#999" font-size="10">palmeiras.rodrigolanna.com.br</text>
 
   <rect x="40" y="428" width="90" height="60" rx="6" fill="#e3f2fd" stroke="#2196F3" stroke-width="1"/>
   <text x="85" y="454" text-anchor="middle" fill="#1565C0" font-size="9" font-weight="600">/api/</text>
@@ -188,25 +192,27 @@ h1 { text-align: center; color: #006B3F; font-size: 1.8rem; margin-bottom: 0.5re
 <!-- Key Points -->
 <div class="section">
   <h2>🔑 Key Points</h2>
-  <p>✅ <strong>Single database, two servers.</strong> Both production (Vercel) and local (server.py) read from the same Supabase instance.</p>
-  <p>✅ <strong>Collectors write to Supabase every 4h.</strong> Cron runs via OpenClaw, fetches from APIs, pushes to Supabase. Both servers serve fresh data immediately.</p>
-  <p>✅ <strong>No Python dependencies on Vercel.</strong> All <code>api/*.py</code> use <code>urllib</code> (stdlib) for Supabase REST — no <code>supabase</code> library.</p>
-  <p>✅ <strong>Same domain, no CORS.</strong> Frontend calls <code>/api/*</code> on same domain.</p>
-  <p>✅ <strong>Local dev</strong> = <code>server.py</code> on <code>:5001</code> (launchd). Static files + API routes. No Vercel CLI needed.</p>
+  <p>✅ <strong>Single public backend.</strong> Web, iOS, and Android all consume <code>/api/v1</code>.</p>
+  <p>✅ <strong>One backend implementation.</strong> Compatibility adapters and <code>server.py</code> both dispatch to <code>services/api/palmeiras_api</code>.</p>
+  <p>✅ <strong>Collectors are internal.</strong> Ingestion code lives under <code>services/collector</code> and is the only layer that writes to Supabase.</p>
+  <p>✅ <strong>Contracts are explicit.</strong> Client DTOs should come from <code>packages/contracts/openapi.yaml</code>.</p>
+  <p>✅ <strong>Local dev</strong> = <code>server.py</code> on <code>:5001</code>. Static web files come from <code>apps/web</code>.</p>
 </div>
 
 <div class="section">
   <h2>🛠️ Tech Stack</h2>
-  <p><strong>Frontend:</strong> Vanilla HTML/CSS/JS + Chart.js v4</p>
-  <p><strong>API:</strong> Python 3 (<code>BaseHTTPRequestHandler</code>, stdlib only)</p>
+  <p><strong>Web:</strong> Vanilla HTML/CSS/JS + Chart.js v4 in <code>apps/web</code></p>
+  <p><strong>iOS:</strong> SwiftUI scaffold in <code>apps/ios</code></p>
+  <p><strong>Android:</strong> Kotlin scaffold in <code>apps/android</code></p>
+  <p><strong>API:</strong> Python 3 shared service in <code>services/api</code></p>
   <p><strong>Database:</strong> Supabase (PostgreSQL) via REST API</p>
-  <p><strong>Hosting:</strong> Vercel serverless (production) + server.py (local)</p>
-  <p><strong>Collectors:</strong> Python scripts + OpenClaw cron (every 4h)</p>
+  <p><strong>Hosting:</strong> Nginx + systemd on palmeiras.rodrigolanna.com.br (production) and server.py (local)</p>
+  <p><strong>Collectors:</strong> Python ingestion service in <code>services/collector</code></p>
   <p><strong>Source:</strong> <a href="https://github.com/rodrigomelo/palmeiras-web">github.com/rodrigomelo/palmeiras-web</a></p>
 </div>
 
 <div class="footer">
-  <p>Palmeiras Web — System Diagram • Hefesto 🔨 • March 2026</p>
+  <p>Palmeiras Agenda — System Diagram • updated architecture</p>
 </div>
 
 </body>

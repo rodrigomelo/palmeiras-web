@@ -1,161 +1,179 @@
 # Palmeiras Agenda
 
-Agenda web para acompanhar o Palmeiras, a Copa do Mundo FIFA 2026, classificação, notícias e calendário.
+Shared backend plus Web, iOS, and Android clients for Palmeiras Agenda.
 
 ## Architecture
 
-```
+```text
 palmeiras-web/
-├── index.html                 → Frontend
-├── server.py                  → Local dev server (direct Supabase)
-├── vercel.json                → Vercel deployment config
-├── .env                       → Local credentials (not tracked)
-├── .env.example               → Template
-├── static/
-│   ├── css/styles.css         → Styles
-│   ├── js/
-│   │   ├── config.js          → Shared constants (TEAM_ID, stadiums, helpers)
-│   │   └── app.js             → Application logic
-│   ├── crests/*.png           → Cached team logos (22 teams)
-│   └── favicon.png
-├── api/                       → Vercel serverless functions
-│   ├── matches.py
-│   ├── standings.py
-│   ├── news.py
-│   └── calendar.py
-├── collectors/                → Data collection scripts
-│   ├── __init__.py            → Main collector (matches, World Cup, standings, news, broadcast)
-│   ├── crest_manager.py       → Logo download & cache
-│   └── requirements.txt
-├── data/                      → Raw data
-├── docs/                      → Documentation
-└── supabase-schema.sql        → Database schema
+├── apps/
+│   ├── web/                  # PWA/web client
+│   ├── ios/                  # native iOS scaffold
+│   └── android/              # native Android scaffold
+├── services/
+│   ├── api/                  # single public backend implementation
+│   └── collector/            # internal ingestion jobs
+├── packages/
+│   └── contracts/            # OpenAPI contract shared by all clients
+├── infra/
+│   └── supabase/             # database schema and RLS policies
+├── api/                      # compatibility HTTP adapters
+├── collectors/               # compatibility wrappers for old imports
+└── server.py                 # local/VPS static/API adapter
 ```
+
+## Shared Backend Rule
+
+All clients must use the same public API:
+
+```text
+https://palmeiras.rodrigolanna.com.br/api/v1
+```
+
+Current legacy `/api/*` paths remain available for compatibility, but new client
+code should use `/api/v1/*`.
+
+The API implementation lives in `services/api/palmeiras_api`. The root `api/*.py`
+files are thin compatibility adapters. `server.py` uses the same package locally
+and on the VPS, so local and production API behavior cannot drift.
+
+## Brand Identity
+
+The app logo and PWA icon are the original PA calendar mark, not the Palmeiras
+crest. Brand rules, logo variants, color tokens, and export instructions live in
+`docs/BRAND_IDENTITY.md`.
+
+Run `scripts/export-brand-assets.py` after any logo SVG change. It refreshes the
+web/PWA icons, favicon, social card, Android launcher icons, and iOS AppIcon
+asset catalog from the same PA mark source.
 
 ## Data Flow
 
+```text
+football-data.org / FIFA / scrapers
+        ↓
+services/collector → Supabase PostgreSQL
+        ↓
+services/api/palmeiras_api
+        ↓
+apps/web, apps/ios, apps/android
 ```
-[football-data.org API] ──→ [Collector] ──→ [Supabase] ──→ [API] ──→ [Frontend]
-[FIFA World Cup WC API] ──→                                         
-[ge.globo scraping]     ──→                                         
-[lance.com.br scraping] ──→                                         
-```
 
-- **Collector** writes to Supabase
-- **Local server** (`server.py`) reads from Supabase directly
-- **Vercel API** reads from Supabase via env vars
-- **Both APIs** return identical JSON contracts
-- **Single Supabase instance** shared across all environments
+Collectors are internal jobs and may use `SUPABASE_KEY` / service role. Web, iOS,
+and Android never connect directly to Supabase.
 
-## Quick Start
-
-### Local Development
+## Local Development
 
 ```bash
-cd palmeiras-web
-
-# Ensure .env has credentials
 cp .env.example .env
-# Edit .env with SUPABASE_URL and SUPABASE_KEY
+# Fill SUPABASE_URL and SUPABASE_ANON_KEY for read-only API access.
 
-# Start local server (use homebrew Python, not system Python)
-/opt/homebrew/bin/python3 server.py
+python3 server.py
 open http://localhost:5001
 ```
 
-> **Note:** The system Python 3.9 (from Xcode) doesn't have `supabase` installed.
-> Always use `/opt/homebrew/bin/python3` or install supabase for the system Python.
+Without Supabase env vars, the web app still serves locally and API routes return
+`503` with a `not_configured`/degraded health response.
 
-### Run the Collector
+## API Contract
 
-```bash
-cd palmeiras-web
-/opt/homebrew/bin/python3 -c "
-from collectors import collect_matches, collect_standings, collect_news, apply_broadcast_info
-collect_matches()
-collect_standings()
-collect_news()
-apply_broadcast_info()
-"
+The public contract is in:
+
+```text
+packages/contracts/openapi.yaml
 ```
 
-To refresh the FIFA World Cup 2026 schedule/results:
+Main endpoints:
+
+| Endpoint | Description |
+|---|---|
+| `GET /api/v1/health` | Backend health |
+| `GET /api/v1/matches?status=FINISHED&limit=50` | Match results |
+| `GET /api/v1/matches?status=SCHEDULED,TIMED&team_id=1769&limit=10` | Palmeiras upcoming matches |
+| `GET /api/v1/matches?competition=WC&from_date=2026-06-11&to_date=2026-07-19&limit=200` | FIFA World Cup 2026 matches |
+| `GET /api/v1/standings?competition=BSA` | League standings |
+| `GET /api/v1/news?limit=10` | Recent news |
+| `GET /api/v1/calendar_monthly?year=2026&month=7` | Calendar grid data |
+| `GET /api/v1/calendar.ics` | iCalendar feed |
+
+## Web
+
+Source: `apps/web`
+
+The web client defaults to same-origin `/api/v1`. To point it at another backend,
+set `window.PALMEIRAS_API_BASE_URL` before `apps/web/static/js/config.js` loads or
+set the `api-base-url` meta tag in `apps/web/index.html`.
+
+## iOS
+
+Source: `apps/ios`
+
+The iOS scaffold contains SwiftUI app files, DTOs, and `PalmeirasAPIClient`.
+Create an Xcode SwiftUI app target named `PalmeirasAgenda`, add the Swift files
+from `apps/ios/PalmeirasAgenda`, and keep future DTOs generated from
+`packages/contracts/openapi.yaml`.
+
+## Android
+
+Source: `apps/android`
+
+The Android scaffold contains a Gradle project, Kotlin DTOs, and
+`PalmeirasApiClient`. It calls the same `/api/v1` backend as Web and iOS.
+
+## Collector
+
+Source: `services/collector/palmeiras_collector`
+
+Compatibility imports from `collectors` still work. New code should import from
+`services.collector.palmeiras_collector`.
 
 ```bash
-/opt/homebrew/bin/python3 -c "from collectors import collect_world_cup; collect_world_cup()"
+python3 -m services.collector.palmeiras_collector.runner
 ```
 
-### Deploy to Vercel
+The runner refreshes Palmeiras matches, Copa do Brasil, Copa 2026, standings,
+past-match scores, broadcasts, and news in one idempotent pipeline. It uses a
+file lock so two collector runs cannot overlap. After Copa 2026 finishes, run it
+with `--skip-world-cup` or remove the World Cup step from the deployed timer.
+
+Production runs are automatic through `deploy/palmeiras-collector.timer`:
 
 ```bash
-npx vercel --prod
-
-# Environment variables (set once)
-npx vercel env add SUPABASE_URL production
-npx vercel env add SUPABASE_KEY production
-npx vercel env add SUPABASE_URL development
-npx vercel env add SUPABASE_KEY development
+systemctl list-timers palmeiras-collector.timer
+systemctl status palmeiras-collector.timer
+journalctl -u palmeiras-collector.service -n 120 --no-pager
 ```
 
-### Deploy to VPS
+## Deploy
 
-The production VPS target is `palmeiras.rodrigolanna.com.br`, served from `/var/www/palmeiras-web` behind Nginx.
+### VPS
 
 ```bash
 scripts/deploy-vps.sh
 ```
 
-Server-only setup files live in `deploy/`:
-
-- `deploy/palmeiras-web.service` → systemd service on port `5001`
-- `deploy/nginx-palmeiras.conf` → Nginx HTTP virtual host; run Certbot after DNS points to the VPS
-
-Keep Supabase credentials outside the web root in `/etc/palmeiras-web.env` on the VPS. Do not deploy `.env` into `/var/www/palmeiras-web`.
-
-## API Endpoints
-
-| Endpoint | Description |
-|---|---|
-| `GET /api/matches?status=FINISHED&limit=50` | Match results |
-| `GET /api/matches?status=SCHEDULED,TIMED&limit=10` | Upcoming matches |
-| `GET /api/matches?competition=WC&from_date=2026-06-11&to_date=2026-07-19&limit=200` | FIFA World Cup 2026 matches/results |
-| `GET /api/matches?team_id=1769&status=SCHEDULED,TIMED&limit=10` | Palmeiras-only upcoming matches |
-| `GET /api/matches?status=IN_PLAY` | Live matches |
-| `GET /api/standings?competition=BSA` | League standings |
-| `GET /api/news?limit=10` | Recent news |
-| `GET /api/calendar.ics` | iCal feed for Palmeiras + World Cup 2026 calendar apps |
+The VPS systemd service runs `server.py`, while Nginx serves `apps/web` static
+files and proxies `/api/` to the same local backend adapter.
+Deploy also installs and enables `palmeiras-collector.timer`, which runs the
+collector every 15 minutes and shortly after boot. `/api/v1/health` includes
+`services.data_freshness` so deployments and monitoring can see when matches,
+standings, or news are stale.
 
 ## Environment Variables
 
-| Variable | Required | Description |
-|---|---|---|
-| `SUPABASE_URL` | ✅ | Supabase project URL |
-| `SUPABASE_ANON_KEY` | Recommended | Supabase anon/public key for read-only public API requests |
-| `SUPABASE_KEY` | Fallback | Legacy Supabase key fallback when `SUPABASE_ANON_KEY` is not configured |
-| `HOST` | Server | Bind address for `server.py`; VPS uses `127.0.0.1` |
-| `PORT` | Server | Bind port for `server.py`; default is `5001` |
-| `ALLOWED_ORIGINS` | Server | Comma-separated CORS allowlist for API responses |
-| `FOOTBALL_API_KEY` | Collectors | football-data.org API key |
+| Variable | Required | Owner | Description |
+|---|---:|---|---|
+| `SUPABASE_URL` | yes | API/collector | Supabase project URL |
+| `SUPABASE_ANON_KEY` | yes | API | Read-only public key |
+| `SUPABASE_KEY` | collector only | Collector | Service-role key for ingestion writes |
+| `APP_VERSION` | recommended | API | Version returned by `/health` |
+| `FOOTBALL_API_KEY` | collector only | Collector | football-data.org key |
+| `HOST` / `PORT` | local/VPS | API adapter | Local server bind config |
+| `ALLOWED_ORIGINS` | optional | API adapter | CORS allowlist for local/VPS |
 
 ## Database
 
-Supabase tables: `matches`, `standings`, `news`.
-Schema in `supabase-schema.sql`.
+Schema and RLS policies live in `infra/supabase/schema.sql`.
 
-## Crest Cache
-
-Team logos are cached locally in `static/crests/{team_id}.png`.
-
-- **`crest_manager.py`** downloads logos from football-data.org on first run
-- Already cached logos are skipped (file exists check)
-- Teams without logos show a placeholder SVG
-- Known broken URLs (e.g., gstatic) are replaced with `crests.football-data.org`
-- Run the collector to cache new team logos automatically
-
-## Stack
-
-- **Frontend:** Vanilla HTML/CSS/JS
-- **API:** Python (Vercel serverless / local HTTP server)
-- **Database:** Supabase (PostgreSQL)
-- **Data:** football-data.org + web scraping (ge.globo, lance.com.br)
-- **Deploy:** Vercel
+Public clients should read through the API. Write/update/delete policies are
+service-role only so native and web clients cannot mutate Supabase directly.

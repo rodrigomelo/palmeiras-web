@@ -51,7 +51,7 @@ When a day with matches is tapped:
 
 ## API
 
-### GET /api/calendar_monthly?year=YYYY&month=MM
+### GET /api/v1/calendar_monthly?year=YYYY&month=MM
 
 Response:
 ```json
@@ -76,10 +76,11 @@ Response:
 ```
 
 ## File Changes
-- `api/calendar_monthly.py` — NEW endpoint
-- `index.html` — add `calendario` tab
-- `static/css/styles.css` — calendar styles
-- `static/js/app.js` — calendar rendering logic
+- `services/api/palmeiras_api/routes.py` — shared endpoint implementation
+- `api/calendar_monthly.py` — compatibility adapter
+- `apps/web/index.html` — calendar UI
+- `apps/web/static/css/styles.css` — calendar styles
+- `apps/web/static/js/app.js` — calendar rendering logic
 
 ## Implementation Notes
 - Uses existing Supabase matches table
