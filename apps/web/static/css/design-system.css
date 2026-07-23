@@ -1,0 +1,1890 @@
+/* Palmeiras Agenda — Campo marcado design system v3.0
+   Visual source of truth: Lovable brand hub. Functional layout remains in
+   styles.css; this layer owns tokens, hierarchy, surfaces and responsive polish. */
+
+:root {
+    --brand: #075c3b;
+    --brand-strong: #043522;
+    --brand-depth: #06412b;
+    --brand-bright: #0a7a4a;
+    --brand-soft: #e7f1e9;
+    --gold: #c99a3d;
+    --gold-strong: #a97822;
+    --ivory: #fffdf3;
+    --mist: #f3f5ef;
+    --ink: #10231a;
+    --text: #10231a;
+    --text-secondary: #4a5d53;
+    --text-muted: #66766d;
+    --bg: var(--mist);
+    --bg-card: var(--ivory);
+    --bg-soft: var(--brand-soft);
+    --line: rgba(16, 35, 26, 0.10);
+    --line-strong: rgba(16, 35, 26, 0.18);
+    --shadow: 0 14px 32px rgba(4, 53, 34, 0.09);
+    --shadow-tight: 0 4px 14px rgba(4, 53, 34, 0.065);
+    --shadow-modal: 0 24px 64px rgba(4, 53, 34, 0.18);
+    --radius-control: 6px;
+    --radius-card: 8px;
+    --radius-modal: 12px;
+    --motion: 180ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+body.dark {
+    --brand: #65d996;
+    --brand-strong: #06140f;
+    --brand-depth: #0a1c13;
+    --brand-bright: #65d996;
+    --brand-soft: #10251a;
+    --gold: #d8b560;
+    --gold-strong: #e0c273;
+    --ivory: #f2f6f3;
+    --mist: #07110c;
+    --ink: #eff6f1;
+    --text: #eaf2ed;
+    --text-secondary: #b3c2b9;
+    --text-muted: #93a49a;
+    --bg: #07110c;
+    --bg-card: #0f1e16;
+    --bg-soft: #13261b;
+    --line: rgba(239, 246, 241, 0.12);
+    --line-strong: rgba(239, 246, 241, 0.22);
+    --shadow: 0 14px 32px rgba(0, 0, 0, 0.28);
+    --shadow-tight: 0 4px 14px rgba(0, 0, 0, 0.22);
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    background:
+        linear-gradient(90deg, rgba(7, 92, 59, 0.032) 1px, transparent 1px) 0 0 / 48px 48px,
+        linear-gradient(0deg, rgba(7, 92, 59, 0.026) 1px, transparent 1px) 0 0 / 48px 48px,
+        var(--bg);
+    color: var(--text);
+    font-family: "DM Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
+    font-size: 15px;
+    font-weight: 400;
+    line-height: 1.6;
+    padding-bottom: 32px;
+}
+
+body.dark {
+    background:
+        linear-gradient(90deg, rgba(101, 217, 150, 0.03) 1px, transparent 1px) 0 0 / 48px 48px,
+        linear-gradient(0deg, rgba(101, 217, 150, 0.024) 1px, transparent 1px) 0 0 / 48px 48px,
+        var(--bg);
+}
+
+h1,
+h2,
+h3,
+h4,
+.card-title,
+.cal-title,
+.stat-value,
+.hero-score,
+.cd-val,
+.palmeiras-score,
+.worldcup-score {
+    color: var(--ink);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
+.hero-score,
+.cd-val,
+.stat-value,
+.palmeiras-score,
+.worldcup-score,
+.cal-match-score,
+.match-detail-score,
+.prob-value {
+    font-variant-numeric: tabular-nums;
+}
+
+:focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+
+button,
+select,
+a,
+summary {
+    transition:
+        color var(--motion),
+        background-color var(--motion),
+        border-color var(--motion),
+        transform var(--motion),
+        box-shadow var(--motion);
+}
+
+.header {
+    min-height: 180px;
+    /* Track the .container gutter so banner content aligns with app content.
+       Container = min(1180px, 100% - 32px) centered → gutter each side. */
+    padding: 24px max(16px, calc((100% - 1180px) / 2)) 34px;
+    background:
+        linear-gradient(115deg, rgba(201, 154, 61, 0.16), transparent 34%),
+        linear-gradient(135deg, #043522 0%, #064e31 54%, #113726 100%);
+}
+
+.header::before {
+    background:
+        linear-gradient(90deg, rgba(255, 253, 243, 0.07) 1px, transparent 1px) 0 0 / 68px 68px,
+        linear-gradient(0deg, rgba(255, 253, 243, 0.055) 1px, transparent 1px) 0 0 / 68px 68px;
+    opacity: 0.5;
+}
+
+.header::after {
+    width: 420px;
+    height: 420px;
+    right: -170px;
+    top: -245px;
+    border-color: rgba(255, 253, 243, 0.15);
+}
+
+.header-content {
+    max-width: 1180px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-rows: auto 38px;
+    align-items: center;
+    column-gap: 10px;
+    row-gap: 14px;
+}
+
+.header-brand {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    grid-column: 1;
+    grid-row: 1;
+}
+
+.header .team-scope-control {
+    grid-column: 1;
+    grid-row: 2;
+    align-self: stretch;
+    gap: 30px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    padding: 0;
+}
+
+.header .team-scope-control button {
+    position: relative;
+    flex: 0 0 auto;
+    min-height: 38px;
+    border-radius: 0;
+    background: transparent;
+    color: rgba(255, 253, 243, 0.76);
+    padding: 4px 0 10px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.header .team-scope-control button::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 2px;
+    border-radius: 999px;
+    background: var(--gold);
+    transform: scaleX(0);
+    transform-origin: center;
+    transition: transform var(--motion);
+}
+
+.header .team-scope-control button:hover {
+    color: var(--ivory);
+}
+
+.header .team-scope-control button.active {
+    background: transparent;
+    color: var(--ivory);
+}
+
+.header .team-scope-control button.active::after {
+    transform: scaleX(1);
+}
+
+.header .quick-preference-actions {
+    grid-column: 2;
+    grid-row: 1;
+    gap: 4px;
+    margin-left: 0;
+}
+
+.header .header-actions {
+    grid-column: 3;
+    grid-row: 1;
+    gap: 4px;
+}
+
+.header .utility-icon-action,
+.header .theme-toggle,
+.header .refresh-btn {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    min-height: 40px;
+    flex: 0 0 40px;
+    border: 1px solid transparent;
+    border-radius: var(--radius-control);
+    background: transparent;
+    color: rgba(255, 253, 243, 0.82);
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+}
+
+.header .utility-icon-action:hover,
+.header .utility-icon-action:focus-visible,
+.header .utility-icon-action:focus-within,
+.header .theme-toggle:hover,
+.header .refresh-btn:hover {
+    border-color: transparent;
+    background: rgba(255, 253, 243, 0.11);
+    color: var(--ivory);
+}
+
+.header .utility-icon-action.active,
+.header .notification-toggle[aria-pressed="true"] {
+    border-color: transparent;
+    background: transparent;
+    color: #f2cf7a;
+}
+
+.header .utility-icon-action svg,
+.header .theme-toggle svg,
+.header .refresh-btn svg {
+    width: 20px;
+    height: 20px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+body.dark .header .theme-toggle,
+body.dark .header .refresh-btn {
+    border-color: transparent;
+    background: transparent;
+}
+
+.logo {
+    width: 56px;
+    height: 56px;
+    border-radius: 0;
+    box-shadow: none;
+}
+
+.logo:hover {
+    transform: translateY(-1px);
+    box-shadow: none;
+}
+
+.logo img {
+    object-fit: contain;
+}
+
+.header-text h1 {
+    color: var(--ivory);
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+}
+
+.subtitle {
+    margin-top: 4px;
+    color: rgba(255, 253, 243, 0.74);
+    font-size: 0.82rem;
+    font-weight: 500;
+}
+
+.container,
+.footer {
+    width: min(1180px, calc(100% - 32px));
+}
+
+.container {
+    margin-top: -22px;
+}
+
+.hero-hub {
+    margin-bottom: 24px;
+    border: 1px solid rgba(255, 253, 243, 0.16);
+    border-radius: var(--radius-card);
+    /* Stretch the single grid row to fill min-height so .hero-bottom's darker
+       background reaches the bottom edge of the banner. */
+    grid-template-rows: 1fr;
+    background:
+        linear-gradient(90deg, rgba(255, 253, 243, 0.05) 1px, transparent 1px) 0 0 / 64px 64px,
+        linear-gradient(0deg, rgba(255, 253, 243, 0.045) 1px, transparent 1px) 0 0 / 64px 64px,
+        linear-gradient(135deg, #064e31 0%, #0a6a42 58%, #10261c 100%);
+    box-shadow: var(--shadow);
+}
+
+.hero-hub::before {
+    opacity: 0.2;
+}
+
+.hero-card {
+    padding: 24px 28px 20px;
+    gap: 18px;
+}
+
+.hero-comp,
+.competition-code,
+.competition-status,
+.palmeiras-result,
+.cal-match-status,
+.worldcup-kicker,
+.palmeiras-kicker,
+.countdown-label,
+.form-label,
+.stat-label,
+.match-detail-stat span,
+.match-detail-meta span {
+    font-size: 0.7rem;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+}
+
+.hero-comp {
+    width: fit-content;
+    border: 1px solid rgba(255, 253, 243, 0.25);
+    border-radius: var(--radius-control);
+    background: rgba(255, 253, 243, 0.10);
+    color: #f2cf7a;
+    padding: 6px 10px;
+}
+
+.hero-teams {
+    gap: 20px;
+}
+
+.hero-team img,
+.hero-team .team-marker {
+    width: 72px;
+    height: 72px;
+}
+
+.hero-team-name {
+    color: var(--ivory);
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.hero-vs {
+    color: rgba(255, 253, 243, 0.72);
+    font-weight: 500;
+}
+
+.hero-score {
+    color: var(--ivory);
+    font-size: 2.5rem;
+    font-weight: 900;
+}
+
+.hero-meta {
+    color: rgba(255, 253, 243, 0.72);
+    font-size: 0.78rem;
+    font-weight: 500;
+}
+
+.hero-meta-date {
+    color: var(--ivory);
+    font-weight: 700;
+}
+
+.hero-meta-pill {
+    border-radius: var(--radius-control);
+    background: rgba(255, 253, 243, 0.08);
+    border: 1px solid rgba(255, 253, 243, 0.12);
+}
+
+.hero-bottom {
+    border-top-color: rgba(255, 253, 243, 0.13);
+    background: rgba(4, 53, 34, 0.3);
+    padding: 16px 28px;
+}
+
+.countdown-label,
+.form-label {
+    color: rgba(255, 253, 243, 0.62);
+}
+
+.countdown-digits {
+    gap: 8px;
+}
+
+.cd-unit {
+    min-width: 68px;
+    border: 1px solid rgba(255, 253, 243, 0.14);
+    border-radius: var(--radius-control);
+    background: rgba(255, 253, 243, 0.08);
+    padding: 8px 12px;
+}
+
+.cd-val {
+    color: var(--ivory);
+    font-size: 1.45rem;
+    font-weight: 900;
+}
+
+.cd-lbl {
+    color: rgba(255, 253, 243, 0.6);
+    font-size: 0.62rem;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.form-dot,
+.form-badge {
+    border-radius: var(--radius-control);
+    font-weight: 700;
+}
+
+.main-layout {
+    grid-template-columns: minmax(340px, 390px) minmax(0, 1fr);
+    gap: 20px;
+}
+
+.calendar-hub {
+    top: 16px;
+}
+
+.card,
+.palmeiras-home-panel,
+.palmeiras-match-board,
+.competition-card,
+.standings-section,
+.standings-match-group,
+.stats-summary,
+.chart-container,
+.worldcup-hero-panel,
+.worldcup-board,
+.worldcup-brazil-panel,
+.worldcup-info-item,
+.prediction-card,
+.match-details-card {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-card);
+    background: var(--bg-card);
+    box-shadow: var(--shadow-tight);
+}
+
+.card,
+.palmeiras-home-panel,
+.worldcup-hero-panel {
+    padding: 20px;
+}
+
+/* Nested bordered surfaces need their own inset on desktop. Without this,
+   summary grids and table sections sit directly against the outer border. */
+@media (min-width: 721px) {
+    .standings-section,
+    .standings-match-group,
+    .stats-summary {
+        padding: 16px;
+    }
+}
+
+.palmeiras-home-panel,
+.worldcup-hero-panel {
+    background:
+        linear-gradient(90deg, rgba(7, 92, 59, 0.045) 1px, transparent 1px) 0 0 / 48px 48px,
+        linear-gradient(0deg, rgba(7, 92, 59, 0.035) 1px, transparent 1px) 0 0 / 48px 48px,
+        var(--bg-card);
+}
+
+.card-title,
+.palmeiras-board-head h2,
+.worldcup-hero-panel h2 {
+    font-size: 1.35rem;
+    line-height: 1.3;
+    font-weight: 700;
+}
+
+.palmeiras-board-head h3,
+.palmeiras-snapshot-head h3,
+.worldcup-board-head h3,
+.section-head h3 {
+    font-size: 1.05rem;
+    font-weight: 700;
+}
+
+.palmeiras-board-head p,
+.palmeiras-snapshot-head p,
+.competition-hub-head p,
+.section-head p,
+.worldcup-board-head p,
+.worldcup-hero-panel p {
+    color: var(--text-secondary);
+    font-size: 0.84rem;
+    font-weight: 400;
+    line-height: 1.5;
+}
+
+.palmeiras-kicker,
+.worldcup-kicker {
+    color: var(--gold-strong);
+}
+
+.tabs {
+    gap: 4px;
+    margin-bottom: 16px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-card);
+    background: color-mix(in srgb, var(--bg-card) 92%, transparent);
+    padding: 4px;
+    box-shadow: none;
+}
+
+.tab-btn,
+.comp-legend-item,
+.standings-filter,
+.palmeiras-action,
+.palmeiras-filter,
+.worldcup-action,
+.worldcup-filter,
+.competition-card-action,
+.footer-btn,
+.retry-btn {
+    min-height: 40px;
+    border-radius: var(--radius-control);
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.tab-btn.active,
+.comp-legend-item.active,
+.standings-filter.active,
+.palmeiras-action.primary,
+.palmeiras-filter.active {
+    border-color: var(--brand);
+    background: var(--brand);
+    color: var(--ivory);
+}
+
+.worldcup-action.primary,
+.worldcup-filter.active {
+    color: var(--ivory);
+}
+
+.comp-legend {
+    gap: 6px;
+    margin-bottom: 16px;
+}
+
+.comp-legend-item {
+    border-radius: var(--radius-control);
+    padding: 8px 10px;
+}
+
+.comp-legend-dot {
+    width: 7px;
+    height: 7px;
+    box-shadow: none;
+}
+
+.cal-title {
+    font-size: 1.12rem;
+    font-weight: 700;
+}
+
+.cal-title::before {
+    width: 4px;
+    height: 32px;
+    border-radius: 2px;
+}
+
+.cal-title select,
+.calendar-nav span {
+    font-weight: 700;
+}
+
+.cal-nav-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius-control);
+    font-weight: 500;
+}
+
+.calendar-grid {
+    gap: 4px;
+}
+
+.cal-head {
+    color: var(--text-secondary);
+    font-size: 0.68rem;
+    font-weight: 500;
+}
+
+.cal-day {
+    min-height: 44px;
+    border-radius: var(--radius-control);
+    font-weight: 500;
+}
+
+.cal-day-num {
+    font-weight: 700;
+}
+
+.cal-day.has-match {
+    background: color-mix(in srgb, var(--brand-soft) 72%, var(--bg-card));
+}
+
+.cal-day.selected {
+    color: var(--ivory);
+}
+
+.cal-score,
+.cal-overflow {
+    border-radius: 3px;
+    font-weight: 700;
+}
+
+.palmeiras-snapshot-grid {
+    gap: 12px;
+}
+
+.palmeiras-quick-list,
+.worldcup-match-list,
+.palmeiras-match-list {
+    gap: 8px;
+    border-radius: var(--radius-card);
+}
+
+.palmeiras-quick-match,
+.palmeiras-match,
+.worldcup-match,
+.cal-match,
+.competition-match,
+.worldcup-brazil-card {
+    border-color: var(--line);
+    border-left-width: 3px;
+    border-radius: var(--radius-card);
+    background: var(--bg-card);
+    box-shadow: none;
+}
+
+.palmeiras-quick-summary,
+.palmeiras-match-summary,
+.worldcup-match-summary,
+.worldcup-brazil-summary,
+.competition-match-summary {
+    min-height: 72px;
+    padding: 12px;
+}
+
+.competition-match.empty-line {
+    min-height: 72px;
+    box-sizing: border-box;
+    border-left-color: var(--brand);
+    padding: 12px;
+    text-align: left;
+}
+
+.competition-match.empty-line strong {
+    color: var(--text-secondary);
+}
+
+.competition-match.empty-line small {
+    color: var(--text-muted);
+    letter-spacing: 0;
+    text-transform: none;
+}
+
+.palmeiras-quick-date strong,
+.palmeiras-match-date strong,
+.worldcup-match-time,
+.worldcup-brazil-date strong {
+    font-weight: 700;
+}
+
+.palmeiras-quick-date span,
+.palmeiras-match-date span,
+.worldcup-brazil-date span,
+.palmeiras-match-meta,
+.worldcup-match-meta {
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.palmeiras-quick-teams span,
+.palmeiras-team,
+.worldcup-team,
+.cal-match-team-name {
+    font-weight: 600;
+}
+
+.palmeiras-quick-teams strong,
+.palmeiras-score,
+.worldcup-score,
+.cal-match-score {
+    border-radius: var(--radius-control);
+    background: var(--bg-soft);
+    font-weight: 900;
+}
+
+.palmeiras-result,
+.competition-status,
+.cal-match-status {
+    border-radius: 3px;
+    font-weight: 600;
+}
+
+.cal-match-status.pending {
+    color: var(--gold-strong);
+    background: color-mix(in srgb, var(--gold) 14%, transparent);
+}
+
+.cal-expanded-empty {
+    padding-bottom: 12px;
+}
+
+.cal-expanded-empty p {
+    margin: 0;
+    padding: 4px 14px 8px;
+    color: var(--text-secondary);
+    font-size: 0.82rem;
+}
+
+.competition-grid {
+    gap: 12px;
+}
+
+.competition-card {
+    padding: 16px;
+}
+
+.competition-card h3,
+.competition-record strong,
+.worldcup-info-item strong,
+.standings-row .pts {
+    font-weight: 700;
+}
+
+.competition-record div,
+.stat-box,
+.worldcup-info-item,
+.prob-box,
+.match-detail-stat,
+.match-detail-score {
+    border-radius: var(--radius-control);
+    background: color-mix(in srgb, var(--brand-soft) 58%, var(--bg-card));
+}
+
+.stat-value,
+.prob-value {
+    font-weight: 900;
+}
+
+.stat-label,
+.prob-label {
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.standings-table,
+.standings-row,
+.news-item {
+    border-color: var(--line);
+}
+
+.standings-row {
+    min-height: 48px;
+}
+
+.standings-row.palmeiras {
+    background: var(--brand-soft);
+    box-shadow: inset 3px 0 var(--brand);
+}
+
+.news-item {
+    border-radius: var(--radius-card);
+    background: var(--bg-card);
+    box-shadow: none;
+}
+
+.news-item-title,
+.news-item h3 {
+    font-weight: 700;
+}
+
+.news-item-meta,
+.news-item p {
+    color: var(--text-secondary);
+    font-weight: 400;
+}
+
+.skeleton-card,
+.empty,
+.error-state {
+    border-radius: var(--radius-card);
+    background: color-mix(in srgb, var(--brand-soft) 62%, var(--bg-card));
+    color: var(--text-secondary);
+    font-weight: 500;
+    box-shadow: none;
+}
+
+.skeleton-line {
+    border-radius: 3px;
+}
+
+.prediction-badge,
+.prediction-factor {
+    border-radius: var(--radius-control);
+    font-weight: 600;
+}
+
+.footer {
+    color: var(--text-secondary);
+    font-size: 0.76rem;
+    font-weight: 400;
+}
+
+.toast {
+    border-radius: var(--radius-control);
+    background: var(--ink);
+    color: var(--ivory);
+    font-weight: 600;
+    box-shadow: var(--shadow-modal);
+}
+
+body.native-shell {
+    /* Leave breathing room above the native bottom bar so the calendar
+       subscription buttons don't crowd the mobile menu. The bar's own
+       height is reserved natively via safeAreaInset; this padding is the
+       visible gap between the footer and that bar. */
+    padding-bottom: 48px;
+}
+
+body.native-shell .header {
+    min-height: 166px;
+}
+
+body.native-shell .header-content {
+    max-width: 440px;
+}
+
+body.native-shell .header-actions {
+    display: none;
+}
+
+@media (max-width: 1080px) {
+    .hero-hub,
+    .main-layout {
+        grid-template-columns: 1fr;
+    }
+
+    /* Two-row mobile layout: size rows to content, not 1fr. */
+    .hero-hub {
+        grid-template-rows: auto auto;
+    }
+
+    .calendar-hub {
+        position: static;
+    }
+}
+
+@media (max-width: 720px) {
+    body {
+        font-size: 15px;
+        line-height: 1.55;
+        padding-bottom: 20px;
+    }
+
+    .header {
+        min-height: 166px;
+        /* Mirror mobile container gutter: min(440px, 100% - 32px) centered. */
+        padding: 18px max(16px, calc((100% - 440px) / 2)) 28px;
+    }
+
+    .header-content {
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-rows: auto 38px;
+        column-gap: 8px;
+        row-gap: 14px;
+    }
+
+    .header-brand {
+        gap: 12px;
+    }
+
+    .logo {
+        width: 48px;
+        height: 48px;
+    }
+
+    .header-text h1 {
+        font-size: 1.25rem;
+    }
+
+    .subtitle {
+        font-size: 0.72rem;
+        line-height: 1.35;
+    }
+
+    .container,
+    .footer {
+        width: min(100% - 16px, 440px);
+    }
+
+    .container {
+        margin-top: -18px;
+    }
+
+    .header .team-scope-control {
+        grid-column: 1;
+        grid-row: 2;
+        gap: 24px;
+    }
+
+    .header .team-scope-control button {
+        min-height: 38px;
+        padding: 4px 0 10px;
+    }
+
+    .header .quick-preference-actions {
+        grid-column: 2;
+        grid-row: 2;
+        gap: 2px;
+    }
+
+    .header .header-actions {
+        grid-column: 2;
+        grid-row: 1;
+        gap: 2px;
+    }
+
+    .hero-hub {
+        margin-bottom: 12px;
+    }
+
+    .hero-card {
+        padding: 18px 14px 16px;
+        gap: 16px;
+    }
+
+    .hero-teams {
+        grid-template-columns: minmax(0, 1fr) 44px minmax(0, 1fr);
+        gap: 8px;
+    }
+
+    .hero-team img,
+    .hero-team .team-marker {
+        width: 52px;
+        height: 52px;
+        min-width: 52px;
+        flex-basis: 52px;
+    }
+
+    .hero-team-name {
+        font-size: 0.9rem;
+    }
+
+    .hero-score {
+        font-size: 2rem;
+    }
+
+    .hero-meta {
+        gap: 6px;
+        font-size: 0.72rem;
+    }
+
+    .hero-bottom {
+        padding: 14px;
+    }
+
+    .countdown-digits {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 6px;
+    }
+
+    .cd-sep {
+        display: none;
+    }
+
+    .cd-unit {
+        min-width: 0;
+        padding: 7px 4px;
+    }
+
+    .cd-val {
+        font-size: 1.28rem;
+    }
+
+    .card,
+    .palmeiras-home-panel,
+    .worldcup-hero-panel,
+    .worldcup-board,
+    .worldcup-brazil-panel {
+        padding: 16px;
+    }
+
+    .card-title,
+    .palmeiras-board-head h2,
+    .worldcup-hero-panel h2 {
+        font-size: 1.18rem;
+    }
+
+    .palmeiras-snapshot-grid,
+    .worldcup-brazil-list,
+    .worldcup-info-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .palmeiras-board-head,
+    .worldcup-hero-panel,
+    .worldcup-board-head,
+    .section-head {
+        grid-template-columns: 1fr;
+        align-items: start;
+    }
+
+    .palmeiras-actions,
+    .worldcup-actions,
+    .worldcup-filter-group {
+        justify-content: flex-start;
+    }
+
+    .tabs {
+        margin-inline: 0;
+    }
+
+    .tab-btn,
+    .comp-legend-item,
+    .standings-filter,
+    .palmeiras-action,
+    .palmeiras-filter,
+    .worldcup-action,
+    .worldcup-filter,
+    .competition-card-action,
+    .footer-btn,
+    .retry-btn,
+    .cal-nav-btn {
+        min-height: 44px;
+    }
+
+    .comp-legend {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        padding-bottom: 4px;
+        scrollbar-width: none;
+    }
+
+    .comp-legend::-webkit-scrollbar {
+        display: none;
+    }
+
+    .comp-legend-item {
+        flex: 0 0 auto;
+    }
+
+    .calendar-grid {
+        gap: 3px;
+    }
+
+    .cal-day {
+        aspect-ratio: auto;
+        min-height: 48px;
+        padding: 6px 2px 4px;
+    }
+
+    .palmeiras-quick-summary,
+    .palmeiras-match-summary,
+    .worldcup-match-summary,
+    .worldcup-brazil-summary {
+        grid-template-columns: 52px minmax(0, 1fr);
+        gap: 8px;
+        padding: 10px;
+    }
+
+    .palmeiras-quick-teams,
+    .palmeiras-teams,
+    .worldcup-teams {
+        grid-template-columns: minmax(0, 1fr) 42px minmax(0, 1fr);
+        gap: 6px;
+    }
+
+    .footer-actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    body.native-shell .header {
+        min-height: 166px;
+        padding-top: 16px;
+    }
+
+    body.native-shell .container {
+        margin-top: -18px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html {
+        scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* Phone-width containment: keep the document inside the visual viewport while
+   preserving horizontal scrolling only inside intentional filter/tab rails. */
+html,
+body {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: clip;
+    overscroll-behavior-x: none;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+}
+
+.header-content,
+.header-text,
+.container,
+.footer,
+.tab-content,
+.hero-hub,
+.card,
+.competition-hub,
+.palmeiras-home-shell,
+.worldcup-shell {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.tabs,
+.comp-legend,
+.standings-filter-group,
+.palmeiras-filter-group,
+.worldcup-filter-group {
+    min-width: 0;
+    max-width: 100%;
+    overscroll-behavior-inline: contain;
+}
+
+@media (max-width: 720px) {
+    body.native-shell .header-content {
+        padding-right: 0;
+    }
+
+    .container,
+    .footer {
+        width: min(440px, calc(100% - 16px));
+    }
+}
+
+@media (max-width: 360px) {
+    .header {
+        /* Match the 360px container: calc(100% - 12px) → 6px gutter. */
+        padding-inline: 6px;
+    }
+
+    .header-content {
+        column-gap: 4px;
+    }
+
+    .logo {
+        width: 44px;
+        height: 44px;
+    }
+
+    .header-text h1 {
+        font-size: 1.05rem;
+    }
+
+    .subtitle {
+        font-size: 0.68rem;
+    }
+
+    .header .team-scope-control {
+        gap: 18px;
+    }
+
+    .header .team-scope-control button {
+        font-size: 0.76rem;
+    }
+
+    .container,
+    .footer {
+        width: calc(100% - 12px);
+    }
+}
+
+/* Classification table
+   Keep the information table-driven at every viewport. Club identity stays
+   anchored while the complete statistical record remains horizontally
+   available on compact screens. */
+.standings-team-snapshot {
+    display: grid;
+    grid-template-columns: minmax(190px, 1.25fr) minmax(0, 2fr);
+    gap: 8px;
+    align-items: stretch;
+    margin-bottom: 14px;
+}
+
+.standings-team-identity {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 11px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-control);
+    background: color-mix(in srgb, var(--brand-soft) 58%, var(--bg-card));
+    padding: 12px 14px;
+}
+
+.standings-team-identity img {
+    width: 42px;
+    height: 42px;
+    flex: 0 0 42px;
+    object-fit: contain;
+    background: transparent;
+}
+
+.standings-team-identity div {
+    display: grid;
+    min-width: 0;
+    gap: 1px;
+}
+
+.standings-team-identity span {
+    color: var(--text-secondary);
+    font-size: 0.72rem;
+    line-height: 1.2;
+    font-weight: 700;
+}
+
+.standings-team-identity strong {
+    color: var(--brand);
+    font-size: 1.1rem;
+    line-height: 1.2;
+    font-weight: 900;
+}
+
+.standings-key-stats {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+    min-width: 0;
+    margin: 0;
+}
+
+.standings-key-stats div {
+    display: grid;
+    min-width: 0;
+    min-height: 68px;
+    align-content: center;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-control);
+    background: color-mix(in srgb, var(--brand-soft) 58%, var(--bg-card));
+    padding: 10px 8px;
+    text-align: center;
+}
+
+.standings-key-stats dt {
+    color: var(--text-muted);
+    font-size: 0.66rem;
+    line-height: 1.2;
+    font-weight: 700;
+}
+
+.standings-key-stats dd {
+    margin: 3px 0 0;
+    color: var(--ink);
+    font-size: 1rem;
+    line-height: 1.1;
+    font-weight: 900;
+}
+
+.standings-key-stats .positive,
+.standings-data-table .positive {
+    color: var(--win);
+}
+
+.standings-key-stats .negative,
+.standings-data-table .negative {
+    color: var(--loss);
+}
+
+.standings-zone-legend {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 16px;
+    margin: 0 0 10px;
+    color: var(--text-secondary);
+    font-size: 0.68rem;
+    line-height: 1.2;
+    font-weight: 700;
+}
+
+.standings-zone-legend > span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.standings-zone-legend .standings-zone-title {
+    color: var(--ink);
+    font-weight: 900;
+}
+
+.standings-zone-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--line-strong);
+}
+
+.standings-zone-dot.libertadores,
+.standings-zone-dot.knockout {
+    background: #2d7db8;
+}
+
+.standings-zone-dot.sudamericana {
+    background: var(--gold);
+}
+
+.standings-zone-dot.relegation {
+    background: var(--loss);
+}
+
+.standings-scroll-hint {
+    display: none;
+}
+
+.standings-table-shell {
+    width: 100%;
+    min-width: 0;
+    overflow-x: auto;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-card);
+    background: var(--bg-card);
+    scrollbar-color: var(--brand) color-mix(in srgb, var(--brand-soft) 58%, var(--bg-card));
+    scrollbar-width: thin;
+    overscroll-behavior-inline: contain;
+    -webkit-overflow-scrolling: touch;
+}
+
+.standings-table-shell:focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 2px;
+}
+
+.standings-data-table {
+    width: 100%;
+    min-width: 760px;
+    border-collapse: separate;
+    border-spacing: 0;
+    table-layout: fixed;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+}
+
+.standings-data-table th,
+.standings-data-table td {
+    height: 50px;
+    border-bottom: 1px solid var(--line);
+    background: var(--bg-card);
+    padding: 0 10px;
+    text-align: center;
+    vertical-align: middle;
+    font-size: 0.78rem;
+    line-height: 1;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.standings-data-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    height: 40px;
+    background: color-mix(in srgb, var(--brand-soft) 58%, var(--bg-card));
+    color: var(--text-muted);
+    font-size: 0.66rem;
+    letter-spacing: 0.045em;
+    text-transform: uppercase;
+}
+
+.standings-data-table abbr {
+    border: 0;
+    text-decoration: none;
+    cursor: help;
+}
+
+.standings-data-table tbody tr:last-child th,
+.standings-data-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.standings-data-table .standing-position-cell {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    width: 52px;
+    color: var(--brand);
+    font-weight: 900;
+}
+
+.standings-data-table tbody .standing-position-cell::before {
+    content: "";
+    position: absolute;
+    inset: 8px auto 8px 0;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background: transparent;
+}
+
+.standings-data-table .zone-libertadores .standing-position-cell,
+.standings-data-table .zone-knockout .standing-position-cell {
+    color: #2d7db8;
+}
+
+.standings-data-table .zone-libertadores .standing-position-cell::before,
+.standings-data-table .zone-knockout .standing-position-cell::before {
+    background: #2d7db8;
+}
+
+.standings-data-table .zone-sudamericana .standing-position-cell {
+    color: var(--gold-strong);
+}
+
+.standings-data-table .zone-sudamericana .standing-position-cell::before {
+    background: var(--gold);
+}
+
+.standings-data-table .zone-relegation .standing-position-cell {
+    color: var(--loss);
+}
+
+.standings-data-table .zone-relegation .standing-position-cell::before {
+    background: var(--loss);
+}
+
+.standings-data-table .standing-club-cell {
+    position: sticky;
+    left: 52px;
+    z-index: 2;
+    width: 232px;
+    overflow: hidden;
+    text-align: left;
+}
+
+.standings-data-table thead .standing-position-cell,
+.standings-data-table thead .standing-club-cell {
+    z-index: 4;
+    background: color-mix(in srgb, var(--brand-soft) 58%, var(--bg-card));
+}
+
+.standings-data-table tbody .standing-club-cell {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--ink);
+    font-size: 0.82rem;
+    font-weight: 800;
+}
+
+.standings-data-table .standing-club-cell::after {
+    content: "";
+    position: absolute;
+    inset: 0 0 0 auto;
+    width: 1px;
+    background: var(--line);
+}
+
+.standings-data-table .standing-club-cell img {
+    width: 28px;
+    height: 28px;
+    flex: 0 0 28px;
+    object-fit: contain;
+    background: transparent;
+}
+
+.standings-data-table .standing-club-cell span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.standings-data-table .standing-points-cell {
+    width: 58px;
+    color: var(--brand);
+    font-size: 0.86rem;
+    font-weight: 900;
+}
+
+.standings-data-table tbody tr.palmeiras th,
+.standings-data-table tbody tr.palmeiras td {
+    border-top: 1px solid color-mix(in srgb, var(--brand) 28%, transparent);
+    border-bottom-color: color-mix(in srgb, var(--brand) 28%, transparent);
+    background: color-mix(in srgb, var(--brand-soft) 84%, var(--bg-card));
+}
+
+.standings-data-table tbody tr.palmeiras .standing-club-cell,
+.standings-data-table tbody tr.palmeiras .standing-points-cell {
+    color: var(--brand);
+    font-weight: 900;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .standings-data-table tbody tr:hover th,
+    .standings-data-table tbody tr:hover td {
+        background: color-mix(in srgb, var(--brand-soft) 48%, var(--bg-card));
+    }
+}
+
+@media (max-width: 720px) {
+    .standings-team-snapshot {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+
+    .standings-key-stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .standings-team-identity img {
+        width: 38px;
+        height: 38px;
+        flex-basis: 38px;
+    }
+
+    .standings-key-stats div {
+        min-height: 58px;
+        padding: 8px 6px;
+    }
+
+    .standings-key-stats dt {
+        font-size: 0.62rem;
+    }
+
+    .standings-key-stats dd {
+        font-size: 0.9rem;
+    }
+
+    .standings-zone-legend {
+        gap: 7px 12px;
+        margin-bottom: 8px;
+    }
+
+    .standings-zone-legend .standings-zone-title {
+        width: 100%;
+    }
+
+    .standings-scroll-hint {
+        display: block;
+        margin: 0 0 7px;
+        color: var(--text-muted);
+        font-size: 0.65rem;
+        line-height: 1.25;
+        font-weight: 700;
+    }
+
+    .standings-data-table {
+        min-width: 704px;
+    }
+
+    .standings-data-table th,
+    .standings-data-table td {
+        height: 48px;
+        padding-inline: 8px;
+    }
+
+    .standings-data-table .standing-position-cell {
+        width: 44px;
+    }
+
+    .standings-data-table .standing-club-cell {
+        left: 44px;
+        width: 164px;
+    }
+
+    .standings-data-table tbody .standing-club-cell {
+        gap: 8px;
+        font-size: 0.78rem;
+    }
+
+    .standings-data-table .standing-club-cell img {
+        width: 25px;
+        height: 25px;
+        flex-basis: 25px;
+    }
+
+    .standings-data-table .standing-points-cell {
+        width: 50px;
+    }
+}
+
+@media (max-width: 360px) {
+    .standings-data-table .standing-club-cell {
+        width: 150px;
+    }
+}
+
+/* Desktop navigation begins in the page flow and becomes a compact floating
+   surface only after the main header has left the viewport. Touch Web/PWA
+   keeps the established bottom rail, while native shells keep their own nav. */
+@media (hover: hover) and (pointer: fine) {
+    body:not(.native-shell) .tabs {
+        position: sticky;
+        top: max(12px, env(safe-area-inset-top, 0px));
+        z-index: 60;
+        transform-origin: top center;
+        transition:
+            transform 180ms ease,
+            background-color 180ms ease,
+            border-color 180ms ease,
+            box-shadow 180ms ease,
+            padding 180ms ease;
+    }
+
+    body:not(.native-shell) .tabs.is-floating {
+        border-color: var(--line-strong);
+        background: color-mix(in srgb, var(--bg-card) 88%, transparent);
+        padding-block: 3px;
+        box-shadow: 0 12px 32px rgba(4, 53, 34, 0.16);
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+        transform: scale(0.985);
+    }
+
+    body:not(.native-shell) .tabs.is-floating .tab-btn {
+        min-height: 36px;
+        padding-block: 6px;
+        font-size: 0.77rem;
+    }
+
+    body.dark:not(.native-shell) .tabs.is-floating {
+        background: color-mix(in srgb, var(--bg-card) 86%, transparent);
+        box-shadow: 0 14px 34px rgba(0, 0, 0, 0.34);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    body:not(.native-shell) .tabs {
+        transition: none;
+    }
+}
+
+/* A narrow desktop window should retain desktop navigation. The phone-style
+   bottom rail is reserved for touch-first Web/PWA contexts. */
+@media (max-width: 720px) and (hover: hover) and (pointer: fine) {
+    body:not(.native-shell) {
+        padding-bottom: 20px;
+    }
+
+    body:not(.native-shell) .tabs {
+        position: sticky;
+        z-index: 60;
+        inset: auto;
+        top: max(12px, env(safe-area-inset-top, 0px));
+        width: auto;
+        margin: 0 0 16px;
+        display: flex;
+        grid-template-columns: none;
+        gap: 4px;
+        border-color: var(--line);
+        border-radius: var(--radius-card);
+        background: color-mix(in srgb, var(--bg-card) 92%, transparent);
+        padding: 4px;
+        overflow-x: auto;
+        box-shadow: none;
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+    }
+
+    body:not(.native-shell) .tab-btn {
+        min-width: max-content;
+        min-height: 40px;
+        display: block;
+        flex: 1 0 max-content;
+        border-radius: var(--radius-control);
+        padding: 8px 14px;
+        font-size: 0.8rem;
+        line-height: normal;
+        white-space: nowrap;
+    }
+
+    body:not(.native-shell) .tab-btn::after {
+        content: none;
+    }
+
+    body:not(.native-shell) .tab-btn.active {
+        background: var(--brand);
+        color: var(--ivory);
+    }
+
+    body:not(.native-shell) .tab-label,
+    body:not(.native-shell) .tabs .tab-secondary {
+        display: inline !important;
+    }
+
+    body:not(.native-shell) .tab-icon {
+        display: none;
+    }
+}
+
+/* Mobile spacing system: 16px page gutters and panel padding, with 12px
+   component gaps. Compact phones keep 12px gutters and 14px panel padding. */
+@media (max-width: 720px) {
+    .container,
+    .footer {
+        width: min(440px, calc(100% - 32px));
+    }
+
+    .main-layout,
+    .palmeiras-home-shell,
+    .worldcup-shell {
+        gap: 16px;
+    }
+
+    .hero-hub,
+    .tabs,
+    .card {
+        margin-bottom: 16px;
+    }
+
+    /* Calendar filters wrap inside the panel instead of implying that the
+       document itself continues beyond the phone viewport. */
+    .comp-legend {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+        overflow: visible;
+        padding-bottom: 0;
+    }
+
+    .comp-legend-item {
+        width: 100%;
+        min-width: 0;
+        justify-content: flex-start;
+        white-space: normal;
+        line-height: 1.2;
+        text-align: left;
+    }
+
+    /* Tabelas uses independent, consistently padded surfaces on phones.
+       This gives every competition a clear boundary and predictable rhythm. */
+    #classificacao > .card {
+        border: 0;
+        background: transparent;
+        padding: 0;
+        box-shadow: none;
+    }
+
+    #classificacao .standings-head {
+        margin: 0 0 12px;
+        border: 1px solid var(--line);
+        border-radius: var(--radius-card);
+        background: var(--bg-card);
+        padding: 16px;
+        box-shadow: var(--shadow-tight);
+    }
+
+    .standings-filter-group {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+        width: 100%;
+    }
+
+    .standings-filter {
+        width: 100%;
+        min-width: 0;
+        padding: 9px 8px;
+        white-space: normal;
+        line-height: 1.2;
+        text-align: center;
+    }
+
+    #standings {
+        display: grid;
+        gap: 12px;
+        min-width: 0;
+    }
+
+    #standings > .standings-section,
+    #standings > .standings-campaign,
+    #standings > .empty,
+    #standings > .error-state {
+        min-width: 0;
+        margin: 0;
+        border: 1px solid var(--line);
+        border-radius: var(--radius-card);
+        background: var(--bg-card);
+        padding: 16px;
+        box-shadow: var(--shadow-tight);
+    }
+
+    #standings > .standings-section + .standings-section {
+        margin-top: 0;
+        border-top: 1px solid var(--line);
+        padding-top: 16px;
+    }
+
+    .stats-summary {
+        padding: 16px;
+    }
+
+    #news-list {
+        display: grid;
+        gap: 12px;
+        margin-top: 12px;
+    }
+
+    #news-list .news-item {
+        margin-top: 0;
+        padding: 14px;
+    }
+}
+
+@media (max-width: 360px) {
+    .container,
+    .footer {
+        width: calc(100% - 24px);
+    }
+
+    .card,
+    .palmeiras-home-panel,
+    .worldcup-hero-panel,
+    .worldcup-board,
+    .worldcup-brazil-panel,
+    #classificacao .standings-head,
+    #standings > .standings-section,
+    #standings > .standings-campaign,
+    #standings > .empty,
+    #standings > .error-state,
+    .standings-match-group,
+    .stats-summary {
+        padding: 14px;
+    }
+}

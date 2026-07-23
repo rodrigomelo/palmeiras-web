@@ -3,72 +3,135 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Palmeiras Agenda — Jogos, tabelas, notícias e calendário</title>
-    <meta name="description" content="Acompanhe o Palmeiras com agenda de jogos, placares, tabelas, notícias recentes e calendário ICS com Copa 2026.">
-    <meta name="theme-color" content="#075C3B">
+    <title>Palmeiras Agenda — A agenda completa do Verdão</title>
+    <meta name="description" content="Acompanhe Palmeiras masculino e feminino com agenda, alertas, histórico, placares, tabelas e calendário.">
+    <meta name="application-name" content="Palmeiras Agenda">
+    <meta name="theme-color" content="#043522">
     <meta name="api-base-url" content="">
     <meta name="color-scheme" content="light dark">
     <meta name="robots" content="index,follow">
     <link rel="canonical" href="https://palmeiras.rodrigolanna.com.br/">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="Palmeiras Agenda">
-    <meta property="og:title" content="Palmeiras Agenda — jogos e próximos desafios do Verdão">
+    <meta property="og:title" content="A agenda completa do Verdão">
     <meta property="og:description" content="Jogos, placares, tabelas, notícias, calendário do Palmeiras e seção especial da Copa do Mundo 2026.">
     <meta property="og:url" content="https://palmeiras.rodrigolanna.com.br/">
-    <meta property="og:image" content="https://palmeiras.rodrigolanna.com.br/static/brand/palmeiras-agenda-social-card-v7.png">
+    <meta property="og:image" content="https://palmeiras.rodrigolanna.com.br/static/brand/palmeiras-agenda-social-card-v12.png">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:image" content="https://palmeiras.rodrigolanna.com.br/static/brand/palmeiras-agenda-social-card-v7.png">
+    <meta name="twitter:image" content="https://palmeiras.rodrigolanna.com.br/static/brand/palmeiras-agenda-social-card-v12.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800&display=swap" rel="stylesheet">
     <link rel="icon" type="image/png" href="/static/favicon.png">
-    <link rel="icon" type="image/svg+xml" href="/static/brand/palmeiras-agenda-mark.svg?v=5">
-    <link rel="icon" type="image/png" sizes="16x16" href="/static/brand/palmeiras-agenda-favicon-16-v5.png">
-    <link rel="icon" type="image/png" sizes="32x32" href="/static/brand/palmeiras-agenda-favicon-32-v5.png">
-    <link rel="icon" type="image/png" href="/static/brand/palmeiras-agenda-favicon-v5.png">
-    <link rel="apple-touch-icon" href="/static/brand/palmeiras-agenda-apple-touch-icon-v5.png">
-    <link rel="apple-touch-icon" sizes="192x192" href="/static/brand/palmeiras-agenda-icon-192-v5.png">
-    <link rel="apple-touch-icon" sizes="512x512" href="/static/brand/palmeiras-agenda-icon-512-v5.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/static/brand/palmeiras-agenda-favicon-16-v12.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/brand/palmeiras-agenda-favicon-32-v12.png">
+    <link rel="icon" type="image/png" href="/static/brand/palmeiras-agenda-favicon-v12.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/static/brand/palmeiras-agenda-apple-touch-icon-v12.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Palmeiras">
-    <link rel="manifest" href="/manifest.webmanifest">
+    <meta name="apple-mobile-web-app-title" content="Palmeiras Agenda">
+    <link rel="manifest" href="/manifest.webmanifest?v=16">
     <link rel="alternate" type="text/calendar" title="Palmeiras Agenda" href="/api/v1/calendar.ics">
-    <link rel="stylesheet" href="/static/css/styles.css?v=56">
+    <link rel="stylesheet" href="/static/css/styles.css?v=81">
+    <link rel="stylesheet" href="/static/css/design-system.css?v=17">
 </head>
 <body>
     <a class="skip-link" href="#main-content">Pular para o conteúdo</a>
-    <button type="button" class="theme-toggle" id="themeToggle" title="Alternar tema" aria-label="Alternar tema claro/escuro" aria-pressed="false">Tema</button>
 
     <!-- Compact Header -->
     <header class="header">
         <div class="header-content">
-            <a class="logo" href="/" aria-label="Voltar para a página inicial">
-                <img src="/static/brand/palmeiras-agenda-mark.svg?v=4" alt="Palmeiras Agenda">
-            </a>
-            <div class="header-text">
-                <h1>Palmeiras Agenda</h1>
-                <div class="subtitle">Agenda tática de jogos, desempenho e calendário</div>
+            <div class="header-brand">
+                <a class="logo" href="/" aria-label="Voltar para a página inicial">
+                    <img src="/static/brand/palmeiras-agenda-mark.svg?v=12" alt="Logo Palmeiras Agenda">
+                </a>
+                <div class="header-text">
+                    <h1>Palmeiras Agenda</h1>
+                    <div class="subtitle">A agenda completa do Verdão</div>
+                    <div class="product-disclosure">Aplicativo independente · não oficial</div>
+                </div>
             </div>
-            <button type="button" id="refreshButton" class="refresh-btn" aria-label="Atualizar dados agora"><span class="refresh-icon" aria-hidden="true">↻</span></button>
+            <div class="team-scope-control" role="group" aria-label="Escolher equipe">
+                <button type="button" data-team-scope="men" aria-pressed="true">Masculino</button>
+                <button type="button" data-team-scope="women" aria-pressed="false">Feminino</button>
+            </div>
+            <div class="quick-preference-actions" aria-label="Visibilidade e alertas">
+                <label class="utility-icon-action spoiler-toggle" for="spoilerFreeToggle" title="Ocultar placares">
+                    <input class="sr-only" type="checkbox" id="spoilerFreeToggle" role="switch" aria-label="Ocultar placares">
+                    <svg class="icon-scores-visible" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6S2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="2.75"/></svg>
+                    <svg class="icon-scores-hidden" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 3l18 18M10.6 6.1A10.8 10.8 0 0 1 12 6c6 0 9.5 6 9.5 6a17 17 0 0 1-2.4 3.1M6.1 7.3A16.9 16.9 0 0 0 2.5 12s3.5 6 9.5 6a10.8 10.8 0 0 0 3.1-.4M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>
+                </label>
+                <button type="button" class="utility-icon-action notification-toggle" id="quickNotifyButton" aria-pressed="false" aria-label="Ativar alertas" title="Ativar alertas">
+                    <svg class="icon-alerts-off" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 4l16 16M14.7 18H5.5c1.4-1.5 2-3.2 2-5.2V10a4.5 4.5 0 0 1 .6-2.3M10 5.7A4.7 4.7 0 0 1 12 5c2.5 0 4.5 2.2 4.5 5v2.8c0 .9.1 1.7.4 2.5M10.2 20a2.2 2.2 0 0 0 3.6 0"/></svg>
+                    <svg class="icon-alerts-on" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5.5 18h13c-1.4-1.5-2-3.2-2-5.2V10c0-2.8-2-5-4.5-5s-4.5 2.2-4.5 5v2.8c0 2-.6 3.7-2 5.2ZM10.2 20a2.2 2.2 0 0 0 3.6 0M12 2.5V5"/></svg>
+                </button>
+            </div>
+            <div class="header-actions">
+                <button type="button" class="theme-toggle" id="themeToggle" title="Alternar tema" aria-label="Alternar tema claro/escuro" aria-pressed="false">Tema</button>
+                <button type="button" id="refreshButton" class="refresh-btn" aria-label="Atualizar dados agora">
+                    <svg class="refresh-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                        <path d="M20 11a8.1 8.1 0 0 0-15.5-2M4 4v5h5M4 13a8.1 8.1 0 0 0 15.5 2M20 20v-5h-5"/>
+                    </svg>
+                </button>
+            </div>
+            <span class="toolbar-status sr-only" id="featureStatus" aria-live="polite"></span>
         </div>
     </header>
 
     <main class="container" id="main-content" tabindex="-1">
 
         <!-- ============================================ -->
-        <!-- HERO — Live match + Countdown + Form         -->
+        <!-- PRIMARY SECTION MENU                         -->
         <!-- ============================================ -->
+        <div class="tabs" role="tablist" aria-label="Seções do aplicativo">
+            <button class="tab-btn active" data-tab="home" data-mobile-label="Agenda" role="tab" id="tab-home" aria-selected="true" aria-controls="home">
+                <svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>
+                <span class="tab-label">Agenda</span>
+            </button>
+            <button class="tab-btn" data-tab="classificacao" data-mobile-label="Tabelas" role="tab" id="tab-classificacao" aria-selected="false" aria-controls="classificacao">
+                <svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 6h12M9 12h12M9 18h12"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></svg>
+                <span class="tab-label">Tabelas</span>
+            </button>
+            <button class="tab-btn" data-tab="estatisticas" data-mobile-label="Estatísticas" role="tab" id="tab-estatisticas" aria-selected="false" aria-controls="estatisticas">
+                <svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 20V10h4v10M10 20V4h4v16M16 20v-7h4v7M2 20h20"/></svg>
+                <span class="tab-label">Estatísticas</span>
+            </button>
+            <button class="tab-btn" data-tab="historico" data-mobile-label="Histórico" role="tab" id="tab-historico" aria-selected="false" aria-controls="historico">
+                <svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 12a8 8 0 1 0 2.3-5.7L4 8.6M4 4v4.6h4.6M12 8v5l3 2"/></svg>
+                <span class="tab-label">Histórico</span>
+            </button>
+            <button class="tab-btn tab-secondary" data-tab="worldcup" data-mobile-label="Copa 2026" role="tab" id="tab-worldcup" aria-selected="false" aria-controls="worldcup">
+                <svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 3h8v4c0 4-1.6 7-4 8.5C9.6 14 8 11 8 7V3Z"/><path d="M8 6H4v2c0 3 2 5 5 5M16 6h4v2c0 3-2 5-5 5M12 16v4M8 21h8"/></svg>
+                <span class="tab-label">Copa 2026</span>
+            </button>
+            <button class="tab-btn tab-secondary" data-tab="news" data-mobile-label="Notícias" role="tab" id="tab-news" aria-selected="false" aria-controls="news">
+                <svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 4h13v16H4zM17 8h3v12h-3M7 8h7M7 12h7M7 16h4"/></svg>
+                <span class="tab-label">Notícias</span>
+            </button>
+            <button class="tab-btn" data-tab="ajustes" data-mobile-label="Ajustes" role="tab" id="tab-ajustes" aria-selected="false" aria-controls="ajustes">
+                <svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.9 4.9 7 7M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1 7 17M17 7l2.1-2.1"/></svg>
+                <span class="tab-label">Ajustes</span>
+            </button>
+        </div>
+
+        <!-- ============================================ -->
+        <!-- SECTION CONTENT                              -->
+        <!-- ============================================ -->
+        <div class="main-layout">
+        <div class="main-content">
+        <!-- ============================================ -->
+        <!-- TAB PANELS                                   -->
+        <!-- ============================================ -->
+        <div class="dashboard-grid">
+
+        <!-- Home -->
+        <div id="home" class="tab-content active" role="tabpanel" aria-labelledby="tab-home">
         <section class="hero-hub" id="hero-hub" aria-labelledby="hero-title">
             <h2 class="sr-only" id="hero-title">Próximo jogo em destaque</h2>
-            <!-- Match Card -->
             <div class="hero-card" id="hero-match">
-                <!-- Competition badge -->
                 <div class="hero-comp" id="hero-comp-badge">Carregando...</div>
-
-                <!-- Teams -->
                 <div class="hero-teams" id="hero-teams-area">
                     <div class="hero-team" id="hero-home">
                         <img src="/static/crests/1769.png" alt="">
@@ -86,8 +149,6 @@
                     <strong>Dados temporariamente indisponíveis</strong>
                     <span>Tente atualizar em instantes.</span>
                 </div>
-
-                <!-- Date + Detail pills row -->
                 <div class="hero-meta" id="hero-meta-area">
                     <span class="hero-meta-date" id="hero-date-area">—</span>
                     <span class="hero-meta-sep">·</span>
@@ -97,8 +158,6 @@
                     <span class="hero-meta-pill" id="pill-stage" style="display:none">Fase —</span>
                 </div>
             </div>
-
-            <!-- Bottom bar: Countdown + Form -->
             <div class="hero-bottom" id="hero-bottom">
                 <div class="hero-countdown" id="hero-countdown">
                     <div class="countdown-label">Jogo em</div>
@@ -112,21 +171,13 @@
                         <span class="cd-unit"><span class="cd-val" id="cd-secs">0</span><span class="cd-lbl">seg</span></span>
                     </div>
                 </div>
-                <div class="form-widget" id="form-widget" style="display:none">
-                    <span class="form-label">Sequência</span>
-                    <div class="form-dots" id="form-dots"></div>
-                </div>
-                <div class="hero-brazil-next" id="hero-brazil-next" style="display:none">
-                    <span class="form-label">Próximos do Brasil</span>
-                    <div class="hero-brazil-list" id="hero-brazil-list"></div>
+                <div id="hero-context" class="hero-context" aria-live="polite">
+                    <div class="hero-context-loading">Carregando retrospecto...</div>
                 </div>
             </div>
         </section>
 
-        <!-- ============================================ -->
-        <!-- CALENDAR HUB — main view below hero          -->
-        <!-- ============================================ -->
-        <div class="main-layout">
+        <div class="agenda-content-grid">
         <section class="calendar-hub" id="calendar-hub" aria-labelledby="calendar-title">
             <div class="card">
                 <div class="cal-header">
@@ -134,9 +185,7 @@
                         <label class="sr-only" for="cal-year-select">Ano do calendário</label>
                         <select id="cal-year-select"></select>
                     </div>
-
                 </div>
-                <!-- Competition Legend -->
                 <div class="comp-legend" id="comp-legend" aria-label="Filtrar calendário por competição">
                     <button type="button" class="comp-legend-item active" data-comp="all" aria-pressed="true">
                         <span class="comp-legend-dot" style="background:#075C3B" aria-hidden="true"></span>
@@ -158,6 +207,10 @@
                         <span class="comp-legend-dot" style="background:#6B7F32" aria-hidden="true"></span>
                         <span class="comp-legend-label">Paulistão</span>
                     </button>
+                    <button type="button" class="comp-legend-item women-competition" data-comp="BFA1" aria-pressed="false">
+                        <span class="comp-legend-dot" style="background:#8B3F68" aria-hidden="true"></span>
+                        <span class="comp-legend-label">Brasileiro Feminino</span>
+                    </button>
                     <button type="button" class="comp-legend-item" data-comp="WC" aria-pressed="false">
                         <span class="comp-legend-dot" style="background:#8B5CF6" aria-hidden="true"></span>
                         <span class="comp-legend-label">Copa 2026</span>
@@ -173,35 +226,14 @@
             </div>
         </section>
 
-        <!-- ============================================ -->
-        <!-- SECONDARY TABS — Tabelas, Estatísticas, etc.  -->
-        <!-- ============================================ -->
-        <div class="main-content">
-        <div class="tabs" role="tablist" aria-label="Seções do aplicativo">
-            <button class="tab-btn active" data-tab="home" role="tab" id="tab-home" aria-selected="true" aria-controls="home">Home</button>
-            <button class="tab-btn" data-tab="classificacao" role="tab" id="tab-classificacao" aria-selected="false" aria-controls="classificacao">Tabelas</button>
-            <button class="tab-btn" data-tab="estatisticas" role="tab" id="tab-estatisticas" aria-selected="false" aria-controls="estatisticas">Estatísticas</button>
-            <button class="tab-btn" data-tab="worldcup" role="tab" id="tab-worldcup" aria-selected="false" aria-controls="worldcup">Copa 2026</button>
-            <button class="tab-btn" data-tab="news" role="tab" id="tab-news" aria-selected="false" aria-controls="news">Notícias</button>
-        </div>
-
-        <!-- ============================================ -->
-        <!-- TAB PANELS                                   -->
-        <!-- ============================================ -->
-        <div class="dashboard-grid">
-
-        <!-- Home -->
-        <div id="home" class="tab-content active" role="tabpanel" aria-labelledby="tab-home">
+        <div class="agenda-feed">
         <section class="palmeiras-home-shell" id="palmeiras-home" aria-labelledby="palmeiras-home-title">
             <div class="palmeiras-home-panel">
                 <div class="palmeiras-board-head">
                     <div>
                         <div class="palmeiras-kicker">Agenda do Verdão</div>
-                        <h2 id="palmeiras-home-title">Últimos resultados e próximos jogos</h2>
+                        <h2 id="palmeiras-home-title">Próximos jogos e últimos resultados</h2>
                         <p id="palmeiras-home-summary">Carregando jogos do Palmeiras...</p>
-                    </div>
-                    <div class="palmeiras-actions">
-                        <button type="button" class="palmeiras-action primary" id="palmeirasCalendarButton">Ver calendário</button>
                     </div>
                 </div>
 
@@ -235,6 +267,8 @@
             <div id="competitions-overview"><div class="empty">Carregando...</div></div>
         </section>
         </div>
+        </div>
+        </div>
 
         <!-- Tabelas -->
         <div id="classificacao" class="tab-content" role="tabpanel" aria-labelledby="tab-classificacao" hidden inert>
@@ -265,17 +299,81 @@
             </div>
         </div>
 
+        <!-- Histórico -->
+        <div id="historico" class="tab-content" role="tabpanel" aria-labelledby="tab-historico" hidden inert>
+            <section class="card history-card" aria-labelledby="history-title">
+                <div class="section-head">
+                    <div>
+                        <div class="card-title" id="history-title">Arquivo histórico</div>
+                        <p id="history-summary">Retrospecto, adversários e jogos anteriores do Palmeiras.</p>
+                    </div>
+                </div>
+                <div class="history-filters">
+                    <label>Adversário<select id="historyOpponent"><option value="">Todos</option></select></label>
+                    <label>Competição<select id="historyCompetition"><option value="">Todas</option></select></label>
+                    <label>Ano<select id="historyYear"><option value="">Todos</option></select></label>
+                    <button type="button" id="historyClear">Limpar filtros</button>
+                </div>
+                <div id="history-content"><div class="empty">Carregando histórico...</div></div>
+            </section>
+        </div>
+
+        <!-- Ajustes -->
+        <div id="ajustes" class="tab-content" role="tabpanel" aria-labelledby="tab-ajustes" hidden inert>
+            <section class="card settings-card" aria-labelledby="settings-title">
+                <div class="card-title" id="settings-title">Ajustes</div>
+                <div class="settings-grid">
+                    <div class="settings-section">
+                        <h3>Alertas de jogos</h3>
+                        <p>Escolha o que deseja receber neste navegador.</p>
+                        <label><input type="checkbox" data-push-pref="oneHour"> 1 hora antes do jogo</label>
+                        <label><input type="checkbox" data-push-pref="kickoff"> Início da partida</label>
+                        <label><input type="checkbox" data-push-pref="results"> Placar final</label>
+                        <label><input type="checkbox" data-push-pref="scheduleChanges" checked> Mudanças de data ou estádio</label>
+                        <label><input type="checkbox" data-push-pref="liveEvents"> Lances dos jogos seguidos</label>
+                        <label><input type="checkbox" data-push-pref="news"> Notícias importantes</label>
+                        <div class="settings-actions">
+                            <button type="button" class="palmeiras-action primary" id="enablePushButton">Ativar e salvar alertas</button>
+                            <button type="button" class="palmeiras-action" id="disablePushButton">Desativar</button>
+                        </div>
+                        <p class="settings-status" id="pushStatus" aria-live="polite"></p>
+                    </div>
+                    <div class="settings-section">
+                        <h3>Calendário e conteúdo</h3>
+                        <p>O feed acompanha a equipe selecionada e é atualizado automaticamente.</p>
+                        <a class="settings-link" id="scopedCalendarLink" href="/api/v1/calendar.ics?team_scope=men">Assinar calendário ICS</a>
+                        <button type="button" class="settings-link settings-tab-link" data-open-tab="news">Abrir notícias</button>
+                        <button type="button" class="settings-link settings-tab-link" data-open-tab="worldcup">Rever a Copa 2026</button>
+                    </div>
+                </div>
+            </section>
+        </div>
+
         <!-- Copa do Mundo 2026 -->
         <div id="worldcup" class="tab-content" role="tabpanel" aria-labelledby="tab-worldcup" hidden inert>
             <section class="worldcup-shell" aria-labelledby="worldcup-title">
-                <div class="worldcup-hero-panel">
-                    <div>
+                <div class="worldcup-hero-panel worldcup-champion-hero">
+                    <div class="worldcup-champion-copy">
                         <div class="worldcup-kicker">FIFA World Cup 2026</div>
-                        <h2 id="worldcup-title">Copa 2026 no Palmeiras Agenda</h2>
-                        <p>Os 104 jogos ficam nesta seção dedicada e também aparecem no calendário mensal.</p>
+                        <div class="worldcup-champion-heading">
+                            <img id="worldcup-champion-crest" src="https://crests.football-data.org/760.svg" alt="Escudo da seleção da Espanha">
+                            <div>
+                                <h2 id="worldcup-title">Espanha campeã do mundo</h2>
+                                <p id="worldcup-champion-copy">A Espanha venceu a Argentina por 1 a 0 e conquistou a Copa do Mundo de 2026.</p>
+                            </div>
+                        </div>
+                        <div class="worldcup-final-result" id="worldcup-final-result" aria-label="Resultado da final">
+                            <span>Final</span>
+                            <strong>Espanha <b>1–0</b> Argentina</strong>
+                            <span>19 jul 2026</span>
+                        </div>
                     </div>
-                    <div class="worldcup-actions">
-                        <button type="button" class="worldcup-action primary" id="worldcupFilterCalendar">Ver jogos</button>
+                    <div class="worldcup-champion-side">
+                        <svg class="worldcup-trophy" viewBox="0 0 64 64" aria-hidden="true">
+                            <path d="M22 8h20v8c0 10-4 18-10 22-6-4-10-12-10-22V8Z"/>
+                            <path d="M22 14H12v4c0 9 6 15 15 16M42 14h10v4c0 9-6 15-15 16M32 38v10M23 56h18M27 48h10v8"/>
+                        </svg>
+                        <strong>Campeã 2026</strong>
                     </div>
                 </div>
 
@@ -301,7 +399,7 @@
                 <div class="worldcup-brazil-panel">
                     <div class="worldcup-board-head">
                         <div>
-                            <h3>Próximos jogos do Brasil</h3>
+                            <h3 id="worldcup-brazil-title">Campanha do Brasil</h3>
                             <p id="worldcup-brazil-summary">Carregando agenda da Seleção...</p>
                         </div>
                         <button type="button" class="worldcup-action" id="worldcupBrazilFilter">Ver Brasil</button>
@@ -331,6 +429,7 @@
         <div id="news" class="tab-content" role="tabpanel" aria-labelledby="tab-news" hidden inert>
             <div class="card">
                 <div class="card-title">Notícias recentes</div>
+                <div id="news-status" class="section-status" aria-live="off"></div>
                 <div id="news-list"><div class="empty">Carregando...</div></div>
             </div>
         </div>
@@ -344,7 +443,7 @@
     <noscript><p style="text-align:center;padding:2rem;color:#666">JavaScript é necessário para exibir os dados do Palmeiras Agenda.</p></noscript>
 
     <footer class="footer">
-        <p>Fontes: football-data.org · FIFA · ge.globo · lance.com.br · wikipedia.org · palmeiras.com.br</p>
+        <p>Fontes: football-data.org · CBF · FIFA · ge.globo · lance.com.br · wikipedia.org · palmeiras.com.br</p>
         <p id="last-updated" class="footer-updated"></p>
         <div class="footer-actions">
             <button type="button" id="downloadCalendarButton" class="footer-btn">Baixar ICS</button>
@@ -352,33 +451,8 @@
         </div>
     </footer>
 
-    <script src="/static/js/config.js?v=20"></script>
-    <script src="/static/js/app.js?v=47"></script>
-    <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          let refreshing = false;
-          navigator.serviceWorker.addEventListener('controllerchange', () => {
-            if (refreshing) return;
-            refreshing = true;
-            window.location.reload();
-          });
-          navigator.serviceWorker.register('/sw.js').then((registration) => {
-            if (registration.waiting) {
-              registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-            }
-            registration.addEventListener('updatefound', () => {
-              const worker = registration.installing;
-              if (!worker) return;
-              worker.addEventListener('statechange', () => {
-                if (worker.state === 'installed' && navigator.serviceWorker.controller) {
-                  worker.postMessage({ type: 'SKIP_WAITING' });
-                }
-              });
-            });
-          }).catch(() => {});
-        });
-      }
-    </script>
+    <script src="/static/js/config.js?v=30"></script>
+    <script src="/static/js/features.js?v=5"></script>
+    <script src="/static/js/app.js?v=88"></script>
 </body>
 </html>
