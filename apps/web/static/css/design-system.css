@@ -473,6 +473,7 @@ body.dark .header .refresh-btn {
 .competition-card,
 .standings-section,
 .standings-match-group,
+.standings-campaign,
 .stats-summary,
 .chart-container,
 .worldcup-hero-panel,
@@ -498,6 +499,7 @@ body.dark .header .refresh-btn {
 @media (min-width: 721px) {
     .standings-section,
     .standings-match-group,
+    .standings-campaign,
     .stats-summary {
         padding: 16px;
     }
@@ -1884,6 +1886,7 @@ body {
     #standings > .empty,
     #standings > .error-state,
     .standings-match-group,
+    .standings-campaign,
     .stats-summary {
         padding: 14px;
     }
