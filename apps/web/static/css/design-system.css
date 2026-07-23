@@ -473,7 +473,6 @@ body.dark .header .refresh-btn {
 .competition-card,
 .standings-section,
 .standings-match-group,
-.standings-campaign,
 .stats-summary,
 .chart-container,
 .worldcup-hero-panel,
@@ -499,7 +498,6 @@ body.dark .header .refresh-btn {
 @media (min-width: 721px) {
     .standings-section,
     .standings-match-group,
-    .standings-campaign,
     .stats-summary {
         padding: 16px;
     }
@@ -1835,7 +1833,6 @@ body {
     }
 
     #standings > .standings-section,
-    #standings > .standings-campaign,
     #standings > .empty,
     #standings > .error-state {
         min-width: 0;
@@ -1845,6 +1842,18 @@ body {
         background: var(--bg-card);
         padding: 16px;
         box-shadow: var(--shadow-tight);
+    }
+
+    /* .standings-campaign is a transparent wrapper — its children
+       (.standings-section cards) provide the visual boundaries,
+       mirroring how #standings works in the "Todas" view. */
+    #standings > .standings-campaign {
+        min-width: 0;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        box-shadow: none;
     }
 
     #standings > .standings-section + .standings-section {
@@ -1886,7 +1895,6 @@ body {
     #standings > .empty,
     #standings > .error-state,
     .standings-match-group,
-    .standings-campaign,
     .stats-summary {
         padding: 14px;
     }
