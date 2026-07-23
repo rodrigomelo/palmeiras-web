@@ -2165,13 +2165,6 @@ body.dark .tabs {
     min-width: 0;
 }
 
-.standings-section + .standings-section,
-.standings-campaign .standings-section {
-    margin-top: 18px;
-    border-top: 1px solid var(--line);
-    padding-top: 18px;
-}
-
 .standings-section-head {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
@@ -2230,10 +2223,6 @@ body.dark .tabs {
 
 .standings-focus-grid .competition-match {
     margin-top: 0;
-}
-
-.standings-match-group + .standings-match-group {
-    margin-top: 14px;
 }
 
 .standings-table {
