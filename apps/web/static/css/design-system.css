@@ -472,7 +472,6 @@ body.dark .header .refresh-btn {
 .palmeiras-match-board,
 .competition-card,
 .standings-section,
-.standings-match-group,
 .stats-summary,
 .chart-container,
 .worldcup-hero-panel,
@@ -493,12 +492,35 @@ body.dark .header .refresh-btn {
     padding: 20px;
 }
 
-/* Nested bordered surfaces need their own inset on desktop. Without this,
-   summary grids and table sections sit directly against the outer border. */
+/* Desktop: standings-campaign becomes a transparent wrapper again —
+   inner sections reclaim their individual card borders. */
 @media (min-width: 721px) {
     .standings-section,
     .standings-match-group,
     .stats-summary {
+        padding: 16px;
+    }
+
+    .standings-match-group {
+        border: 1px solid var(--line);
+        border-radius: var(--radius-card);
+        background: var(--bg-card);
+        box-shadow: var(--shadow-tight);
+    }
+
+    #standings > .standings-campaign {
+        border: 0;
+        background: transparent;
+        box-shadow: none;
+        padding: 0;
+    }
+
+    .standings-campaign > .standings-section,
+    .standings-campaign .standings-match-group {
+        border: 1px solid var(--line);
+        border-radius: var(--radius-card);
+        background: var(--bg-card);
+        box-shadow: var(--shadow-tight);
         padding: 16px;
     }
 }
@@ -1844,16 +1866,26 @@ body {
         box-shadow: var(--shadow-tight);
     }
 
-    /* .standings-campaign is a transparent wrapper — its children
-       (.standings-section cards) provide the visual boundaries,
-       mirroring how #standings works in the "Todas" view. */
+    /* .standings-campaign is the single card on mobile — inner sections
+       are separated by border-top dividers, not individual cards. */
     #standings > .standings-campaign {
         min-width: 0;
         margin: 0;
-        padding: 0;
+        border: 1px solid var(--line);
+        border-radius: var(--radius-card);
+        background: var(--bg-card);
+        padding: 16px;
+        box-shadow: var(--shadow-tight);
+    }
+
+    /* Suppress individual section borders inside the campaign card on mobile */
+    .standings-campaign > .standings-section,
+    .standings-campaign .standings-match-group {
         border: 0;
+        border-radius: 0;
         background: transparent;
         box-shadow: none;
+        padding: 0;
     }
 
     #standings > .standings-section + .standings-section {
@@ -1894,7 +1926,6 @@ body {
     #standings > .standings-campaign,
     #standings > .empty,
     #standings > .error-state,
-    .standings-match-group,
     .stats-summary {
         padding: 14px;
     }

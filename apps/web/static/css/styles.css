@@ -2232,10 +2232,6 @@ body.dark .tabs {
     margin-top: 0;
 }
 
-.standings-match-group {
-    padding: 14px;
-}
-
 .standings-match-group + .standings-match-group {
     margin-top: 14px;
 }
