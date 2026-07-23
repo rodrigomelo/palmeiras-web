@@ -471,6 +471,7 @@ body.dark .header .refresh-btn {
 .palmeiras-home-panel,
 .palmeiras-match-board,
 .competition-card,
+.standings-section,
 .stats-summary,
 .chart-container,
 .worldcup-hero-panel,
@@ -491,40 +492,13 @@ body.dark .header .refresh-btn {
     padding: 20px;
 }
 
-/* Standings: one-card pattern across all viewports.
-   #standings children (.standings-section, .standings-campaign) are cards.
-   Inside .standings-campaign, sections are separated by border-top dividers,
-   not individual card borders. */
-#standings > .standings-section,
-#standings > .standings-campaign,
-#standings > .empty,
-#standings > .error-state {
-    min-width: 0;
-    margin: 0;
-    border: 1px solid var(--line);
-    border-radius: var(--radius-card);
-    background: var(--bg-card);
-    padding: 16px;
-    box-shadow: var(--shadow-tight);
-}
-
-.standings-campaign > .standings-section,
-.standings-campaign .standings-match-group {
-    border: 0;
-    border-radius: 0;
-    background: transparent;
-    box-shadow: none;
-    padding: 0;
-}
-
-.standings-campaign > .standings-section + .standings-section {
-    margin-top: 18px;
-    border-top: 1px solid var(--line);
-    padding-top: 18px;
-}
-
-.standings-match-group + .standings-match-group {
-    margin-top: 14px;
+/* Nested bordered surfaces need their own inset on desktop. Without this,
+   summary grids and table sections sit directly against the outer border. */
+@media (min-width: 721px) {
+    .standings-section,
+    .stats-summary {
+        padding: 16px;
+    }
 }
 
 .palmeiras-home-panel,
@@ -1854,6 +1828,40 @@ body {
         display: grid;
         gap: 12px;
         min-width: 0;
+    }
+
+    #standings > .standings-section,
+    #standings > .standings-campaign,
+    #standings > .empty,
+    #standings > .error-state {
+        min-width: 0;
+        margin: 0;
+        border: 1px solid var(--line);
+        border-radius: var(--radius-card);
+        background: var(--bg-card);
+        padding: 16px;
+        box-shadow: var(--shadow-tight);
+    }
+
+    #standings > .standings-section + .standings-section {
+        margin-top: 0;
+        border-top: 1px solid var(--line);
+        padding-top: 16px;
+    }
+
+    .stats-summary {
+        padding: 16px;
+    }
+
+    #news-list {
+        display: grid;
+        gap: 12px;
+        margin-top: 12px;
+    }
+
+    #news-list .news-item {
+        margin-top: 0;
+        padding: 14px;
     }
 }
 

@@ -21,7 +21,6 @@
         COPA: ['COPA', 'CBC', 'COPA_DO_BRASIL'],
         CPA: ['CPA', 'CAMPEONATO_PAULISTA', 'PAULISTA'],
         WC: ['WC', 'WORLD_CUP', 'FIFA_WORLD_CUP'],
-        BFA1: ['BFA1', 'BRASILEIRO_FEMININO', 'BRASILEIRO_FEMININO_A1'],
     };
 
     // --- Stage Name Translation (API enums → Portuguese) ---
@@ -35,13 +34,7 @@
         'QUARTER_FINALS': 'Quartas de Final',
         'SEMI_FINALS': 'Semifinal',
         'FINAL': 'Final',
-        'LAST_16': 'Oitavas de Final',
-        'LAST_8': 'Quartas de Final',
-        'LAST_4': 'Semifinal',
-        'LAST_32': '16 avos de Final',
         'ROUND_OF_16': 'Oitavas de Final',
-        'ROUND_OF_8': 'Quartas de Final',
-        'ROUND_OF_4': 'Semifinal',
         'ROUND_OF_32': '2ª Fase',
         'PLAY_OFFS': 'Playoffs',
         'PLAYOFFS': 'Playoffs',
@@ -62,24 +55,15 @@
     const WORLD_CUP_TO = '2026-07-19';
     const WORLD_CUP_CODES = new Set(['WC', 'WORLD_CUP', 'FIFA_WORLD_CUP']);
     const WORLD_CUP_REFRESH_MS = 15 * 60 * 1000;
-    const WORLD_CUP_TEAM_NAMES_PT = {
-        ESP: 'Espanha',
-        ARG: 'Argentina',
-        BRA: 'Brasil',
-    };
-    const NEWS_REFRESH_MS = 5 * 60 * 1000;
     const DEFAULT_TAB = 'home';
-    const VALID_TABS = new Set(['home', 'classificacao', 'estatisticas', 'historico', 'worldcup', 'news', 'ajustes']);
-    const VALID_COMP_FILTERS = new Set(['all', 'BSA', 'CLI', 'COPA', 'CPA', 'BFA1', 'PAULISTA_F', 'COPA_F', 'SUPERCOPA_F', 'WC']);
+    const VALID_TABS = new Set(['home', 'classificacao', 'estatisticas', 'worldcup', 'news']);
+    const VALID_COMP_FILTERS = new Set(['all', 'BSA', 'CLI', 'COPA', 'CPA', 'WC']);
     const VALID_WC_FILTERS = new Set(['all', 'upcoming', 'finished', 'brazil']);
     const VALID_PALMEIRAS_FILTERS = new Set(['all', 'next', 'results']);
     let _initialTab = null;
     let _isApplyingUrlState = false;
     let _heroMode = 'palmeiras';
-    let _countdownInterval = null;
     let _worldCupRefreshInterval = null;
-    let _newsRefreshInterval = null;
-    let _newsVisibilityBound = false;
     let palmeirasHomeLoaded = false;
     let palmeirasHomeError = false;
     let palmeirasUpcomingMatches = [];
@@ -88,24 +72,9 @@
     let standingsCompetition = 'all';
     const expandedMatchKeys = new Set();
 
-    function initNativeShell() {
-        const isNativeShell = /PalmeirasAgenda(?:iOS|Android)\//.test(navigator.userAgent);
-        document.body.classList.toggle('native-shell', isNativeShell);
-        if (isNativeShell) document.body.dataset.nativeTab = 'home';
-    }
-
     function formatStage(stage) {
-        const code = String(stage || '').trim().toUpperCase();
-        if (!code || code === 'REGULAR_SEASON') return '';
-        if (STAGE_NAMES[code]) return STAGE_NAMES[code];
-
-        // Never expose API enum formatting (for example LAST_16) in the UI.
-        return code
-            .toLocaleLowerCase('pt-BR')
-            .split('_')
-            .filter(Boolean)
-            .map(word => word.charAt(0).toLocaleUpperCase('pt-BR') + word.slice(1))
-            .join(' ');
+        if (!stage || stage === 'REGULAR_SEASON') return '';
+        return STAGE_NAMES[stage] || stage;
     }
 
     function getCompCode(comp) {
@@ -114,7 +83,7 @@
 
     function palmeirasQuery(path) {
         const joiner = path.includes('?') ? '&' : '?';
-        return `${path}${joiner}team_id=${TEAM_ID}&team_scope=${encodeURIComponent(CONFIG.TEAM_SCOPE || 'men')}`;
+        return `${path}${joiner}team_id=${TEAM_ID}`;
     }
 
     function isSafeCompFilter(value) {
@@ -159,24 +128,18 @@
         return key ? ` data-match-key="${escapeHtml(key)}"` : '';
     }
 
-    function matchSideScore(match, side) {
-        if (!match) return null;
-        const direct = side === 'home' ? match.homeScore : match.awayScore;
-        if (hasValue(direct)) return direct;
-        const nested = match.score && match.score.fullTime;
-        return nested && hasValue(nested[side]) ? nested[side] : null;
+    function renderMatchCue() {
+        return '';
     }
 
     function matchDisplaySides(match) {
-        const homeScore = matchSideScore(match, 'home');
-        const awayScore = matchSideScore(match, 'away');
         const palmeirasMatch = isPalmeirasMatch(match);
         if (!palmeirasMatch) {
             return {
                 leftTeam: match.homeTeam,
                 rightTeam: match.awayTeam,
-                leftScore: homeScore,
-                rightScore: awayScore,
+                leftScore: match.homeScore,
+                rightScore: match.awayScore,
                 perspective: 'neutral',
             };
         }
@@ -185,16 +148,10 @@
         return {
             leftTeam: isHome ? match.homeTeam : match.awayTeam,
             rightTeam: isHome ? match.awayTeam : match.homeTeam,
-            leftScore: isHome ? homeScore : awayScore,
-            rightScore: isHome ? awayScore : homeScore,
+            leftScore: isHome ? match.homeScore : match.awayScore,
+            rightScore: isHome ? match.awayScore : match.homeScore,
             perspective: 'palmeiras',
         };
-    }
-
-    function isPastMatchAwaitingResult(match) {
-        if (!match || !['SCHEDULED', 'TIMED'].includes(match.status)) return false;
-        const kickoff = Date.parse(match.utcDate || '');
-        return Number.isFinite(kickoff) && kickoff < Date.now() - (2 * 60 * 60 * 1000);
     }
 
     // --- Helpers ---
@@ -394,9 +351,7 @@
             document.body.classList.remove('dark');
         }
         if (toggle) {
-            toggle.innerHTML = isDark
-                ? '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.66 6.34l1.41-1.41"></path></svg>'
-                : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5 8.5 8.5 0 1 0 20.5 14.2Z"></path></svg>';
+            toggle.textContent = isDark ? '☾' : '☀';
             toggle.setAttribute('aria-label', isDark ? 'Alternar para tema claro' : 'Alternar para tema escuro');
             toggle.setAttribute('aria-pressed', String(isDark));
             toggle.title = isDark ? 'Alternar para tema claro' : 'Alternar para tema escuro';
@@ -407,10 +362,6 @@
 
     window.toggleTheme = function () {
         applyTheme(document.body.classList.contains('dark') ? 'light' : 'dark');
-    };
-
-    window.nativeSetTheme = function (theme) {
-        applyTheme(theme === 'dark' ? 'dark' : 'light');
     };
 
     function updateChartColors() {
@@ -510,36 +461,7 @@
         const tabs = Array.from(document.querySelectorAll('.tab-btn'));
         const panels = Array.from(document.querySelectorAll('.tab-content'));
 
-        function resetPageScrollAfterLayout() {
-            const root = document.documentElement;
-            const previousScrollBehavior = root.style.scrollBehavior;
-            root.style.scrollBehavior = 'auto';
-
-            const reset = () => {
-                window.scrollTo(0, 0);
-                if (document.scrollingElement) document.scrollingElement.scrollTop = 0;
-                document.body.scrollTop = 0;
-            };
-
-            // Reset immediately as well as after the panel visibility changes.
-            // The delayed reset covers late API-driven layout changes on slower
-            // production connections without leaving smooth scrolling disabled.
-            reset();
-            requestAnimationFrame(() => {
-                reset();
-                requestAnimationFrame(() => {
-                    reset();
-                });
-            });
-            window.setTimeout(() => {
-                reset();
-                root.style.scrollBehavior = previousScrollBehavior;
-            }, 150);
-        }
-
         function activateTab(btn, focusTab = false) {
-            document.body.dataset.activeTab = btn.dataset.tab;
-
             tabs.forEach(tab => {
                 const selected = tab === btn;
                 tab.classList.toggle('active', selected);
@@ -562,32 +484,13 @@
             if (btn.dataset.tab === 'worldcup') {
                 loadWorldCup();
             }
-            if (btn.dataset.tab === 'news') {
-                startNewsRefresh();
-            }
-            if (window.PalmeirasFeatures) {
-                window.PalmeirasFeatures.onTabActivated(btn.dataset.tab);
-            }
             updateUrlState({ tab: btn.dataset.tab });
         }
-
-        window.nativeSelectTab = function (tabId) {
-            const target = tabs.find(tab => tab.dataset.tab === tabId);
-            if (!target) return false;
-            activateTab(target);
-            document.body.dataset.nativeTab = tabId;
-            // Reset after the active native panel has settled.
-            resetPageScrollAfterLayout();
-            return true;
-        };
 
         tabs.forEach((btn, index) => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 activateTab(btn);
-                if (window.matchMedia('(max-width: 720px)').matches) {
-                    resetPageScrollAfterLayout();
-                }
             });
             btn.addEventListener('keydown', (event) => {
                 const keys = ['ArrowLeft', 'ArrowRight', 'Home', 'End'];
@@ -603,38 +506,6 @@
         });
 
         activateTab(tabs.find(tab => tab.dataset.tab === _initialTab) || tabs.find(tab => tab.getAttribute('aria-selected') === 'true') || tabs[0]);
-    }
-
-    function initStickyDesktopTabs() {
-        const tabs = document.querySelector('.tabs');
-        const header = document.querySelector('.header');
-        if (!tabs || !header) return;
-
-        const desktopPointer = window.matchMedia('(hover: hover) and (pointer: fine)');
-        let animationFrame = 0;
-
-        const syncFloatingState = () => {
-            animationFrame = 0;
-            const shouldFloat = desktopPointer.matches
-                && !document.body.classList.contains('native-shell')
-                && header.getBoundingClientRect().bottom <= 12;
-            tabs.classList.toggle('is-floating', shouldFloat);
-        };
-
-        const scheduleFloatingState = () => {
-            if (animationFrame) return;
-            animationFrame = window.requestAnimationFrame(syncFloatingState);
-        };
-
-        window.addEventListener('scroll', scheduleFloatingState, { passive: true });
-        window.addEventListener('resize', scheduleFloatingState, { passive: true });
-        if (typeof desktopPointer.addEventListener === 'function') {
-            desktopPointer.addEventListener('change', scheduleFloatingState);
-        } else {
-            desktopPointer.addListener(scheduleFloatingState);
-        }
-
-        syncFloatingState();
     }
 
     // --- Live Refresh ---
@@ -695,6 +566,7 @@
         try {
             await loadHero();
             const results = await Promise.allSettled([
+                loadFormWidget(),
                 loadPalmeirasHome(true),
                 loadStandings(),
                 loadNews(),
@@ -702,7 +574,6 @@
                 loadCompetitionOverview(true),
                 currentTabId() === 'estatisticas' ? renderPerformanceChart() : Promise.resolve(),
                 currentTabId() === 'worldcup' ? loadWorldCup() : Promise.resolve(),
-                window.PalmeirasFeatures ? window.PalmeirasFeatures.loadAll() : Promise.resolve(),
             ]);
             setLastUpdated();
             const hasRejected = results.some(result => result.status === 'rejected');
@@ -740,13 +611,6 @@
     }
 
     async function loadPalmeirasHero() {
-        const requestedId = new URL(window.location.href).searchParams.get('match');
-        if (requestedId && /^[A-Za-z0-9_-]{1,80}$/.test(requestedId)) {
-            const detail = await api(`match?id=${encodeURIComponent(requestedId)}`);
-            if (detail && detail.match) {
-                return { mode: 'palmeiras', match: detail.match, nextMatches: [], loaded: true };
-            }
-        }
         const data = await api(palmeirasQuery('matches?status=SCHEDULED,TIMED,IN_PLAY,PAUSED&limit=5'));
         const matches = (data && data.matches) || [];
         return {
@@ -763,11 +627,17 @@
         const teamsArea = document.getElementById('hero-teams-area');
         const metaArea = document.getElementById('hero-meta-area');
         const emptyState = document.getElementById('hero-empty-state');
+        const countdown = document.getElementById('hero-countdown');
+        const formWidget = document.getElementById('form-widget');
+        const brazilNext = document.getElementById('hero-brazil-next');
 
         if (heroCard) heroCard.classList.remove('live');
         if (compBadge) compBadge.textContent = badge;
         if (teamsArea) teamsArea.style.display = 'none';
         if (metaArea) metaArea.style.display = 'none';
+        if (countdown) countdown.style.display = 'none';
+        if (formWidget) formWidget.style.display = 'none';
+        if (brazilNext) brazilNext.style.display = 'none';
         if (emptyState) {
             const strong = emptyState.querySelector('strong');
             const span = emptyState.querySelector('span');
@@ -775,13 +645,10 @@
             if (span) span.textContent = detail;
             emptyState.hidden = false;
         }
-        const countdown = document.getElementById('hero-countdown');
-        if (countdown) countdown.style.display = 'none';
         if (_countdownInterval) {
             clearInterval(_countdownInterval);
             _countdownInterval = null;
         }
-        if (window.PalmeirasFeatures) window.PalmeirasFeatures.setHeroMatch(null);
     }
 
     function setHeroMatchVisible() {
@@ -835,16 +702,14 @@
 
         // Home team
         const homeEl = document.getElementById('hero-home');
-        const homeCrest = homeEl.querySelector('img');
-        homeCrest.src = safeImageUrl(CONFIG.getCrest(home));
-        homeCrest.alt = CONFIG.teamName(home);
+        homeEl.querySelector('img').src = safeImageUrl(CONFIG.getCrest(home));
+        homeEl.querySelector('img').alt = CONFIG.teamName(home);
         homeEl.querySelector('.hero-team-name').textContent = CONFIG.teamName(home);
 
         // Away team
         const awayEl = document.getElementById('hero-away');
-        const awayCrest = awayEl.querySelector('img');
-        awayCrest.src = safeImageUrl(CONFIG.getCrest(away));
-        awayCrest.alt = CONFIG.teamName(away);
+        awayEl.querySelector('img').src = safeImageUrl(CONFIG.getCrest(away));
+        awayEl.querySelector('img').alt = CONFIG.teamName(away);
         awayEl.querySelector('.hero-team-name').textContent = CONFIG.teamName(away);
 
         // Score / VS
@@ -882,53 +747,107 @@
             pillStage.style.display = 'none';
         }
 
-        if (isLive) {
-            startLiveRefresh();
-            const countdown = document.getElementById('hero-countdown');
-            if (countdown) countdown.style.display = 'none';
-            if (_countdownInterval) {
-                clearInterval(_countdownInterval);
-                _countdownInterval = null;
-            }
-        } else {
-            stopLiveRefresh();
+        if (isLive) startLiveRefresh(); else stopLiveRefresh();
+
+        // Start countdown for upcoming matches
+        if (!isLive) {
             startCountdown(match.utcDate);
+        } else {
+            document.getElementById('hero-countdown').style.display = 'none';
         }
 
-        if (window.PalmeirasFeatures) window.PalmeirasFeatures.setHeroMatch(match);
+        renderHeroBrazilNext(_heroMode === 'brazil' ? heroData.nextMatches : []);
     }
+
+    function renderHeroBrazilNext(matches) {
+        const widget = document.getElementById('hero-brazil-next');
+        const list = document.getElementById('hero-brazil-list');
+        const formWidget = document.getElementById('form-widget');
+        if (!widget || !list) return;
+
+        if (!matches.length) {
+            widget.style.display = 'none';
+            if (_heroMode !== 'brazil' && formWidget && formWidget.querySelector('.form-dot')) formWidget.style.display = '';
+            return;
+        }
+
+        if (formWidget) formWidget.style.display = 'none';
+        list.innerHTML = matches.map(match => {
+            const date = new Date(match.utcDate).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', timeZone: BR_TZ });
+            const home = CONFIG.teamName(match.homeTeam);
+            const away = CONFIG.teamName(match.awayTeam);
+            return `<details class="hero-brazil-item match-card"${matchDataAttr(match)}${matchOpenAttr(match)}>
+                <summary class="hero-brazil-summary match-card-summary">
+                    <span>${escapeHtml(date)} · ${escapeHtml(formatTime(match.utcDate))}</span>
+                    <strong>${escapeHtml(home)} x ${escapeHtml(away)}</strong>
+                    ${renderMatchCue(match)}
+                </summary>
+                ${renderMatchInsight(match)}
+            </details>`;
+        }).join('');
+        widget.style.display = '';
+    }
+
+    // --- Countdown Timer ---
+    let _countdownInterval = null;
 
     function startCountdown(utcDate) {
         if (_countdownInterval) clearInterval(_countdownInterval);
-        const countdown = document.getElementById('hero-countdown');
-        if (!countdown) return;
         const target = new Date(utcDate).getTime();
+        const el = document.getElementById('hero-countdown');
 
         function tick() {
-            const diff = target - Date.now();
+            const now = Date.now();
+            const diff = target - now;
             if (diff <= 0) {
-                countdown.style.display = 'none';
-                if (_countdownInterval) {
-                    clearInterval(_countdownInterval);
-                    _countdownInterval = null;
-                }
+                el.style.display = 'none';
+                clearInterval(_countdownInterval);
+                _countdownInterval = null;
+                // Reload hero — match might be starting
                 loadHero();
                 return;
             }
-
-            countdown.style.display = '';
-            const days = Math.floor(diff / 86_400_000);
-            const hours = Math.floor((diff % 86_400_000) / 3_600_000);
-            const minutes = Math.floor((diff % 3_600_000) / 60_000);
-            const seconds = Math.floor((diff % 60_000) / 1_000);
-            document.getElementById('cd-days').textContent = String(days);
-            document.getElementById('cd-hours').textContent = String(hours).padStart(2, '0');
-            document.getElementById('cd-mins').textContent = String(minutes).padStart(2, '0');
-            document.getElementById('cd-secs').textContent = String(seconds).padStart(2, '0');
+            el.style.display = '';
+            const d = Math.floor(diff / 86400000);
+            const h = Math.floor((diff % 86400000) / 3600000);
+            const m = Math.floor((diff % 3600000) / 60000);
+            const s = Math.floor((diff % 60000) / 1000);
+            // Desktop: full labels; Mobile: hidden via CSS, compact separators
+            document.getElementById('cd-days').textContent = d;
+            document.getElementById('cd-hours').textContent = String(h).padStart(2, '0');
+            document.getElementById('cd-mins').textContent = String(m).padStart(2, '0');
+            document.getElementById('cd-secs').textContent = String(s).padStart(2, '0');
         }
-
         tick();
-        _countdownInterval = setInterval(tick, 1_000);
+        _countdownInterval = setInterval(tick, 1000);
+    }
+
+    // --- Form Widget (last 5 results) ---
+    async function loadFormWidget() {
+        const data = await api(palmeirasQuery('matches?status=FINISHED&limit=5'));
+
+        const widget = document.getElementById('form-widget');
+        const dots = document.getElementById('form-dots');
+        if (!widget || !dots) return;
+        if (_heroMode === 'brazil') {
+            widget.style.display = 'none';
+            return;
+        }
+        if (!data || !data.matches || !data.matches.length) return;
+
+        dots.innerHTML = '';
+        data.matches.forEach(m => {
+            const isHome = m.homeTeam.id === TEAM_ID;
+            const score = fullTimeScore(m);
+            const our = isHome ? scoreValue(score, 'home') : scoreValue(score, 'away');
+            const opp = isHome ? scoreValue(score, 'away') : scoreValue(score, 'home');
+            const r = our > opp ? 'W' : our < opp ? 'L' : 'D';
+            const label = r === 'W' ? 'V' : r === 'L' ? 'D' : 'E';
+            const cls = r === 'W' ? 'win' : r === 'L' ? 'loss' : 'draw';
+            const tooltip = `${isHome ? 'Casa' : 'Fora'} ${our}-${opp} vs ${escapeHtml(isHome ? CONFIG.teamName(m.awayTeam) : CONFIG.teamName(m.homeTeam))}`;
+            dots.innerHTML += `<span class="form-dot ${cls}" title="${tooltip}">${label}</span>`;
+        });
+        widget.style.display = '';
     }
 
     // --- Palmeiras Home Board ---
@@ -1092,6 +1011,7 @@
                         ${meta.map(item => `<span>${escapeHtml(item)}</span>`).join('')}
                     </div>
                 </div>
+                ${renderMatchCue(match)}
             </summary>
             ${renderMatchInsight(match)}
         </details>`;
@@ -1182,6 +1102,7 @@
                         ${meta.map(item => `<span>${escapeHtml(item)}</span>`).join('')}
                     </div>
                 </div>
+                ${renderMatchCue(match)}
             </summary>
             ${renderMatchInsight(match)}
         </details>`;
@@ -1190,6 +1111,25 @@
     function setPalmeirasHomeFilter(filter) {
         palmeirasHomeFilter = VALID_PALMEIRAS_FILTERS.has(filter) ? filter : 'all';
         renderPalmeirasMatchBoard();
+    }
+
+    function openPalmeirasCalendar() {
+        const focusMatch = palmeirasUpcomingMatches[0] || palmeirasFinishedMatches[0];
+        if (focusMatch) {
+            const key = matchDateKey(focusMatch);
+            if (key) {
+                const [year, month] = key.split('-');
+                _calYear = parseInt(year, 10);
+                _calMonth = parseInt(month, 10);
+                _calSelectedDay = key;
+            }
+        }
+        _calCompFilter = 'all';
+        syncYearSelect();
+        syncCompLegend();
+        loadCalendar();
+        updateUrlState({ year: _calYear, month: _calMonth, comp: 'all', day: _calSelectedDay });
+        document.getElementById('calendar-hub')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     // --- Palmeiras Competition Hub / Standings ---
@@ -1308,131 +1248,49 @@
         </section>`).join('');
     }
 
-    function standingsZone(position, rowCount, competitionCode) {
-        const code = String(competitionCode || '').toUpperCase();
-        if (code === 'BSA' && rowCount >= 18) {
-            if (position <= 6) return 'libertadores';
-            if (position <= 12) return 'sudamericana';
-            if (position > rowCount - 4) return 'relegation';
-        }
-        if (code === 'BFA1' && rowCount >= 12) {
-            if (position <= 8) return 'knockout';
-            if (position > rowCount - 4) return 'relegation';
-        }
-        return '';
-    }
-
-    function renderStandingsZoneLegend(competitionCode, rowCount) {
-        const code = String(competitionCode || '').toUpperCase();
-        if (code === 'BSA' && rowCount >= 18) {
-            return `<div class="standings-zone-legend" aria-label="Faixas da classificação">
-                <span class="standings-zone-title">Faixas</span>
-                <span><i class="standings-zone-dot libertadores" aria-hidden="true"></i>Libertadores</span>
-                <span><i class="standings-zone-dot sudamericana" aria-hidden="true"></i>Sul-Americana</span>
-                <span><i class="standings-zone-dot relegation" aria-hidden="true"></i>Rebaixamento</span>
-            </div>`;
-        }
-        if (code === 'BFA1' && rowCount >= 12) {
-            return `<div class="standings-zone-legend" aria-label="Faixas da classificação">
-                <span class="standings-zone-title">Faixas</span>
-                <span><i class="standings-zone-dot knockout" aria-hidden="true"></i>Mata-mata</span>
-                <span><i class="standings-zone-dot relegation" aria-hidden="true"></i>Rebaixamento</span>
-            </div>`;
-        }
-        return '';
-    }
-
-    const LOCAL_STANDINGS_CREST_IDS = new Set([
-        1765, 1766, 1767, 1768, 1769, 1770, 1771, 1772, 1776, 1777,
-        1779, 1780, 1782, 1783, 4241, 4286, 4287, 4364, 4439, 5347,
-        6684, 6685, 9373,
-    ]);
-
-    function standingsCrestUrl(team) {
-        const teamId = Number(team && team.teamId);
-        if (LOCAL_STANDINGS_CREST_IDS.has(teamId)) {
-            return `/static/crests/${teamId}.png`;
-        }
-        return safeImageUrl(CONFIG.getCrest({
-            id: team && team.teamId,
-            crest: team && team.crest,
-        }));
-    }
-
-    function renderOfficialStandings(rows, team, competitionCode) {
+    function renderOfficialStandings(rows, team) {
         const gd = team.goalDifference;
-        const pct = team.playedGames > 0
-            ? Math.round(team.points / (team.playedGames * 3) * 100)
-            : 0;
-        const teamCrest = standingsCrestUrl(team);
+        const avg = team.playedGames > 0 ? (team.points / team.playedGames).toFixed(2) : '0';
         const tableHtml = rows.map(s => {
             const isPalmeiras = s.teamId === TEAM_ID;
-            const zone = standingsZone(s.position, rows.length, competitionCode);
-            const crest = standingsCrestUrl(s);
-            const teamName = s.teamShort || s.teamName;
-            const fullName = s.teamName || teamName;
-            return `<tr class="${isPalmeiras ? 'palmeiras ' : ''}${zone ? `zone-${zone}` : ''}"${isPalmeiras ? ' aria-current="true"' : ''}>
-                <td class="standing-position-cell">${s.position}</td>
-                <th class="standing-club-cell" scope="row">
-                    <img src="${escapeHtml(crest)}" alt="" width="28" height="28" decoding="async">
-                    <span title="${escapeHtml(fullName)}">${escapeHtml(teamName)}</span>
-                </th>
-                <td class="standing-points-cell">${s.points}</td>
-                <td>${s.playedGames}</td>
-                <td>${s.won}</td>
-                <td>${s.draw}</td>
-                <td>${s.lost}</td>
-                <td>${s.goalsFor}</td>
-                <td>${s.goalsAgainst}</td>
-                <td class="${s.goalDifference > 0 ? 'positive' : s.goalDifference < 0 ? 'negative' : ''}">${s.goalDifference > 0 ? '+' : ''}${s.goalDifference}</td>
-            </tr>`;
+            return `<div class="standings-row ${isPalmeiras ? 'palmeiras' : ''}">
+                <span class="pos">${s.position}</span>
+                <span class="team">${escapeHtml(s.teamShort || s.teamName)}</span>
+                <span class="stats">
+                    <span>J${s.playedGames}</span>
+                    <span style="color:var(--win)">V${s.won}</span>
+                    <span style="color:var(--draw)">E${s.draw}</span>
+                    <span style="color:var(--loss)">D${s.lost}</span>
+                    <span>SG${s.goalDifference >= 0 ? '+' : ''}${s.goalDifference}</span>
+                </span>
+                <span class="pts">${s.points}</span>
+            </div>`;
         }).join('');
 
-        return `<section class="standings-section" aria-label="Classificação oficial">
+        return `<section class="standings-section" aria-label="Tabela oficial">
             <div class="standings-section-head">
-                <div>
-                    <h3>Classificação</h3>
-                    <p>Campanha completa e critérios principais da tabela.</p>
-                </div>
+                <h3>Tabela oficial</h3>
                 <span>${rows.length} equipes</span>
             </div>
-            <div class="standings-team-snapshot" aria-label="Resumo do Palmeiras na classificação">
-                <div class="standings-team-identity">
-                    <img src="${escapeHtml(teamCrest)}" alt="" width="42" height="42" decoding="async">
-                    <div>
-                        <span>Palmeiras</span>
-                        <strong>${team.position}º lugar</strong>
-                    </div>
+            <div style="text-align:center;margin-bottom:1.5rem">
+                <div class="position-badge">${team.position}º</div>
+                <div class="stats-grid">
+                    <div class="stat-box"><div class="stat-value">${team.points}</div><div class="stat-label">Pontos</div></div>
+                    <div class="stat-box"><div class="stat-value">${team.playedGames}</div><div class="stat-label">Jogos</div></div>
+                    <div class="stat-box"><div class="stat-value">${avg}</div><div class="stat-label">Pts/Jogo</div></div>
                 </div>
-                <dl class="standings-key-stats">
-                    <div><dt>Pontos</dt><dd>${team.points}</dd></div>
-                    <div><dt>Jogos</dt><dd>${team.playedGames}</dd></div>
-                    <div><dt>Aproveit.</dt><dd>${pct}%</dd></div>
-                    <div><dt>Saldo</dt><dd class="${gd >= 0 ? 'positive' : 'negative'}">${gd >= 0 ? '+' : ''}${gd}</dd></div>
-                </dl>
+                <div class="stats-grid" style="margin-top:0.5rem">
+                    <div class="stat-box"><div class="stat-value" style="color:var(--win)">${team.won}</div><div class="stat-label">Vitórias</div></div>
+                    <div class="stat-box"><div class="stat-value" style="color:var(--draw)">${team.draw}</div><div class="stat-label">Empates</div></div>
+                    <div class="stat-box"><div class="stat-value" style="color:var(--loss)">${team.lost}</div><div class="stat-label">Derrotas</div></div>
+                </div>
+                <div class="stats-grid" style="margin-top:0.5rem">
+                    <div class="stat-box"><div class="stat-value">${team.goalsFor}</div><div class="stat-label">Gols Pró</div></div>
+                    <div class="stat-box"><div class="stat-value">${team.goalsAgainst}</div><div class="stat-label">Gols Contra</div></div>
+                    <div class="stat-box"><div class="stat-value" style="color:${gd >= 0 ? 'var(--win)' : 'var(--loss)'}">${gd >= 0 ? '+' : ''}${gd}</div><div class="stat-label">Saldo</div></div>
+                </div>
             </div>
-            ${renderStandingsZoneLegend(competitionCode, rows.length)}
-            <p class="standings-scroll-hint" id="standings-scroll-help">Deslize para ver todos os números.</p>
-            <div class="standings-table-shell" tabindex="0" role="region" aria-label="Classificação completa" aria-describedby="standings-scroll-help">
-                <table class="standings-data-table">
-                    <caption class="sr-only">Classificação completa com pontos, jogos, vitórias, empates, derrotas, gols e saldo.</caption>
-                    <thead>
-                        <tr>
-                            <th class="standing-position-cell" scope="col"><abbr title="Posição">Pos.</abbr></th>
-                            <th class="standing-club-cell" scope="col">Clube</th>
-                            <th class="standing-points-cell" scope="col"><abbr title="Pontos">Pts</abbr></th>
-                            <th scope="col"><abbr title="Jogos">J</abbr></th>
-                            <th scope="col"><abbr title="Vitórias">V</abbr></th>
-                            <th scope="col"><abbr title="Empates">E</abbr></th>
-                            <th scope="col"><abbr title="Derrotas">D</abbr></th>
-                            <th scope="col"><abbr title="Gols pró">GP</abbr></th>
-                            <th scope="col"><abbr title="Gols contra">GC</abbr></th>
-                            <th scope="col"><abbr title="Saldo de gols">SG</abbr></th>
-                        </tr>
-                    </thead>
-                    <tbody>${tableHtml}</tbody>
-                </table>
-            </div>
+            <div class="standings-table">${tableHtml}</div>
         </section>`;
     }
 
@@ -1442,7 +1300,7 @@
         const record = (summary && summary.record) || aggregateCompetitionRecords([]);
         const officialTeam = rows.find(s => s.teamId === TEAM_ID);
         const officialHtml = officialTeam
-            ? renderOfficialStandings(rows, officialTeam, comp)
+            ? renderOfficialStandings(rows, officialTeam)
             : `<div class="standings-data-note">Tabela oficial de ${escapeHtml(compName)} ainda não está carregada. Abaixo estão campanha e jogos do Palmeiras disponíveis no banco.</div>`;
         const status = summary ? competitionStatus(summary) : { label: 'Sem agenda', className: 'idle' };
         const stage = summary && formatStage(summary.currentStage);
@@ -1455,13 +1313,7 @@
                 </div>
                 <span class="competition-status ${escapeHtml(status.className)}">${escapeHtml(status.label)}</span>
             </div>
-            <section class="standings-section" aria-label="Campanha do Palmeiras">
-                <div class="standings-section-head">
-                    <h3>Campanha</h3>
-                    <span>${record.played} ${record.played === 1 ? 'jogo' : 'jogos'}</span>
-                </div>
-                ${renderStandingsSummaryCards(record, summary ? summary.totalMatches : matches.length)}
-            </section>
+            ${renderStandingsSummaryCards(record, summary ? summary.totalMatches : matches.length)}
             <div class="standings-focus-grid">
                 ${renderCompetitionMatch('Próximo', summary && summary.nextMatch)}
                 ${renderCompetitionMatch('Último', summary && summary.lastMatch)}
@@ -1609,23 +1461,17 @@
     }
 
     function renderCompetitionMatch(label, match) {
-        const cardLabel = `${label} jogo`;
-        if (!match) {
-            return `<div class="competition-match empty-line" aria-label="${escapeHtml(cardLabel)}: sem jogo carregado">
-                <span>${escapeHtml(cardLabel)}</span>
-                <strong>Sem jogo carregado</strong>
-                <small>Aguardando atualização da agenda</small>
-            </div>`;
-        }
+        if (!match) return '<div class="competition-match empty-line">Sem jogo carregado</div>';
         const date = new Date(match.utcDate).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', timeZone: BR_TZ });
         const time = formatTime(match.utcDate);
         const score = matchScoreText(match);
         const status = STATUS_LABEL[match.status] || match.status || 'Agendado';
         return `<details class="competition-match match-card"${matchDataAttr(match)}${matchOpenAttr(match)}>
             <summary class="competition-match-summary match-card-summary">
-                <span>${escapeHtml(cardLabel)} · ${escapeHtml(date)} ${escapeHtml(time)}</span>
+                <span>${escapeHtml(label)} · ${escapeHtml(date)} ${escapeHtml(time)}</span>
                 <strong>${escapeHtml(matchLine(match))}${score ? ` <em>${escapeHtml(score)}</em>` : ''}</strong>
                 <small>${escapeHtml(status)}</small>
+                ${renderMatchCue(match)}
             </summary>
             ${renderMatchInsight(match)}
         </details>`;
@@ -1999,26 +1845,12 @@
         }
     }
 
-    function setNewsStatus(text, options = {}) {
-        const status = document.getElementById('news-status');
-        if (!status) return;
-        status.setAttribute('aria-live', options.announce ? 'polite' : 'off');
-        if (status.textContent !== text) status.textContent = text;
-    }
-
     // --- News ---
-    async function loadNews(options = {}) {
-        if (!options.silent) {
-            showSkeleton('news-list');
-            setNewsStatus('', { announce: false });
-        }
-        const data = await api('news', options.force ? 0 : CACHE_TTL);
+    async function loadNews() {
+        showSkeleton('news-list');
+        const data = await api('news');
         const items = Array.isArray(data) ? data : ((data && data.news) || []);
-        if (!items.length) {
-            showEmpty('news-list', 'Nenhuma notícia');
-            if (options.auto) setNewsStatus('Atualizado automaticamente. Sem novas notícias.', { announce: false });
-            return;
-        }
+        if (!items.length) { showEmpty('news-list', 'Nenhuma notícia'); return; }
 
         document.getElementById('news-list').innerHTML = items.slice(0, 12).map(n => {
             const source = n.source || 'ge.globo';
@@ -2031,28 +1863,7 @@
             </a>`;
         }).join('');
 
-        setNewsStatus(options.auto ? 'Atualizado automaticamente.' : '', { announce: false });
-
         // Delegated click handler is no longer needed — <a> handles natively
-    }
-
-    function refreshNewsData(options = {}) {
-        if (document.hidden || currentTabId() !== 'news') return;
-        return loadNews({ silent: options.silent !== false, auto: true, force: true });
-    }
-
-    function startNewsRefresh() {
-        if (!_newsRefreshInterval) {
-            _newsRefreshInterval = setInterval(() => refreshNewsData({ silent: true }), NEWS_REFRESH_MS);
-        }
-        if (!_newsVisibilityBound) {
-            document.addEventListener('visibilitychange', () => {
-                if (!document.hidden && currentTabId() === 'news') {
-                    refreshNewsData({ silent: true });
-                }
-            });
-            _newsVisibilityBound = true;
-        }
     }
 
     // --- Match predictions ---
@@ -2544,52 +2355,6 @@
         return worldCupMatches;
     }
 
-    function worldCupFinal() {
-        return worldCupMatches.find(match =>
-            String(match.stage || '').toUpperCase() === 'FINAL' && FINISHED_STATUSES.has(match.status)
-        ) || null;
-    }
-
-    function worldCupTeamName(team) {
-        const tla = String((team && team.tla) || '').toUpperCase();
-        return WORLD_CUP_TEAM_NAMES_PT[tla] || CONFIG.teamName(team);
-    }
-
-    function renderWorldCupChampion() {
-        const final = worldCupFinal();
-        if (!final || final.homeScore == null || final.awayScore == null || final.homeScore === final.awayScore) return;
-
-        const homeWon = final.homeScore > final.awayScore;
-        const champion = homeWon ? final.homeTeam : final.awayTeam;
-        const runnerUp = homeWon ? final.awayTeam : final.homeTeam;
-        const championScore = homeWon ? final.homeScore : final.awayScore;
-        const runnerUpScore = homeWon ? final.awayScore : final.homeScore;
-        const championName = worldCupTeamName(champion);
-        const runnerUpName = worldCupTeamName(runnerUp);
-        const date = new Date(final.utcDate).toLocaleDateString('pt-BR', {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric',
-            timeZone: BR_TZ,
-        }).replace(/\./g, '');
-
-        const title = document.getElementById('worldcup-title');
-        const copy = document.getElementById('worldcup-champion-copy');
-        const crest = document.getElementById('worldcup-champion-crest');
-        const result = document.getElementById('worldcup-final-result');
-
-        if (title) title.textContent = `${championName} campeã do mundo`;
-        if (copy) copy.textContent = `${championName} venceu ${runnerUpName} por ${championScore} a ${runnerUpScore} e conquistou a Copa do Mundo de 2026.`;
-        if (crest) {
-            crest.src = safeImageUrl(CONFIG.getCrest(champion));
-            crest.alt = `Escudo da seleção ${championName}`;
-        }
-        if (result) {
-            result.setAttribute('aria-label', `Final: ${championName} ${championScore} a ${runnerUpScore} ${runnerUpName}`);
-            result.innerHTML = `<span>Final</span><strong>${escapeHtml(championName)} <b>${championScore}–${runnerUpScore}</b> ${escapeHtml(runnerUpName)}</strong><span>${escapeHtml(date)}</span>`;
-        }
-    }
-
     function renderWorldCup() {
         const total = worldCupMatches.length;
         const finished = worldCupMatches.filter(m => FINISHED_STATUSES.has(m.status)).length;
@@ -2606,7 +2371,6 @@
                 : 'Nenhum jogo da Copa 2026 encontrado no banco ainda.';
         }
 
-        renderWorldCupChampion();
         renderBrazilNextGames();
 
         document.querySelectorAll('.worldcup-filter').forEach(btn => {
@@ -2681,6 +2445,7 @@
                         <span>${escapeHtml(venue)}</span>
                     </div>
                 </div>
+                ${renderMatchCue(match)}
             </summary>
             ${renderMatchInsight(match)}
         </details>`;
@@ -2689,18 +2454,14 @@
     function renderBrazilNextGames() {
         const container = document.getElementById('worldcup-brazil-matches');
         const summary = document.getElementById('worldcup-brazil-summary');
-        const title = document.getElementById('worldcup-brazil-title');
         if (!container) return;
 
         const allBrazil = worldCupMatches.filter(isBrazilMatch).sort((a, b) => new Date(a.utcDate) - new Date(b.utcDate));
         const upcomingBrazil = nextBrazilMatches(3);
 
-        if (title) title.textContent = upcomingBrazil.length ? 'Próximos jogos do Brasil' : 'Campanha do Brasil';
         if (summary) {
             summary.textContent = allBrazil.length
-                ? (upcomingBrazil.length
-                    ? `${upcomingBrazil.length} próximos · ${allBrazil.length} jogos do Brasil na tabela`
-                    : `${allBrazil.length} jogos disputados pela Seleção na Copa 2026`)
+                ? `${upcomingBrazil.length} próximos · ${allBrazil.length} jogos do Brasil na tabela`
                 : 'A tabela atual ainda não trouxe jogos do Brasil.';
         }
 
@@ -2742,6 +2503,7 @@
                         <span>${escapeHtml(STATUS_LABEL[match.status] || match.status || 'Agendado')}</span>
                     </div>
                 </div>
+                ${renderMatchCue(match)}
             </summary>
             ${renderMatchInsight(match)}
         </details>`;
@@ -2751,6 +2513,30 @@
         worldCupFilter = VALID_WC_FILTERS.has(filter) ? filter : 'all';
         renderWorldCup();
         updateUrlState({ tab: 'worldcup', wc: worldCupFilter });
+    }
+
+    function focusWorldCupMatches() {
+        setWorldCupFilter('all');
+        const focusMatch = worldCupMatches.find(m => isNextCandidate(m)) || worldCupMatches[0];
+        if (focusMatch) {
+            const key = matchDateKey(focusMatch);
+            if (key) {
+                const [year, month] = key.split('-');
+                _calYear = parseInt(year, 10);
+                _calMonth = parseInt(month, 10);
+                _calSelectedDay = key;
+            }
+        } else {
+            _calYear = 2026;
+            _calMonth = 6;
+            _calSelectedDay = null;
+        }
+        _calCompFilter = 'WC';
+        syncYearSelect();
+        syncCompLegend();
+        loadCalendar();
+        updateUrlState({ tab: 'worldcup', year: _calYear, month: _calMonth, comp: 'WC', day: _calSelectedDay });
+        document.getElementById('calendar-hub')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     // --- Calendar ---
@@ -2803,9 +2589,7 @@
             _calMonth = todayMonth;
         }
 
-        // Revisioned query invalidates stale browser/PWA HTTP caches when the
-        // compact calendar contract or historical results are corrected.
-        const data = await api(`calendar_monthly?year=${_calYear}&month=${_calMonth}&team_scope=${encodeURIComponent(CONFIG.TEAM_SCOPE || 'men')}&rev=3`);
+        const data = await api(`calendar_monthly?year=${_calYear}&month=${_calMonth}`);
         if (!data) {
             document.getElementById('calendar-grid').innerHTML = '<div class="empty">Erro ao carregar</div>';
             return;
@@ -2920,20 +2704,22 @@
 
     function toggleDay(day) {
         const dayStr = `${_calYear}-${String(_calMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-        // A calendar day is a selector, not a disclosure toggle. Re-selecting
-        // an already highlighted date must keep its games visible (especially
-        // after arriving via a "Ver no calendário" deep link).
-        _calSelectedDay = dayStr;
-        renderExpandedDay(dayStr);
-
-        // Keep the selected result in view above the persistent native bar.
-        if (window.matchMedia('(max-width: 600px)').matches) {
-            requestAnimationFrame(() => {
-                const expandedEl = document.getElementById('calendar-expanded');
-                if (expandedEl && expandedEl.firstElementChild) {
-                    expandedEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }
-            });
+        if (_calSelectedDay === dayStr) {
+            _calSelectedDay = null;
+            document.getElementById('calendar-expanded').innerHTML = '';
+        } else {
+            _calSelectedDay = dayStr;
+            renderExpandedDay(dayStr);
+            
+            // Auto-scroll to expanded section on mobile after DOM update
+            if (window.matchMedia('(max-width: 600px)').matches) {
+                requestAnimationFrame(() => {
+                    const expandedEl = document.getElementById('calendar-expanded');
+                    if (expandedEl && expandedEl.firstElementChild) {
+                        expandedEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    }
+                });
+            }
         }
         
         // Update selected state - only add if day is still selected
@@ -2963,12 +2749,7 @@
         const container = document.getElementById('calendar-expanded');
 
         if (!matches.length) {
-            container.innerHTML = `<div class="cal-expanded cal-expanded-empty">
-                <div class="cal-expanded-header">
-                    <span class="cal-expanded-date">${dayStr.split('-').reverse().join('/')}</span>
-                </div>
-                <p>Nenhum jogo nesta data.</p>
-            </div>`;
+            container.innerHTML = '';
             return;
         }
 
@@ -2985,36 +2766,28 @@
                 const sides = matchDisplaySides(m);
                 const stageLabel = formatStage(m.stage);
 
-                const hasFinalScore = FINISHED_STATUSES.has(m.status)
-                    && hasValue(sides.leftScore)
-                    && hasValue(sides.rightScore);
-                const scoreHtml = hasFinalScore
-                    ? `<span class="cal-match-score" aria-label="Placar final ${sides.leftScore} a ${sides.rightScore}">${sides.leftScore}–${sides.rightScore}</span>`
-                    : '<span class="cal-match-vs" aria-hidden="true">×</span>';
+                const scoreHtml = FINISHED_STATUSES.has(m.status) && sides.leftScore != null
+                    ? `<span class="cal-match-score">${sides.leftScore}–${sides.rightScore}</span>`
+                    : '';
 
-                const awaitingResult = isPastMatchAwaitingResult(m);
-                const statusText = awaitingResult ? 'Resultado pendente' : (STATUS_LABEL[m.status] || m.status);
+                const statusText = STATUS_LABEL[m.status] || m.status;
                 const compClass = getCompBadgeClass(m.competition && m.competition.code);
-                const statusClass = FINISHED_STATUSES.has(m.status)
-                    ? 'finished'
-                    : (LIVE_STATUSES.has(m.status) ? 'live' : (awaitingResult ? 'pending' : ''));
+                const statusClass = LIVE_STATUSES.has(m.status) ? 'live' : '';
 
                 return `<details class="cal-match match-card ${compClass}"${matchDataAttr(m)}${matchOpenAttr(m)}>
                     <summary class="cal-match-main match-card-summary">
                         <div class="cal-match-time">${time}</div>
                         <div class="cal-match-comp ${compClass}">${escapeHtml(stageLabel || CONFIG.formatComp(m.competition))}</div>
-                        <div class="cal-match-teams${hasFinalScore ? ' has-result' : ''}">
-                            <span class="cal-match-team cal-match-team-left">
-                                <img class="cal-match-crest" src="${escapeHtml(safeImageUrl(CONFIG.getCrest(sides.leftTeam)))}" alt="">
-                                <span class="cal-match-team-name">${escapeHtml(CONFIG.teamName(sides.leftTeam))}</span>
-                            </span>
+                        <div class="cal-match-teams">
+                            <img class="cal-match-crest" src="${escapeHtml(safeImageUrl(CONFIG.getCrest(sides.leftTeam)))}" alt="">
+                            <span class="cal-match-team-name">${escapeHtml(CONFIG.teamName(sides.leftTeam))}</span>
+                            <span class="cal-match-vs">×</span>
+                            <span class="cal-match-team-name">${escapeHtml(CONFIG.teamName(sides.rightTeam))}</span>
+                            <img class="cal-match-crest" src="${escapeHtml(safeImageUrl(CONFIG.getCrest(sides.rightTeam)))}" alt="">
                             ${scoreHtml}
-                            <span class="cal-match-team cal-match-team-right">
-                                <span class="cal-match-team-name">${escapeHtml(CONFIG.teamName(sides.rightTeam))}</span>
-                                <img class="cal-match-crest" src="${escapeHtml(safeImageUrl(CONFIG.getCrest(sides.rightTeam)))}" alt="">
-                            </span>
                         </div>
                         <div class="cal-match-status ${statusClass}">${statusText}</div>
+                        ${renderMatchCue(m)}
                     </summary>
                     ${renderMatchInsight(m)}
                 </details>`;
@@ -3185,6 +2958,8 @@
         });
         addClickListener('downloadCalendarButton', window.downloadCalendar);
         addClickListener('copyCalendarUrlButton', window.copyCalendarUrl);
+        addClickListener('palmeirasCalendarButton', openPalmeirasCalendar);
+        addClickListener('worldcupFilterCalendar', focusWorldCupMatches);
         addClickListener('worldcupBrazilFilter', () => setWorldCupFilter('brazil'));
         document.querySelectorAll('.palmeiras-filter').forEach(btn => {
             btn.addEventListener('click', () => setPalmeirasHomeFilter(btn.dataset.palmeirasFilter || 'all'));
@@ -3241,36 +3016,6 @@
         }
     }
 
-    function registerServiceWorker() {
-        if (!('serviceWorker' in navigator)) return;
-
-        window.addEventListener('load', () => {
-            let refreshing = false;
-            navigator.serviceWorker.addEventListener('controllerchange', () => {
-                if (refreshing) return;
-                refreshing = true;
-                window.location.reload();
-            });
-
-            navigator.serviceWorker.register('/sw.js').then((registration) => {
-                if (registration.waiting) {
-                    registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-                }
-                registration.addEventListener('updatefound', () => {
-                    const worker = registration.installing;
-                    if (!worker) return;
-                    worker.addEventListener('statechange', () => {
-                        if (worker.state === 'installed' && navigator.serviceWorker.controller) {
-                            worker.postMessage({ type: 'SKIP_WAITING' });
-                        }
-                    });
-                });
-            }).catch(() => {
-                // The app remains usable when service-worker installation fails.
-            });
-        }, { once: true });
-    }
-
     // --- Public API ---
     window.loadHero = loadHero;
     window.loadPalmeirasHome = loadPalmeirasHome;
@@ -3282,20 +3027,18 @@
 
     // --- Init ---
     document.addEventListener('DOMContentLoaded', () => {
-        initNativeShell();
         initTheme();
         bindStaticControls();
         hydrateUrlState();
         setLastUpdated();
         initTabs();
-        initStickyDesktopTabs();
         loadHero();
+        loadFormWidget();
         loadPalmeirasHome();
         loadStandings();
         loadNews();
         loadCalendar();
         loadCompetitionOverview();
         startWorldCupRefresh();
-        registerServiceWorker();
     });
 })();
