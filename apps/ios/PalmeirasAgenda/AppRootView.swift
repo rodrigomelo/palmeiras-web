@@ -200,12 +200,11 @@ struct AppRootView: View {
         .joined()
     }
 
-    @MainActor
     private func syncWebNotificationState() async {
-        let settings = await UNUserNotificationCenter.current().notificationSettings()
+        let status = await fetchAuthorizationStatus()
         let permission: String
         let authorized: Bool
-        switch settings.authorizationStatus {
+        switch status {
         case .authorized, .provisional, .ephemeral:
             permission = "authorized"
             authorized = true
@@ -379,10 +378,9 @@ private struct NativeSettingsView: View {
             .joined()
     }
 
-    @MainActor
     private func refreshNotificationStatus() async {
-        let settings = await UNUserNotificationCenter.current().notificationSettings()
-        notificationStatus = switch settings.authorizationStatus {
+        let status = await fetchAuthorizationStatus()
+        notificationStatus = switch status {
         case .authorized, .provisional, .ephemeral:
             "Notificações autorizadas neste iPhone."
         case .denied:
@@ -391,6 +389,16 @@ private struct NativeSettingsView: View {
             "A permissão será solicitada ao ativar um alerta."
         @unknown default:
             "Não foi possível verificar a permissão."
+        }
+    }
+
+    /// Extracts only the Sendable authorizationStatus from UNNotificationSettings,
+    /// avoiding non-sendable crossing of actor boundaries.
+    private func fetchAuthorizationStatus() async -> UNAuthorizationStatus {
+        await withCheckedContinuation { continuation in
+            UNUserNotificationCenter.current().getNotificationSettings { settings in
+                continuation.resume(returning: settings.authorizationStatus)
+            }
         }
     }
 
