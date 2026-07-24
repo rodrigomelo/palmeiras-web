@@ -1,26 +1,27 @@
 // Palmeiras Agenda — Service Worker
-const CACHE_NAME = 'palmeiras-v1.1.37';
+const CACHE_NAME = 'palmeiras-v1.2.0-r16';
 const HTML_FALLBACK = '/index.html';
 
 // App shell resources to pre-cache on install
 const APP_SHELL = [
   HTML_FALLBACK,
-  '/static/css/styles.css?v=56',
-  '/static/js/config.js?v=20',
-  '/static/js/app.js?v=47',
+  '/static/css/styles.css?v=82',
+  '/static/css/design-system.css?v=20',
+  '/static/js/config.js?v=30',
+  '/static/js/features.js?v=5',
+  '/static/js/app.js?v=89',
   '/static/favicon.png',
-  '/static/brand/palmeiras-agenda-mark.svg?v=5',
-  '/static/brand/palmeiras-agenda-mark-small.svg',
-  '/static/brand/palmeiras-agenda-icon-192-v5.png',
-  '/static/brand/palmeiras-agenda-icon-512-v5.png',
-  '/static/brand/palmeiras-agenda-maskable-512-v5.png',
-  '/static/brand/palmeiras-agenda-favicon-16-v5.png',
-  '/static/brand/palmeiras-agenda-favicon-32-v5.png',
-  '/static/brand/palmeiras-agenda-favicon-v5.png',
-  '/manifest.webmanifest'
+  '/static/brand/palmeiras-agenda-mark.svg?v=12',
+  '/static/brand/palmeiras-agenda-app-icon-192-v12.png',
+  '/static/brand/palmeiras-agenda-app-icon-512-v12.png',
+  '/static/brand/palmeiras-agenda-maskable-512-v12.png',
+  '/static/brand/palmeiras-agenda-favicon-16-v12.png',
+  '/static/brand/palmeiras-agenda-favicon-32-v12.png',
+  '/static/brand/palmeiras-agenda-favicon-v12.png',
+  '/manifest.webmanifest?v=16'
 ];
 
-// API endpoints — network-first with cache fallback
+// API endpoints — network-only, with cache fallback only when offline
 const API_ROUTES = '/api/';
 
 function cacheAppShell(cache) {
@@ -98,7 +99,35 @@ self.addEventListener('message', (event) => {
   }
 });
 
-// Fetch: stale-while-revalidate for app shell, network-first for API
+self.addEventListener('push', (event) => {
+  let payload = {};
+  try { payload = event.data ? event.data.json() : {}; } catch (_) { payload = {}; }
+  const title = payload.title || 'Palmeiras Agenda';
+  event.waitUntil(self.registration.showNotification(title, {
+    body: payload.body || 'Há uma atualização na sua agenda.',
+    icon: payload.icon || '/static/icon-192.png',
+    badge: payload.badge || '/static/icon-192.png',
+    tag: payload.tag || 'palmeiras-agenda',
+    renotify: Boolean(payload.tag),
+    data: { url: payload.url || '/' },
+  }));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const target = new URL((event.notification.data && event.notification.data.url) || '/', self.location.origin).href;
+  event.waitUntil((async () => {
+    const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    const existing = windows.find((client) => client.url.startsWith(self.location.origin));
+    if (existing) {
+      await existing.navigate(target);
+      return existing.focus();
+    }
+    return self.clients.openWindow(target);
+  })());
+});
+
+// Fetch: stale-while-revalidate for app shell, fresh network for API
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
@@ -108,9 +137,13 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // API routes: network-first, cache fallback
+  // API routes: always go to the network so scores/results do not stick after
+  // collector updates; cached API data is only an offline fallback.
   if (url.pathname.startsWith(API_ROUTES)) {
-    event.respondWith(networkFirst(request));
+    event.respondWith(
+      fetch(request, { cache: 'no-store' })
+        .catch(() => caches.match(request).then((cached) => cached || Response.error()))
+    );
     return;
   }
 
