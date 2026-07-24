@@ -412,6 +412,13 @@
         const permission = String(payload.permission || 'notDetermined');
         const active = Boolean(payload.active);
         const blocked = permission === 'denied';
+        // Sync individual preference values from native to web checkboxes.
+        if (payload.preferences && typeof payload.preferences === 'object') {
+            const prefs = payload.preferences;
+            document.querySelectorAll('[data-push-pref]').forEach((input) => {
+                if (prefs[input.dataset.pushPref] !== undefined) input.checked = Boolean(prefs[input.dataset.pushPref]);
+            });
+        }
         updateNotificationControls({
             active,
             blocked,
@@ -458,11 +465,30 @@
         return false;
     }
 
+    function toggleNativeNotifications(enable) {
+        if (!nativeShell) return false;
+        if (window.PalmeirasNative?.toggleNotifications) {
+            window.PalmeirasNative.toggleNotifications(enable);
+            return true;
+        }
+        if (window.webkit?.messageHandlers?.palmeirasNative) {
+            window.webkit.messageHandlers.palmeirasNative.postMessage({
+                action: 'toggleNotifications',
+                enable,
+            });
+            updateNotificationControls({ busy: true, native: true });
+            return true;
+        }
+        return false;
+    }
+
     async function togglePush() {
-        if (openNativeNotificationSettings()) return;
         const quick = document.getElementById('quickNotifyButton');
-        if (quick?.getAttribute('aria-pressed') === 'true') await disablePush();
-        else await enablePush();
+        const isOn = quick?.getAttribute('aria-pressed') === 'true';
+        // On native shells, toggle all prefs via the bridge instead of opening settings.
+        if (nativeShell && toggleNativeNotifications(!isOn)) return;
+        if (!isOn) await enablePush();
+        else await disablePush();
     }
 
     async function refreshPushState({ announce = true } = {}) {

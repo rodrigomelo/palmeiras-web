@@ -38,11 +38,14 @@ final class WebAppController: ObservableObject {
         evaluate("if(localStorage.getItem('pa-spoiler-free') !== '\(value)'){localStorage.setItem('pa-spoiler-free','\(value)');location.reload()}")
     }
 
-    func setNativeNotificationState(active: Bool, permission: String) {
+    func setNativeNotificationState(active: Bool, permission: String, preferences: [String: Bool] = [:]) {
+        var prefEntries = preferences.map { "'\($0.key)': \($0.value ? "true" : "false")" }.joined(separator: ", ")
+        if preferences.isEmpty { prefEntries = "" }
         evaluate("""
             window.PalmeirasFeatures?.setNativeNotificationState({
                 active: \(active ? "true" : "false"),
-                permission: '\(permission)'
+                permission: '\(permission)',
+                preferences: { \(prefEntries) }
             })
             """)
     }
@@ -72,6 +75,7 @@ struct WebAppView: UIViewRepresentable {
     @Binding var errorMessage: String?
     let onOpenNotificationSettings: () -> Void
     let onRequestNotificationState: () -> Void
+    let onToggleNotifications: (Bool) -> Void
 
     func makeCoordinator() -> Coordinator {
         Coordinator(
@@ -79,7 +83,8 @@ struct WebAppView: UIViewRepresentable {
             isLoading: $isLoading,
             errorMessage: $errorMessage,
             onOpenNotificationSettings: onOpenNotificationSettings,
-            onRequestNotificationState: onRequestNotificationState
+            onRequestNotificationState: onRequestNotificationState,
+            onToggleNotifications: onToggleNotifications
         )
     }
 
@@ -130,19 +135,22 @@ struct WebAppView: UIViewRepresentable {
         private var errorMessage: Binding<String?>
         private let onOpenNotificationSettings: () -> Void
         private let onRequestNotificationState: () -> Void
+        private let onToggleNotifications: (Bool) -> Void
 
         init(
             allowedHost: String?,
             isLoading: Binding<Bool>,
             errorMessage: Binding<String?>,
             onOpenNotificationSettings: @escaping () -> Void,
-            onRequestNotificationState: @escaping () -> Void
+            onRequestNotificationState: @escaping () -> Void,
+            onToggleNotifications: @escaping (Bool) -> Void
         ) {
             self.allowedHost = allowedHost
             self.isLoading = isLoading
             self.errorMessage = errorMessage
             self.onOpenNotificationSettings = onOpenNotificationSettings
             self.onRequestNotificationState = onRequestNotificationState
+            self.onToggleNotifications = onToggleNotifications
         }
 
         func userContentController(
@@ -159,6 +167,9 @@ struct WebAppView: UIViewRepresentable {
                 onOpenNotificationSettings()
             } else if action == "requestNotificationState" {
                 onRequestNotificationState()
+            } else if action == "toggleNotifications" {
+                let enable = payload["enable"] as? Bool ?? true
+                onToggleNotifications(enable)
             }
         }
 

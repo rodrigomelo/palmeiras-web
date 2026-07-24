@@ -524,14 +524,15 @@ class MainActivity : Activity() {
 
     private fun nativeNotificationState(): JSONObject {
         val preferences = getSharedPreferences(NativeSettingsView.PREFERENCES, MODE_PRIVATE)
-        val preferencesEnabled = listOf(
-            NativeSettingsView.KEY_ONE_HOUR,
-            NativeSettingsView.KEY_KICKOFF,
-            NativeSettingsView.KEY_RESULTS,
-            NativeSettingsView.KEY_SCHEDULE_CHANGES,
-            NativeSettingsView.KEY_LIVE_EVENTS,
-            NativeSettingsView.KEY_NEWS
-        ).any { preferences.getBoolean(it, false) }
+        val prefKeys = listOf(
+            NativeSettingsView.KEY_ONE_HOUR to "oneHour",
+            NativeSettingsView.KEY_KICKOFF to "kickoff",
+            NativeSettingsView.KEY_RESULTS to "results",
+            NativeSettingsView.KEY_SCHEDULE_CHANGES to "scheduleChanges",
+            NativeSettingsView.KEY_LIVE_EVENTS to "liveEvents",
+            NativeSettingsView.KEY_NEWS to "news"
+        )
+        val preferencesEnabled = prefKeys.any { preferences.getBoolean(it.first, false) }
         val permissionGranted = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
             checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
         val systemEnabled =
@@ -542,9 +543,34 @@ class MainActivity : Activity() {
             !preferencesEnabled -> "notDetermined"
             else -> "denied"
         }
+        val prefsJson = JSONObject()
+        for ((nativeKey, webKey) in prefKeys) {
+            prefsJson.put(webKey, preferences.getBoolean(nativeKey, false))
+        }
         return JSONObject()
             .put("active", preferencesEnabled && authorized)
             .put("permission", permission)
+            .put("preferences", prefsJson)
+    }
+
+    private fun setAllNotificationPreferences(enabled: Boolean) {
+        val preferences = getSharedPreferences(NativeSettingsView.PREFERENCES, MODE_PRIVATE)
+        preferences.edit().apply {
+            for (key in listOf(
+                NativeSettingsView.KEY_ONE_HOUR,
+                NativeSettingsView.KEY_KICKOFF,
+                NativeSettingsView.KEY_RESULTS,
+                NativeSettingsView.KEY_SCHEDULE_CHANGES,
+                NativeSettingsView.KEY_LIVE_EVENTS,
+                NativeSettingsView.KEY_NEWS
+            )) {
+                putBoolean(key, enabled)
+            }
+        }.apply()
+        settingsView.refreshNotificationStatus()
+        if (enabled) ensureNotificationPermission()
+        syncNativeNotificationStateToWeb()
+        NotificationSync.synchronizeAsync(this)
     }
 
     private fun syncNativeNotificationStateToWeb() {
@@ -563,6 +589,11 @@ class MainActivity : Activity() {
         @JavascriptInterface
         fun openNotificationSettings() {
             runOnUiThread { showDestination(NativeDestination.SETTINGS) }
+        }
+
+        @JavascriptInterface
+        fun toggleNotifications(enable: Boolean) {
+            runOnUiThread { setAllNotificationPreferences(enable) }
         }
     }
 

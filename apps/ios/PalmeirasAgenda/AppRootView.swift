@@ -95,6 +95,9 @@ struct AppRootView: View {
                 onOpenNotificationSettings: { select(.settings) },
                 onRequestNotificationState: {
                     Task { await syncWebNotificationState() }
+                },
+                onToggleNotifications: { enable in
+                    setAllNotificationPreferences(enable)
                 }
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -230,8 +233,29 @@ struct AppRootView: View {
         }
         webController.setNativeNotificationState(
             active: notificationPreferencesEnabled && authorized,
-            permission: permission
+            permission: permission,
+            preferences: [
+                "oneHour": notifyOneHourBefore,
+                "kickoff": notifyKickoff,
+                "results": notifyResults,
+                "scheduleChanges": notifyScheduleChanges,
+                "liveEvents": notifyLiveEvents,
+                "news": notifyNews,
+            ]
         )
+    }
+
+    private func setAllNotificationPreferences(_ enable: Bool) {
+        notifyOneHourBefore = enable
+        notifyKickoff = enable
+        notifyResults = enable
+        notifyScheduleChanges = enable
+        notifyLiveEvents = enable
+        notifyNews = enable
+        Task {
+            if enable { _ = try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) }
+            await syncWebNotificationState()
+        }
     }
 
     private func retry() {
