@@ -4,6 +4,9 @@
  */
 const CONFIG = {
     TEAM_ID: 1769,
+    MEN_TEAM_ID: 1769,
+    WOMEN_TEAM_ID: 20002,
+    TEAM_SCOPE: 'men',
     BR_TZ: 'America/Sao_Paulo',
     API_BASE_URL: (function () {
         const meta = document.querySelector('meta[name="api-base-url"]');
@@ -22,57 +25,42 @@ const CONFIG = {
 
     /** Known stadium names by opponent team ID */
     STADIUMS: {
-        1765: 'Arena MRV',
-        1766: 'Mineirão',
-        1770: 'Nilton Santos',
-        1776: 'Morumbi',
-        1777: 'Fonte Nova',
-        1779: 'Maracanã',
-        1780: 'Castelão',
-        1783: 'Beira-Rio',
-        1784: 'Arena da Baixada',
-        1785: 'Arena Condá',
-        1786: 'Allianz Parque',
-        1787: 'Arena Pantanal',
-        1788: 'Barradão',
-        1789: 'Perpetuão',
-        1790: 'Arena Amazônia',
-        1791: 'Castelão (CE)',
-        1792: 'Arena Pernambuco',
-        1793: 'Ilha do Retiro',
-        1794: 'Almeidão',
-        1795: 'Mangueirão',
-        1796: 'Lumberman Arena',
-        1797: 'Arena das Dunas',
-        1798: 'Estádio Kleber Andrade',
-        1799: 'Brinco de Ouro',
-        1800: 'Santa Cruz',
-        1801: 'Arruda',
-        1802: 'Centenário',
-        1803: 'Moisés Lucarelli',
-        1804: 'Vila Belmiro',
-        1805: 'São Januário',
-        1806: 'Nabi Abi Chedid',
-        1807: 'Aníbal Torres',
-        1808: 'Monumental (Lima)',
-        1809: 'El Teniente',
-        1810: 'La Portada',
-        1811: 'Defensores del Chaco',
-        1812: 'Monumental (Buenos Aires)',
-        1813: 'Mario Alberto Kempes',
-        1814: 'Libertadores de América',
-        1815: 'Más Monumental',
+        1765: 'Maracanã',
+        1766: 'Arena MRV',
+        1767: 'Arena do Grêmio',
+        1768: 'Ligga Arena',
+        1770: 'Estádio Nilton Santos',
+        1771: 'Mineirão',
+        1772: 'Arena Condá',
+        1776: 'MorumBIS',
+        1777: 'Arena Fonte Nova',
+        1779: 'Neo Química Arena',
+        1780: 'São Januário',
+        1782: 'Barradão',
+        1783: 'Maracanã',
+        4241: 'Couto Pereira',
+        4286: 'Nabi Abi Chedid',
+        4287: 'Baenão',
+        4364: 'Maião',
+        6684: 'Beira-Rio',
+        6685: 'Vila Belmiro',
     },
 
-    /** Fallback crest URLs for teams without football-data.org crests */
-    TEAM_CRESTS: {
-        1769: 'https://crests.football-data.org/1769.png', // Palmeiras
+    /** Restrict dynamic URLs before rendering them into href/src attributes. */
+    safeUrl(value, fallback = '#') {
+        const raw = String(value || '').trim();
+        if (!raw || raw === '#') return fallback;
+        try {
+            const base = typeof window !== 'undefined' && window.location
+                ? window.location.origin
+                : 'https://palmeiras.rodrigolanna.com.br';
+            const url = new URL(raw, base);
+            if (!['http:', 'https:'].includes(url.protocol)) return fallback;
+            return url.href;
+        } catch {
+            return fallback;
+        }
     },
-
-    /** Known broken crest URLs to replace */
-    BROKEN_CRESTS: new Set([
-        'https://ssl.gstatic.com/lingonautique/paulista_2024/palmeiras.png',
-    ]),
 
     /** Competition code display names */
     COMP_NAMES: {
@@ -90,6 +78,10 @@ const CONFIG = {
         WC: 'Copa do Mundo 2026',
         WORLD_CUP: 'Copa do Mundo 2026',
         FIFA_WORLD_CUP: 'Copa do Mundo 2026',
+        BFA1: 'Brasileiro Feminino A1',
+        PAULISTA_F: 'Paulistão Feminino',
+        COPA_F: 'Copa do Brasil Feminina',
+        SUPERCOPA_F: 'Supercopa Feminina',
     },
 
     /** Get venue for a match object */
@@ -114,9 +106,54 @@ const CONFIG = {
         return this.COMP_NAMES[code] || (comp && comp.name) || 'Campeonato';
     },
 
+    /** Fallback crest URLs for teams without football-data.org crests */
+    TEAM_CRESTS: {
+        1769: 'https://crests.football-data.org/1769.png', // Palmeiras
+        20002: '/static/crests/1769.png', // Palmeiras Feminino uses the same club crest as Masculino
+    },
+
+    /** CBF Feminino IDs that represent clubs already available in the Masculino feed. */
+    SHARED_CLUB_CRESTS: Object.freeze({
+        20001: 1779, // Corinthians
+        20002: 1769, // Palmeiras
+        20005: 1776, // São Paulo
+        20007: 4286, // Red Bull Bragantino
+        20008: 6685, // Santos
+        20011: 6684, // Internacional
+        20013: 1767, // Grêmio
+        20014: 1765, // Fluminense
+        20016: 1783, // Flamengo
+        20018: 1782, // Vitória
+        59849: 1771, // Cruzeiro
+        60175: 1770, // Botafogo
+        61377: 1777, // Bahia
+        62194: 1766, // Atlético Mineiro
+    }),
+
+    /** Women-only clubs with transparent local crests and no Masculino alias. */
+    LOCAL_CREST_IDS: new Set([
+        20027, // Juventude
+        20038, // Ferroviária
+        20064, // Mixto
+        59897, // América
+    ]),
+
+    /** Known broken crest URLs to replace */
+    BROKEN_CRESTS: new Set([
+        'https://ssl.gstatic.com/lingonautique/paulista_2024/palmeiras.png',
+    ]),
+
     /** Get crest URL with fallback */
     getCrest(team) {
         const crest = team && team.crest;
+        const sharedCrestId = team && this.SHARED_CLUB_CRESTS[Number(team.id)];
+        if (sharedCrestId) return `/static/crests/${sharedCrestId}.png`;
+        if (team && this.LOCAL_CREST_IDS.has(Number(team.id))) {
+            return `/static/crests/${Number(team.id)}.png`;
+        }
+        const sourceCrest = String((team && team.sourceCrest) || crest || '');
+        const cbfMatch = sourceCrest.match(/^https:\/\/conteudo\.cbf\.com\.br\/clubes\/(\d+)\/escudo\.jpg(?:\?.*)?$/i);
+        if (cbfMatch) return this.apiUrl(`crest?team_id=${encodeURIComponent(cbfMatch[1])}`);
         if (crest && !this.BROKEN_CRESTS.has(crest)) return crest;
         if (team && team.id != null && this.TEAM_CRESTS[team.id]) return this.TEAM_CRESTS[team.id];
         return 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="18" fill="#ccc"/><text x="20" y="25" text-anchor="middle" fill="#666" font-size="14">?</text></svg>');

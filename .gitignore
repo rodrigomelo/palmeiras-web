@@ -10,3 +10,14 @@ venv/
 .DS_Store
 .vercel/
 .vercel
+
+# Native build products and local IDE state
+apps/android/.gradle/
+apps/android/**/build/
+apps/android/local.properties
+apps/android/keystore.properties
+apps/android/keystore/
+apps/ios/DerivedData/
+apps/ios/build/
+apps/ios/**/*.xcuserdatad/
+apps/ios/**/*.xcworkspace/xcuserdata/

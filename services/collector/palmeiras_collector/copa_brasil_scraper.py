@@ -34,12 +34,18 @@ def parse_date_br(text):
 def detect_competition(text):
     """Detect competition from text."""
     t = text.lower()
-    if 'libertadores' in t: return 'CLI'
-    if 'copa do brasil' in t or 'copa-do-brasil' in t: return 'COPA'
-    if 'brasileir' in t or 'série a' in t: return 'BSA'
-    if 'paulista' in t: return 'PAU'
-    if 'supercopa' in t: return 'SUP'
-    if 'recopa' in t: return 'REC'
+    if 'libertadores' in t:
+        return 'CLI'
+    if 'copa do brasil' in t or 'copa-do-brasil' in t:
+        return 'COPA'
+    if 'brasileir' in t or 'série a' in t:
+        return 'BSA'
+    if 'paulista' in t:
+        return 'PAU'
+    if 'supercopa' in t:
+        return 'SUP'
+    if 'recopa' in t:
+        return 'REC'
     return 'OTHER'
 
 
@@ -66,9 +72,6 @@ def scrape_ge_globo_copa_brasil():
             headers=headers, timeout=30
         )
         
-        from bs4 import BeautifulSoup
-        soup = BeautifulSoup(resp.text, 'html.parser')
-        
         # Extract embedded match data
         html = resp.text
         marker = 'window.byTeamScheduleTeamData = '
@@ -78,10 +81,12 @@ def scrape_ge_globo_copa_brasil():
             depth = 0
             i = json_start
             while i < len(html):
-                if html[i] == '{': depth += 1
+                if html[i] == '{':
+                    depth += 1
                 elif html[i] == '}':
                     depth -= 1
-                    if depth == 0: break
+                    if depth == 0:
+                        break
                 i += 1
             
             data = json.loads(html[json_start:i+1])
@@ -178,7 +183,8 @@ def scrape_google_copa_brasil():
 # ---- Known Copa do Brasil 2026 data (manually verified) ----
 # Palmeiras enters in the 5th phase (round of 16 equivalent)
 # Source: ge.globo + Google search results (March 29, 2026)
-# Updated: April 19, 2026 — 1st leg confirmed Apr 23 19:30 BRT
+# Updated: July 19, 2026 — both fifth-phase results verified against the
+# official Palmeiras match reports and CBF fixture dates.
 #
 # IMPORTANT: Entries with source='manual' are protected from collector overwrites.
 # The collector skips update() for manual entries — only scores are updated live.
@@ -190,27 +196,27 @@ COPA_BRASIL_2026_KNOWN = [
         'away_team': json.dumps({'id': 0, 'name': 'Jacuipense BA', 'shortName': 'Jacuipense', 'tla': 'JAC'}),
         'competition': json.dumps({'code': 'COPA', 'name': 'Copa do Brasil 2026', 'emblem': ''}),
         'season': json.dumps({'year': 2026}),
-        'status': 'SCHEDULED',
+        'status': 'FINISHED',
         'matchday': 5,  # 5th phase
         'stage': '5TH_PHASE',
         'venue': 'Allianz Parque',
-        'home_score': None,
-        'away_score': None,
+        'home_score': 3,
+        'away_score': 0,
         'source': 'manual',
     },
     {
         'external_id': 990002,
-        'utc_date': '2026-05-13T00:00:00+00:00',  # May 13 (date-base)
+        'utc_date': '2026-05-14T00:30:00+00:00',  # May 13 21:30 BRT (Wed)
         'home_team': json.dumps({'id': 0, 'name': 'Jacuipense BA', 'shortName': 'Jacuipense', 'tla': 'JAC'}),
         'away_team': json.dumps({'id': TEAM_ID, 'name': 'SE Palmeiras', 'shortName': 'Palmeiras', 'tla': 'PAL'}),
         'competition': json.dumps({'code': 'COPA', 'name': 'Copa do Brasil 2026', 'emblem': ''}),
         'season': json.dumps({'year': 2026}),
-        'status': 'SCHEDULED',
+        'status': 'FINISHED',
         'matchday': 5,  # 5th phase
         'stage': '5TH_PHASE',
-        'venue': '',
-        'home_score': None,
-        'away_score': None,
+        'venue': 'Estádio do Café',
+        'home_score': 1,
+        'away_score': 4,
         'source': 'manual',
     },
 ]

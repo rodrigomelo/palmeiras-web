@@ -39,7 +39,7 @@ When a day with matches is tapped:
 - A list expands BELOW the calendar grid (not inline)
 - Shows all matches for that day with:
   - Time
-  - Home/Away teams with crests
+  - Home/Away teams with their club flags
   - Competition badge (colored)
   - Status (SCHEDULED, FINISHED, IN_PLAY)
 - Tap again to collapse
@@ -64,8 +64,8 @@ Response:
         "utcDate": "2025-04-15T19:00:00Z",
         "status": "SCHEDULED",
         "competition": { "code": "BSA", "name": "Brasileirão" },
-        "homeTeam": { "id": 1769, "name": "Palmeiras", "shortName": "Palmeiras", "crest": "..." },
-        "awayTeam": { "id": 1776, "name": "São Paulo", "shortName": "São Paulo", "crest": "..." },
+        "homeTeam": { "id": 1769, "name": "Palmeiras", "shortName": "Palmeiras", "crest": "" },
+        "awayTeam": { "id": 1776, "name": "São Paulo", "shortName": "São Paulo", "crest": "" },
         "matchday": 5,
         "venue": "Allianz Parque",
         "broadcast": "Premiere"

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="brand_green_950">#043522</color>
+    <color name="brand_green_900">#06412B</color>
+    <color name="brand_green">#075C3B</color>
+    <color name="brand_green_700">#0A7A4A</color>
+    <color name="brand_green_100">#E7F1E9</color>
+    <color name="brand_gold">#C99A3D</color>
+    <color name="brand_ivory">#FFFDF3</color>
+    <color name="brand_mist">#F3F5EF</color>
+    <color name="brand_ink">#10231A</color>
+</resources>

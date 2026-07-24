@@ -1,29 +1,54 @@
 # Palmeiras Agenda Android
 
-Native Android client scaffold for the shared Palmeiras Agenda backend.
+Kotlin/WebView mobile shell for the responsive Palmeiras Agenda product.
 
-The app must call the same backend as Web and iOS:
+The app loads the same production interface used by Web, PWA, and iOS:
 
 ```text
-https://palmeiras.rodrigolanna.com.br/api/v1
+https://palmeiras.rodrigolanna.com.br/
 ```
 
-The Android client retries the legacy `/api` route for compatibility with older
-deployments, matching the iOS fallback behavior.
+The shell owns Android integration only: a persistent native bottom menu,
+notification and appearance settings, manual refresh, secure navigation,
+downloads, loading and error recovery, WebView history, and native launcher
+assets.
 
-Current shared app/API version: `1.1.37`. Keep Gradle `versionName`,
+Current shared app/API version: `1.2.0`. Keep Gradle `versionName`,
 `ApiConfig.APP_VERSION`, `APP_VERSION`, and `packages/contracts/openapi.yaml`
 aligned.
 
 Current contents:
 
-- `app/src/main/java/com/palmeiras/agenda/ApiConfig.kt` - API base URL
-- `app/src/main/java/com/palmeiras/agenda/PalmeirasApiClient.kt` - backend client
-- `app/src/main/java/com/palmeiras/agenda/Models.kt` - DTOs matching `packages/contracts/openapi.yaml`
-- `app/src/main/java/com/palmeiras/agenda/MainActivity.kt` - minimal native loading screen
-- `app/src/main/res/mipmap-*` - generated PA calendar launcher icons
+- `app/src/main/java/com/palmeiras/agenda/ApiConfig.kt` - shared Web product URL
+- `app/src/main/java/com/palmeiras/agenda/MainActivity.kt` - secure WebView shell
+- `app/src/main/java/com/palmeiras/agenda/NativeNavigation.kt` - bottom navigation
+- `app/src/main/java/com/palmeiras/agenda/NativeSettingsView.kt` - native settings
+- `app/src/main/res/mipmap-*` - generated Campo marcado launcher icons
 
-Keep all future models generated from `packages/contracts/openapi.yaml`.
+Build the debug application with the checked-in Gradle wrapper:
+
+```bash
+./gradlew :app:assembleDebug
+```
+
+## Google Play release
+
+The Play release targets Android 16 (API 36) and is distributed as an Android
+App Bundle. Google Play App Signing should manage the production signing key;
+the local keystore is the replaceable upload key.
+
+1. Copy `keystore.properties.example` to `keystore.properties`.
+2. Create or restore the upload keystore referenced by `storeFile`.
+3. Keep the keystore and passwords outside version control and back them up.
+4. Build and validate the signed bundle:
+
+```bash
+./gradlew :app:lintRelease :app:testReleaseUnitTest :app:bundleRelease
+```
+
+The upload artifact is written to
+`app/build/outputs/bundle/release/app-release.aab`.
+
 Refresh launcher icons from the shared brand source with:
 
 ```bash

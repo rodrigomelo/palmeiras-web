@@ -1,0 +1,12 @@
+<resources>
+    <style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:windowActionModeOverlay">true</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:statusBarColor">@color/brand_green</item>
+        <item name="android:navigationBarColor">@color/brand_ivory</item>
+        <item name="android:windowSplashScreenBackground">@color/brand_green_950</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/palmeiras_agenda_logo</item>
+        <item name="android:windowSplashScreenIconBackgroundColor">@color/brand_green_950</item>
+    </style>
+</resources>

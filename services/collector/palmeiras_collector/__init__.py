@@ -15,13 +15,18 @@ import json
 import requests
 import time
 from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 from pathlib import Path
+from urllib.parse import quote_plus
+from defusedxml import ElementTree as ET
 
 from dotenv import load_dotenv
 try:
     from .crest_manager import get_or_download_crest
+    from .enrichment import palmeiras_venue_fallback
 except ImportError:
     from crest_manager import get_or_download_crest
+    from enrichment import palmeiras_venue_fallback  # type: ignore
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 load_dotenv(PROJECT_ROOT / '.env')
@@ -122,6 +127,49 @@ def _cache_crests_for_match(home, away):
                 team['crest'] = None
 
 
+def _provider_events(match):
+    """Normalize optional football-data incidents into the shared event feed."""
+    events = []
+    for index, goal in enumerate(match.get('goals') or []):
+        scorer = (goal.get('scorer') or {}).get('name') or 'Jogador'
+        minute = goal.get('minute')
+        events.append({
+            'id': f"fd-goal-{match.get('id')}-{index}",
+            'type': 'GOAL',
+            'label': f'Gol — {scorer}',
+            'minute': minute,
+            'injuryTime': goal.get('injuryTime'),
+            'teamId': (goal.get('team') or {}).get('id'),
+            'player': scorer,
+            'assist': (goal.get('assist') or {}).get('name') or '',
+        })
+    for index, booking in enumerate(match.get('bookings') or []):
+        player = (booking.get('player') or {}).get('name') or 'Jogador'
+        card = str(booking.get('card') or '').upper()
+        event_type = 'RED_CARD' if 'RED' in card else 'YELLOW_CARD'
+        label = 'Cartão vermelho' if event_type == 'RED_CARD' else 'Cartão amarelo'
+        events.append({
+            'id': f"fd-card-{match.get('id')}-{index}",
+            'type': event_type,
+            'label': f'{label} — {player}',
+            'minute': booking.get('minute'),
+            'teamId': (booking.get('team') or {}).get('id'),
+            'player': player,
+        })
+    for index, substitution in enumerate(match.get('substitutions') or []):
+        player_in = (substitution.get('playerIn') or {}).get('name') or 'Jogador'
+        player_out = (substitution.get('playerOut') or {}).get('name') or 'Jogador'
+        events.append({
+            'id': f"fd-sub-{match.get('id')}-{index}",
+            'type': 'SUBSTITUTION',
+            'label': f'Substituição — {player_in} por {player_out}',
+            'minute': substitution.get('minute'),
+            'teamId': (substitution.get('team') or {}).get('id'),
+            'player': player_in,
+        })
+    return sorted(events, key=lambda item: (item.get('minute') is None, item.get('minute') or 999, item['id']))
+
+
 def _match_to_record(match, now, *, cache_crests=True, broadcast=None):
     """Convert a football-data.org match object to the matches table schema."""
     if 'id' not in match:
@@ -137,9 +185,26 @@ def _match_to_record(match, now, *, cache_crests=True, broadcast=None):
     if cache_crests:
         _cache_crests_for_match(home, away)
 
-    venue = match.get('venue')
-    if not venue and home.get('id') == TEAM_ID:
-        venue = PALMEIRAS_HOME
+    venue = match.get('venue') or palmeiras_venue_fallback(home, away)
+
+    area = dict(match.get('area') or {})
+    area.update({
+        'teamScope': 'men',
+        'events': _provider_events(match),
+        'lineups': match.get('lineups') or {},
+        'liveMinute': match.get('minute'),
+        'attendance': match.get('attendance'),
+        'sourceUrl': f"https://www.football-data.org/match/{match['id']}",
+        'directionsUrl': (
+            f"https://www.google.com/maps/search/?api=1&query={quote_plus(venue)}"
+            if venue else ''
+        ),
+        'ticketUrl': (
+            'https://www.ingressospalmeiras.com.br/'
+            if home.get('id') == TEAM_ID else ''
+        ),
+        'provider': 'football-data.org',
+    })
 
     if broadcast is None:
         broadcast = _get_broadcast_map().get(comp.get('code'), '')
@@ -160,7 +225,7 @@ def _match_to_record(match, now, *, cache_crests=True, broadcast=None):
         'half_time_away': ht.get('away'),
         'season': _json(match.get('season', {})),
         'stage': match.get('stage', ''),
-        'area': _json(match.get('area', {})),
+        'area': _json(area),
         'referees': json.dumps(match.get('referees', []) or [], ensure_ascii=False),
         'broadcast': broadcast or '',
     }
@@ -174,7 +239,11 @@ def _sanitize_match_record(record):
 def _deterministic_external_id(*parts):
     """Create a stable positive integer id for scraped fixtures without API ids."""
     import hashlib
-    digest = hashlib.md5('|'.join(str(part) for part in parts).encode()).hexdigest()
+    # This preserves existing external IDs; the digest is never used for security.
+    digest = hashlib.md5(
+        '|'.join(str(part) for part in parts).encode(),
+        usedforsecurity=False,
+    ).hexdigest()
     return 980_000_000 + (int(digest[:8], 16) % 100_000_000)
 
 
@@ -355,179 +424,253 @@ def collect_news():
     _print("  Fetching news...")
     client = get_supabase()
     if not client:
-        raise RuntimeError("Missing Supabase credentials")
+        return False
+
+    user_agent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
+    headers = {"User-Agent": user_agent, "Accept-Language": "pt-BR,pt;q=0.9"}
+    news = []
+    now = datetime.now(timezone.utc).isoformat()
+
+    def parse_rss_date(value):
+        if not value:
+            return None
+        try:
+            dt = parsedate_to_datetime(value)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            return dt.astimezone(timezone.utc).isoformat()
+        except (TypeError, ValueError, IndexError, AttributeError):
+            return None
+
+    # Source 0: Google News RSS aggregator. This provides publication dates and
+    # tends to keep working even when individual sports sites change markup.
+    try:
+        resp = requests.get(
+            "https://news.google.com/rss/search",
+            params={"q": "Palmeiras futebol", "hl": "pt-BR", "gl": "BR", "ceid": "BR:pt-419"},
+            headers=headers,
+            timeout=30,
+        )
+        resp.raise_for_status()
+        root = ET.fromstring(resp.content)
+        rss_count = 0
+        for item in root.findall("./channel/item")[:25]:
+            title = (item.findtext("title") or "").strip()
+            href = (item.findtext("link") or "").strip()
+            source_el = item.find("source")
+            source_name = (source_el.text or "Google News").strip() if source_el is not None else "Google News"
+            suffix = f" - {source_name}"
+            if source_name and title.endswith(suffix):
+                title = title[: -len(suffix)].strip()
+            if title and href:
+                news.append({
+                    'title': title,
+                    'url': href,
+                    'image': "",
+                    'source': source_name or 'Google News',
+                    'published_at': parse_rss_date(item.findtext("pubDate")),
+                    'collected_at': now,
+                })
+                rss_count += 1
+        _print(f"    Google News RSS: {rss_count} articles")
+    except Exception as e:
+        _print(f"    Google News RSS error: {e}")
 
     try:
         from bs4 import BeautifulSoup
     except ImportError:
-        _print("    beautifulsoup4 not installed, skipping")
-        return
-
-    news = []
-    now = datetime.now(timezone.utc).isoformat()
+        BeautifulSoup = None  # type: ignore
+        _print("    beautifulsoup4 not installed, skipping direct HTML sources")
 
     # Source 1: ge.globo
-    try:
-        resp = requests.get(
-            "https://ge.globo.com/futebol/times/palmeiras/",
-            headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36", "Accept-Language": "pt-BR,pt;q=0.9"},
-            timeout=30,
-        )
-        resp.raise_for_status()
-        soup = BeautifulSoup(resp.text, "html.parser")
-        articles = (soup.select("div.feed-post-body") or soup.select("article"))[:10]
+    if BeautifulSoup:
+        try:
+            resp = requests.get(
+                "https://ge.globo.com/futebol/times/palmeiras/",
+                headers=headers,
+                timeout=30,
+            )
+            resp.raise_for_status()
+            soup = BeautifulSoup(resp.text, "html.parser")
+            articles = (soup.select("div.feed-post-body") or soup.select("article"))[:10]
 
-        for a in articles:
-            title = a.select_one("a.feed-post-link") or a.select_one("h2")
-            link = a.select_one("a.feed-post-link")
-            img = a.select_one("img")
-            if title and link:
-                news.append({
-                    'title': title.get_text(strip=True),
-                    'url': link.get("href", ""),
-                    'image': img.get("src", "") if img else "",
-                    'source': 'ge.globo',
-                    'collected_at': now,
-                })
-        _print(f"    ge.globo: {len(news)} articles")
-    except Exception as e:
-        _print(f"    ge.globo error: {e}")
+            ge_count = 0
+            for a in articles:
+                title = a.select_one("a.feed-post-link") or a.select_one("h2")
+                link = a.select_one("a.feed-post-link")
+                img = a.select_one("img")
+                if title and link:
+                    news.append({
+                        'title': title.get_text(strip=True),
+                        'url': link.get("href", ""),
+                        'image': img.get("src", "") if img else "",
+                        'source': 'ge.globo',
+                        'collected_at': now,
+                    })
+                    ge_count += 1
+            _print(f"    ge.globo: {ge_count} articles")
+        except Exception as e:
+            _print(f"    ge.globo error: {e}")
 
     # Source 2: lance.com.br
-    try:
-        resp = requests.get(
-            "https://www.lance.com.br/palmeiras",
-            headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36", "Accept-Language": "pt-BR,pt;q=0.9"},
-            timeout=30,
-        )
-        resp.raise_for_status()
-        soup = BeautifulSoup(resp.text, "html.parser")
-        articles = soup.select("article")[:5]
-        lance_count = 0
-        for a in articles:
-            title = a.select_one("h2, h3, .title")
-            link = a.select_one("a")
-            img = a.select_one("img")
-            if title and link:
-                # Prefer link text if title element contains a link with more complete text
-                link_text = link.get_text(strip=True)
-                title_text = title.get_text(strip=True)
-                final_title = link_text if len(link_text) > len(title_text) else title_text
-                href = link.get("href", "")
-                if href and not href.startswith("http"):
-                    href = "https://www.lance.com.br" + href
-                news.append({
-                    'title': final_title,
-                    'url': href,
-                    'image': img.get("src", "") if img else "",
-                    'source': 'lance.com.br',
-                    'collected_at': now,
-                })
-                lance_count += 1
-        _print(f"    lance.com.br: {lance_count} articles")
-    except Exception as e:
-        _print(f"    lance.com.br error: {e}")
+    if BeautifulSoup:
+        try:
+            resp = requests.get(
+                "https://www.lance.com.br/palmeiras",
+                headers=headers,
+                timeout=30,
+            )
+            resp.raise_for_status()
+            soup = BeautifulSoup(resp.text, "html.parser")
+            articles = soup.select("article")[:5]
+            lance_count = 0
+            for a in articles:
+                title = a.select_one("h2, h3, .title")
+                link = a.select_one("a")
+                img = a.select_one("img")
+                if title and link:
+                    # Prefer link text if title element contains a link with more complete text
+                    link_text = link.get_text(strip=True)
+                    title_text = title.get_text(strip=True)
+                    final_title = link_text if len(link_text) > len(title_text) else title_text
+                    href = link.get("href", "")
+                    if href and not href.startswith("http"):
+                        href = "https://www.lance.com.br" + href
+                    news.append({
+                        'title': final_title,
+                        'url': href,
+                        'image': img.get("src", "") if img else "",
+                        'source': 'lance.com.br',
+                        'collected_at': now,
+                    })
+                    lance_count += 1
+            _print(f"    lance.com.br: {lance_count} articles")
+        except Exception as e:
+            _print(f"    lance.com.br error: {e}")
 
     # Source 3: Gazeta Esportiva
-    try:
-        resp = requests.get(
-            "https://www.gazetaesportiva.com/futebol/times/palmeiras/",
-            headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36", "Accept-Language": "pt-BR,pt;q=0.9"},
-            timeout=30,
-        )
-        resp.raise_for_status()
-        soup = BeautifulSoup(resp.text, "html.parser")
-        articles = soup.select("article")[:5]
-        gazeta_count = 0
-        for a in articles:
-            title = a.select_one("h2, h3, .title, a")
-            link = a.select_one("a")
-            if title and link:
-                href = link.get("href", "")
-                if href and not href.startswith("http"):
-                    href = "https://www.gazetaesportiva.com" + href
-                news.append({
-                    'title': title.get_text(strip=True),
-                    'url': href,
-                    'image': "",
-                    'source': 'gazetaesportiva.com',
-                    'collected_at': now,
-                })
-                gazeta_count += 1
-        _print(f"    gazetaesportiva.com: {gazeta_count} articles")
-    except Exception as e:
-        _print(f"    gazetaesportiva.com error: {e}")
+    if BeautifulSoup:
+        try:
+            resp = requests.get(
+                "https://www.gazetaesportiva.com/futebol/times/palmeiras/",
+                headers=headers,
+                timeout=30,
+            )
+            resp.raise_for_status()
+            soup = BeautifulSoup(resp.text, "html.parser")
+            articles = soup.select("article")[:5]
+            gazeta_count = 0
+            for a in articles:
+                title = a.select_one("h2, h3, .title, a")
+                link = a.select_one("a")
+                if title and link:
+                    href = link.get("href", "")
+                    if href and not href.startswith("http"):
+                        href = "https://www.gazetaesportiva.com" + href
+                    news.append({
+                        'title': title.get_text(strip=True),
+                        'url': href,
+                        'image': "",
+                        'source': 'gazetaesportiva.com',
+                        'collected_at': now,
+                    })
+                    gazeta_count += 1
+            _print(f"    gazetaesportiva.com: {gazeta_count} articles")
+        except Exception as e:
+            _print(f"    gazetaesportiva.com error: {e}")
 
     # Source 4: UOL Esporte
-    try:
-        resp = requests.get(
-            "https://www.uol.com.br/esporte/futebol/times/palmeiras/",
-            headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36", "Accept-Language": "pt-BR,pt;q=0.9"},
-            timeout=30,
-        )
-        resp.raise_for_status()
-        soup = BeautifulSoup(resp.text, "html.parser")
-        articles = soup.select("article, .tileItem")[:5]
-        uol_count = 0
-        for a in articles:
-            title = a.select_one("h2, h3, .title, a")
-            link = a.select_one("a")
-            if title and link:
-                href = link.get("href", "")
-                if href and not href.startswith("http"):
-                    href = "https://www.uol.com.br" + href
-                news.append({
-                    'title': title.get_text(strip=True),
-                    'url': href,
-                    'image': "",
-                    'source': 'uol.com.br',
-                    'collected_at': now,
-                })
-                uol_count += 1
-        _print(f"    uol.com.br: {uol_count} articles")
-    except Exception as e:
-        _print(f"    uol.com.br error: {e}")
+    if BeautifulSoup:
+        try:
+            resp = requests.get(
+                "https://www.uol.com.br/esporte/futebol/times/palmeiras/",
+                headers=headers,
+                timeout=30,
+            )
+            resp.raise_for_status()
+            soup = BeautifulSoup(resp.text, "html.parser")
+            articles = soup.select("article, .tileItem")[:5]
+            uol_count = 0
+            for a in articles:
+                title = a.select_one("h2, h3, .title, a")
+                link = a.select_one("a")
+                if title and link:
+                    href = link.get("href", "")
+                    if href and not href.startswith("http"):
+                        href = "https://www.uol.com.br" + href
+                    news.append({
+                        'title': title.get_text(strip=True),
+                        'url': href,
+                        'image': "",
+                        'source': 'uol.com.br',
+                        'collected_at': now,
+                    })
+                    uol_count += 1
+            _print(f"    uol.com.br: {uol_count} articles")
+        except Exception as e:
+            _print(f"    uol.com.br error: {e}")
 
     # Filter out low-quality articles
     SKIP_TITLES = {
         'jogos', 'vídeos curtos do verdão!', 'vídeos', 'vídeo',
         'ao vivo', 'mais lidas', 'mais lidas da semana',
     }
+    SKIP_SOURCES = {
+        'facebook.com', 'instagram.com', 'threads.net', 'tiktok.com',
+        'twitter.com', 'x.com', 'youtube.com',
+    }
     filtered = []
+    seen_urls = set()
     for item in news:
         title = item.get('title', '').strip()
         title_lower = title.lower()
         url = item.get('url', '').strip()
+        source_lower = item.get('source', '').strip().lower()
         if not url:
             continue  # Skip articles without URL
+        if url in seen_urls:
+            continue
+        if source_lower in SKIP_SOURCES:
+            continue
         if title_lower in SKIP_TITLES:
             continue  # Skip generic titles
         if len(title) < 15:
             continue  # Skip very short or likely truncated titles
+        if len(title) > 180:
+            continue  # Skip social embeds and malformed snippets
+        seen_urls.add(url)
         filtered.append(item)
     removed = len(news) - len(filtered)
     if removed:
         _print(f"    Filtered out {removed} low-quality articles")
 
-    # Save all news only if we got results
+    # Save all news only if we got results. Use explicit update/insert instead
+    # of on_conflict='url' so existing DBs without the optional unique index
+    # still refresh correctly.
     if filtered:
         try:
             saved = 0
             for item in filtered:
-                existing = client.table('news').select('id').eq('url', item['url']).limit(1).execute()
+                existing = (
+                    client.table('news')
+                    .select('id')
+                    .eq('url', item['url'])
+                    .limit(1)
+                    .execute()
+                )
                 if existing.data:
-                    client.table('news').update(item).eq('url', item['url']).execute()
+                    client.table('news').update(item).eq('id', existing.data[0]['id']).execute()
                 else:
                     client.table('news').insert(item).execute()
                 saved += 1
             _print(f"    Saved {saved} news articles")
-            return saved
+            return True
         except Exception as e:
             _print(f"    Error saving news: {e}")
-            raise
+            return False
     else:
         _print("    No news collected, keeping existing data")
-        return 0
+        return True
 
 
 def apply_broadcast_info():

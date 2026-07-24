@@ -12,7 +12,7 @@ from collectors import (
 
 
 class WorldCupCollectorTests(TestCase):
-    def test_world_cup_match_uses_wc_code_and_remote_crests(self):
+    def test_world_cup_match_uses_wc_code_and_preserves_team_flags(self):
         match = {
             'id': 537327,
             'utcDate': '2026-06-11T19:00:00Z',
@@ -50,6 +50,7 @@ class WorldCupCollectorTests(TestCase):
         self.assertEqual(record['external_id'], 537327)
         self.assertEqual(json.loads(record['competition'])['code'], 'WC')
         self.assertEqual(json.loads(record['home_team'])['crest'], 'https://crests.football-data.org/769.svg')
+        self.assertEqual(json.loads(record['away_team'])['crest'], 'https://crests.football-data.org/9396.svg')
         self.assertEqual(record['broadcast'], '')
 
     def test_scraper_records_keep_integer_ids_and_drop_collector_only_fields(self):

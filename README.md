@@ -8,8 +8,8 @@ Shared backend plus Web, iOS, and Android clients for Palmeiras Agenda.
 palmeiras-web/
 ├── apps/
 │   ├── web/                  # PWA/web client
-│   ├── ios/                  # native iOS scaffold
-│   └── android/              # native Android scaffold
+│   ├── ios/                  # SwiftUI/WKWebView mobile shell
+│   └── android/              # Kotlin/WebView mobile shell
 ├── services/
 │   ├── api/                  # single public backend implementation
 │   └── collector/            # internal ingestion jobs
@@ -39,13 +39,14 @@ and on the VPS, so local and production API behavior cannot drift.
 
 ## Brand Identity
 
-The app logo and PWA icon are the original PA calendar mark, not the Palmeiras
-crest. Brand rules, logo variants, color tokens, and export instructions live in
+The Web/PWA, iOS, and Android application identity uses the same Palmeiras Agenda
+Campo marcado application mark. Match content uses each club's own flag
+instead of third-party club crests. Brand rules, color tokens, and export instructions live in
 `docs/BRAND_IDENTITY.md`.
 
-Run `scripts/export-brand-assets.py` after any logo SVG change. It refreshes the
-web/PWA icons, favicon, social card, Android launcher icons, and iOS AppIcon
-asset catalog from the same PA mark source.
+Run `scripts/export-brand-assets.py` after any canonical identity change. It refreshes
+the Web/PWA icons, favicon, social card, Android launcher icons, and iOS AppIcon
+catalog from the canonical Campo marcado mark.
 
 ## Data Flow
 
@@ -56,7 +57,7 @@ services/collector → Supabase PostgreSQL
         ↓
 services/api/palmeiras_api
         ↓
-apps/web, apps/ios, apps/android
+apps/web responsive UI → PWA, iOS shell, Android shell
 ```
 
 Collectors are internal jobs and may use `SUPABASE_KEY` / service role. Web, iOS,
@@ -75,6 +76,13 @@ open http://localhost:5001
 Without Supabase env vars, the web app still serves locally and API routes return
 `503` with a `not_configured`/degraded health response.
 
+Production and CI install the reviewed dependency graph from `requirements.lock`.
+Regenerate it after changing `requirements.txt` with:
+
+```bash
+uv pip compile requirements.txt --python-version 3.13 --output-file requirements.lock
+```
+
 ## API Contract
 
 The public contract is in:
@@ -91,6 +99,12 @@ Main endpoints:
 | `GET /api/v1/matches?status=FINISHED&limit=50` | Match results |
 | `GET /api/v1/matches?status=SCHEDULED,TIMED&team_id=1769&limit=10` | Palmeiras upcoming matches |
 | `GET /api/v1/matches?competition=WC&from_date=2026-06-11&to_date=2026-07-19&limit=200` | FIFA World Cup 2026 matches |
+| `GET /api/v1/matches?team_scope=women&limit=50` | Palmeiras Feminino matches |
+| `GET /api/v1/match?id=554916` | Matchday detail, live events, lineups, and H2H |
+| `GET /api/v1/history?team_scope=men` | Searchable historical archive |
+| `GET /api/v1/h2h?team_scope=men&opponent_id=1770` | Head-to-head record |
+| `GET /api/v1/push/public-key` | Browser Web Push application key |
+| `POST /api/v1/push/subscriptions` | Save alert preferences and followed matches |
 | `GET /api/v1/standings?competition=BSA` | League standings |
 | `GET /api/v1/news?limit=10` | Recent news |
 | `GET /api/v1/calendar_monthly?year=2026&month=7` | Calendar grid data |
@@ -108,17 +122,31 @@ set the `api-base-url` meta tag in `apps/web/index.html`.
 
 Source: `apps/ios`
 
-The iOS scaffold contains SwiftUI app files, DTOs, and `PalmeirasAPIClient`.
-Create an Xcode SwiftUI app target named `PalmeirasAgenda`, add the Swift files
-from `apps/ios/PalmeirasAgenda`, and keep future DTOs generated from
-`packages/contracts/openapi.yaml`.
+The SwiftUI shell embeds the production responsive Web product in `WKWebView`,
+with native loading/error recovery, pull-to-refresh, safe external navigation,
+and the shared launcher identity. It includes an XcodeGen specification and
+checked-in Xcode project. Build it with:
+
+```bash
+cd apps/ios
+xcodegen generate
+xcodebuild -project PalmeirasAgenda.xcodeproj -scheme PalmeirasAgenda \
+  -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+  CODE_SIGNING_ALLOWED=NO build
+```
 
 ## Android
 
 Source: `apps/android`
 
-The Android scaffold contains a Gradle project, Kotlin DTOs, and
-`PalmeirasApiClient`. It calls the same `/api/v1` backend as Web and iOS.
+The Kotlin shell embeds the same responsive product in Android `WebView`, with
+native loading/error recovery, secure HTTPS-only settings, external navigation,
+downloads, and back-button history. Build it with:
+
+```bash
+cd apps/android
+./gradlew :app:assembleDebug
+```
 
 ## Collector
 
@@ -166,6 +194,7 @@ standings, or news are stale.
 | `SUPABASE_URL` | yes | API/collector | Supabase project URL |
 | `SUPABASE_ANON_KEY` | yes | API | Read-only public key |
 | `SUPABASE_KEY` | collector only | Collector | Service-role key for ingestion writes |
+| `ALLOW_SERVICE_ROLE_PUBLIC_API` | no | API | Explicit emergency opt-in when a separate public Supabase key is unavailable |
 | `APP_VERSION` | recommended | API | Version returned by `/health` |
 | `FOOTBALL_API_KEY` | collector only | Collector | football-data.org key |
 | `HOST` / `PORT` | local/VPS | API adapter | Local server bind config |

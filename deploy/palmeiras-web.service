@@ -11,6 +11,8 @@ WorkingDirectory=/var/www/palmeiras-web
 Environment=HOST=127.0.0.1
 Environment=PORT=5001
 Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=PALMEIRAS_STATE_DIR=/var/lib/palmeiras-agenda
 Environment=ALLOWED_ORIGINS=https://palmeiras.rodrigolanna.com.br
 EnvironmentFile=/etc/palmeiras-web.env
 ExecStart=/var/www/palmeiras-web/.venv/bin/python server.py
@@ -19,8 +21,16 @@ RestartSec=5
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectHome=true
-ProtectSystem=full
-ReadWritePaths=/var/www/palmeiras-web
+ProtectSystem=strict
+StateDirectory=palmeiras-agenda
+StateDirectoryMode=0750
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
 
 [Install]
 WantedBy=multi-user.target

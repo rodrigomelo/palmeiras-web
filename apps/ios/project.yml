@@ -1,0 +1,61 @@
+name: PalmeirasAgenda
+
+options:
+  bundleIdPrefix: com.palmeiras
+  deploymentTarget:
+    iOS: "17.0"
+
+settings:
+  base:
+    MARKETING_VERSION: 1.2.0
+    CURRENT_PROJECT_VERSION: 56
+    SWIFT_VERSION: 6.0
+
+targets:
+  PalmeirasAgenda:
+    type: application
+    platform: iOS
+    sources:
+      - path: PalmeirasAgenda
+    dependencies:
+      - target: PalmeirasWidgets
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.palmeiras.agenda
+        PRODUCT_NAME: Palmeiras Agenda
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: HFP4P6VBWV
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Palmeiras Agenda
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.sports
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        INFOPLIST_KEY_UILaunchScreen_Generation: NO
+        INFOPLIST_KEY_UILaunchStoryboardName: LaunchScreen
+        INFOPLIST_KEY_UIRequiresFullScreen: YES
+        INFOPLIST_KEY_NSSupportsLiveActivities: YES
+        INFOPLIST_KEY_UIBackgroundModes:
+          - fetch
+        INFOPLIST_KEY_BGTaskSchedulerPermittedIdentifiers:
+          - com.palmeiras.agenda.refresh
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SUPPORTS_MACCATALYST: NO
+        SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO
+  PalmeirasWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: PalmeirasWidgets
+      - path: PalmeirasAgenda/MatchActivityAttributes.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.palmeiras.agenda.widgets
+        PRODUCT_NAME: Palmeiras Agenda Widgets
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: HFP4P6VBWV
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: PalmeirasWidgets/Info.plist
+        APPLICATION_EXTENSION_API_ONLY: YES
+        SKIP_INSTALL: YES
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: ""

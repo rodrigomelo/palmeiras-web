@@ -7,10 +7,38 @@ from types import SimpleNamespace
 from unittest import TestCase, main
 from unittest.mock import patch
 
+from services.collector.palmeiras_collector.copa_brasil_scraper import COPA_BRASIL_2026_KNOWN
+
 MODULE_PATH = Path(__file__).parent / 'collectors' / 'score_resolver.py'
 SPEC = importlib.util.spec_from_file_location('score_resolver_under_test', MODULE_PATH)
 score_resolver = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(score_resolver)
+
+
+class VerifiedResultsTests(TestCase):
+    def test_resolves_protected_copa_do_brasil_fixtures(self):
+        matches = [
+            {'external_id': 990001},
+            {'external_id': 990002},
+            {'external_id': 12345},
+        ]
+
+        scores = score_resolver.VerifiedResults().resolve_batch(matches)
+
+        self.assertEqual(scores[990001], {'home_score': 3, 'away_score': 0})
+        self.assertEqual(scores[990002]['home_score'], 1)
+        self.assertEqual(scores[990002]['away_score'], 4)
+        self.assertEqual(scores[990002]['utc_date'], '2026-05-14T00:30:00+00:00')
+        self.assertNotIn(12345, scores)
+
+    def test_manual_fixtures_have_final_scores_and_correct_local_dates(self):
+        fixtures = {match['external_id']: match for match in COPA_BRASIL_2026_KNOWN}
+
+        self.assertEqual(fixtures[990001]['status'], 'FINISHED')
+        self.assertEqual((fixtures[990001]['home_score'], fixtures[990001]['away_score']), (3, 0))
+        self.assertEqual(fixtures[990002]['status'], 'FINISHED')
+        self.assertEqual((fixtures[990002]['home_score'], fixtures[990002]['away_score']), (1, 4))
+        self.assertEqual(fixtures[990002]['utc_date'], '2026-05-14T00:30:00+00:00')
 
 
 class GoogleSearchTests(TestCase):

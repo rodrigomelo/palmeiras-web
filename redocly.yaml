@@ -1,0 +1,8 @@
+extends:
+  - recommended
+
+rules:
+  # Local development is an intentional second server in the shared contract.
+  no-server-example.com: off
+  # Read-only routes without client-controlled input legitimately have no 4xx.
+  operation-4xx-response: off

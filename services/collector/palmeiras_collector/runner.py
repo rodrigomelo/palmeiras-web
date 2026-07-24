@@ -28,8 +28,11 @@ from . import (
     collect_world_cup,
 )
 from .score_resolver import resolve_scores
+from .women_collector import collect_women_matches
+from services.api.palmeiras_api.notifications import deliver_pending_notifications
 
-DEFAULT_LOCK_PATH = "/tmp/palmeiras-collector.lock"
+# Production overrides this with a private systemd RuntimeDirectory path.
+DEFAULT_LOCK_PATH = "/tmp/palmeiras-collector.lock"  # nosec B108
 BASE_REQUIRED_ENV = ("SUPABASE_URL", "SUPABASE_KEY")
 STEP_REQUIRED_ENV = {
     "matches": ("FOOTBALL_API_KEY",),
@@ -93,6 +96,7 @@ def _run_step(name: str, func: Callable[[], object]) -> StepResult:
 
 def _steps(include_world_cup: bool) -> Iterable[tuple[str, Callable[[], object]]]:
     yield "matches", collect_matches
+    yield "women_matches", collect_women_matches
     yield "copa_brasil", collect_copa_brasil
     if include_world_cup:
         yield "world_cup", collect_world_cup
@@ -100,6 +104,7 @@ def _steps(include_world_cup: bool) -> Iterable[tuple[str, Callable[[], object]]
     yield "score_resolver", resolve_scores
     yield "broadcasts", apply_broadcast_info
     yield "news", collect_news
+    yield "notifications", deliver_pending_notifications
 
 
 def run(*, include_world_cup: bool = True, lock_path: str = DEFAULT_LOCK_PATH) -> tuple[int, dict]:

@@ -1,13 +1,17 @@
 openapi: 3.1.0
 info:
   title: Palmeiras Agenda API
-  version: 1.1.37
+  version: 1.2.0
   description: Shared backend contract for Web, iOS, and Android clients.
+  license:
+    name: All rights reserved
+    identifier: LicenseRef-All-Rights-Reserved
 servers:
   - url: https://palmeiras.rodrigolanna.com.br/api/v1
     description: Production
   - url: http://localhost:5001/api/v1
     description: Local development
+security: []
 paths:
   /health:
     get:
@@ -40,12 +44,13 @@ paths:
           in: query
           schema:
             type: string
-            enum: [BSA, CLI, COPA, CPA, WC]
+            enum: [BSA, CLI, COPA, CPA, WC, BFA1, PAULISTA_F, COPA_F, SUPERCOPA_F]
         - name: team_id
           in: query
           schema:
             type: integer
           example: 1769
+        - $ref: "#/components/parameters/TeamScope"
         - name: from_date
           in: query
           schema:
@@ -89,7 +94,7 @@ paths:
           in: query
           schema:
             type: string
-            enum: [BSA, CLI, COPA, CPA, WC]
+            enum: [BSA, CLI, COPA, CPA, WC, BFA1, PAULISTA_F, COPA_F, SUPERCOPA_F]
             default: BSA
         - name: limit
           in: query
@@ -133,6 +138,7 @@ paths:
             type: integer
             default: 1769
           example: 1769
+        - $ref: "#/components/parameters/TeamScope"
       responses:
         "200":
           description: Competitions with Palmeiras match summaries
@@ -200,6 +206,7 @@ paths:
             type: integer
             minimum: 1
             maximum: 12
+        - $ref: "#/components/parameters/TeamScope"
       responses:
         "200":
           description: Monthly calendar
@@ -215,6 +222,8 @@ paths:
     get:
       summary: iCalendar feed
       operationId: getCalendarFeed
+      parameters:
+        - $ref: "#/components/parameters/TeamScope"
       responses:
         "200":
           description: ICS calendar
@@ -228,7 +237,130 @@ paths:
             text/plain:
               schema:
                 type: string
+  /history:
+    get:
+      summary: Searchable Palmeiras match archive
+      operationId: getHistory
+      parameters:
+        - $ref: "#/components/parameters/TeamScope"
+        - name: opponent_id
+          in: query
+          schema: { type: integer }
+        - name: competition
+          in: query
+          schema: { type: string }
+        - name: from_year
+          in: query
+          schema: { type: integer, minimum: 1900, maximum: 2035 }
+        - name: to_year
+          in: query
+          schema: { type: integer, minimum: 1900, maximum: 2035 }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 1000, default: 250 }
+      responses:
+        "200":
+          description: Aggregate record and finished matches
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/History" }
+        "400": { $ref: "#/components/responses/ApiError" }
+        "503": { $ref: "#/components/responses/ApiError" }
+  /h2h:
+    get:
+      summary: Head-to-head history against one opponent
+      operationId: getHeadToHead
+      parameters:
+        - $ref: "#/components/parameters/TeamScope"
+        - name: opponent_id
+          in: query
+          required: true
+          schema: { type: integer }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 1000, default: 20 }
+      responses:
+        "200":
+          description: Head-to-head record
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/History" }
+        "400": { $ref: "#/components/responses/ApiError" }
+  /match:
+    get:
+      summary: Matchday detail, event feed, lineups, and head-to-head context
+      operationId: getMatch
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            oneOf:
+              - type: integer
+              - type: string
+      responses:
+        "200":
+          description: Match detail
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [match]
+                properties:
+                  match: { $ref: "#/components/schemas/Match" }
+                  h2h:
+                    anyOf:
+                      - { $ref: "#/components/schemas/History" }
+                      - type: "null"
+        "400": { $ref: "#/components/responses/ApiError" }
+        "404": { $ref: "#/components/responses/ApiError" }
+  /push/public-key:
+    get:
+      summary: Web Push VAPID application server key
+      operationId: getPushPublicKey
+      responses:
+        "200":
+          description: Public VAPID key
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [publicKey]
+                properties:
+                  publicKey: { type: string }
+  /push/subscriptions:
+    post:
+      summary: Create or update a browser push subscription
+      operationId: savePushSubscription
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PushSubscriptionRequest" }
+      responses:
+        "201":
+          description: Subscription saved
+        "400": { $ref: "#/components/responses/ApiError" }
+    delete:
+      summary: Delete a browser push subscription
+      operationId: deletePushSubscription
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PushSubscriptionRequest" }
+      responses:
+        "200":
+          description: Subscription deleted
 components:
+  parameters:
+    TeamScope:
+      name: team_scope
+      in: query
+      schema:
+        type: string
+        enum: [men, women, all]
+        default: men
   responses:
     ApiError:
       description: API error with empty collection fallback
@@ -299,18 +431,15 @@ components:
                         type: string
                         enum: [fresh, stale]
                       latest_at:
-                        type: string
+                        type: [string, "null"]
                         format: date-time
-                        nullable: true
                       age_minutes:
-                        type: integer
-                        nullable: true
+                        type: [integer, "null"]
     Team:
       type: object
       properties:
         id:
-          type: integer
-          nullable: true
+          type: [integer, "null"]
         name:
           type: string
         shortName:
@@ -318,8 +447,7 @@ components:
         tla:
           type: string
         crest:
-          type: string
-          nullable: true
+          type: [string, "null"]
     Competition:
       type: object
       properties:
@@ -359,17 +487,13 @@ components:
         status:
           type: string
         matchday:
-          type: integer
-          nullable: true
+          type: [integer, "null"]
         stage:
-          type: string
-          nullable: true
+          type: [string, "null"]
         venue:
-          type: string
-          nullable: true
+          type: [string, "null"]
         broadcast:
-          type: string
-          nullable: true
+          type: [string, "null"]
         homeTeam:
           $ref: "#/components/schemas/Team"
         awayTeam:
@@ -379,11 +503,9 @@ components:
         score:
           $ref: "#/components/schemas/Score"
         homeScore:
-          type: integer
-          nullable: true
+          type: [integer, "null"]
         awayScore:
-          type: integer
-          nullable: true
+          type: [integer, "null"]
     CompetitionSummary:
       type: object
       required: [code, name, year, totalMatches, finished, upcoming, live, record]
@@ -413,8 +535,7 @@ components:
             - $ref: "#/components/schemas/CompetitionMatchSummary"
             - type: "null"
         currentStage:
-          type: string
-          nullable: true
+          type: [string, "null"]
         standing:
           anyOf:
             - $ref: "#/components/schemas/Standing"
@@ -426,43 +547,37 @@ components:
           type: object
           properties:
             home:
-              type: integer
-              nullable: true
+              type: [integer, "null"]
             away:
-              type: integer
-              nullable: true
+              type: [integer, "null"]
         halfTime:
           type: object
           properties:
             home:
-              type: integer
-              nullable: true
+              type: [integer, "null"]
             away:
-              type: integer
-              nullable: true
+              type: [integer, "null"]
     Match:
       type: object
       required: [id, utcDate, status, homeTeam, awayTeam, competition, score]
       properties:
         id:
-          type: integer
+          oneOf:
+            - type: integer
+            - type: string
         utcDate:
           type: string
           format: date-time
         status:
           type: string
         matchday:
-          type: integer
-          nullable: true
+          type: [integer, "null"]
         stage:
-          type: string
-          nullable: true
+          type: [string, "null"]
         venue:
-          type: string
-          nullable: true
+          type: [string, "null"]
         broadcast:
-          type: string
-          nullable: true
+          type: [string, "null"]
         homeTeam:
           $ref: "#/components/schemas/Team"
         awayTeam:
@@ -478,15 +593,33 @@ components:
         score:
           $ref: "#/components/schemas/Score"
         homeScore:
-          type: integer
-          nullable: true
+          type: [integer, "null"]
         awayScore:
-          type: integer
-          nullable: true
+          type: [integer, "null"]
+        teamScope:
+          type: string
+          enum: [men, women, other]
+        events:
+          type: array
+          items: { $ref: "#/components/schemas/MatchEvent" }
+        ticketUrl: { type: string }
+        directionsUrl: { type: string }
+        sourceUrl: { type: string }
+        lineups: { type: object }
+        liveMinute:
+          oneOf:
+            - type: integer
+            - type: string
+            - type: "null"
+        attendance: { type: [integer, "null"] }
     CalendarMatch:
       type: object
       required: [utcDate, status, competition, homeTeam, awayTeam, score]
       properties:
+        id:
+          oneOf:
+            - type: integer
+            - type: string
         utcDate:
           type: string
           format: date-time
@@ -499,21 +632,17 @@ components:
         awayTeam:
           $ref: "#/components/schemas/Team"
         matchday:
-          type: integer
-          nullable: true
+          type: [integer, "null"]
         stage:
-          type: string
-          nullable: true
+          type: [string, "null"]
         venue:
           type: string
         broadcast:
           type: string
         homeScore:
-          type: integer
-          nullable: true
+          type: [integer, "null"]
         awayScore:
-          type: integer
-          nullable: true
+          type: [integer, "null"]
         score:
           type: object
           properties:
@@ -521,20 +650,16 @@ components:
               type: object
               properties:
                 home:
-                  type: integer
-                  nullable: true
+                  type: [integer, "null"]
                 away:
-                  type: integer
-                  nullable: true
+                  type: [integer, "null"]
             halfTime:
               type: object
               properties:
                 home:
-                  type: integer
-                  nullable: true
+                  type: [integer, "null"]
                 away:
-                  type: integer
-                  nullable: true
+                  type: [integer, "null"]
     CalendarMonth:
       type: object
       required: [year, month, days]
@@ -588,19 +713,84 @@ components:
         title:
           type: string
         summary:
-          type: string
-          nullable: true
+          type: [string, "null"]
         url:
           type: string
         image:
-          type: string
-          nullable: true
+          type: [string, "null"]
         source:
           type: string
         published_at:
-          type: string
+          type: [string, "null"]
           format: date-time
-          nullable: true
         collected_at:
           type: string
           format: date-time
+    MatchEvent:
+      type: object
+      properties:
+        id:
+          oneOf:
+            - type: integer
+            - type: string
+        type: { type: string }
+        label: { type: string }
+        minute: { type: [integer, "null"] }
+        teamId: { type: [integer, "null"] }
+        player: { type: string }
+    History:
+      type: object
+      required: [teamScope, teamId, record, form, seasons, opponents, matches]
+      properties:
+        teamScope: { type: string, enum: [men, women] }
+        teamId: { type: integer }
+        opponentId: { type: [integer, "null"] }
+        record: { $ref: "#/components/schemas/HistoryRecord" }
+        form:
+          type: array
+          items: { type: string, enum: [W, D, L] }
+        seasons:
+          type: array
+          items: { type: object }
+        opponents:
+          type: array
+          items: { type: object }
+        matches:
+          type: array
+          items: { $ref: "#/components/schemas/Match" }
+    PushSubscriptionRequest:
+      type: object
+      required: [subscription]
+      properties:
+        subscription:
+          type: object
+          required: [endpoint, keys]
+          properties:
+            endpoint: { type: string, format: uri }
+            keys:
+              type: object
+              required: [p256dh, auth]
+              properties:
+                p256dh: { type: string }
+                auth: { type: string }
+        preferences:
+          type: object
+          additionalProperties: { type: boolean }
+        followedMatchIds:
+          type: array
+          items:
+            oneOf:
+              - type: integer
+              - type: string
+        teamScope: { type: string, enum: [men, women, all] }
+    HistoryRecord:
+      type: object
+      required: [played, wins, draws, losses, goalsFor, goalsAgainst, goalDifference]
+      properties:
+        played: { type: integer }
+        wins: { type: integer }
+        draws: { type: integer }
+        losses: { type: integer }
+        goalsFor: { type: integer }
+        goalsAgainst: { type: integer }
+        goalDifference: { type: integer }

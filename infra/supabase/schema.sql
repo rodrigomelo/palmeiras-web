@@ -8,7 +8,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- Matches (enhanced)
 CREATE TABLE IF NOT EXISTS matches (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    external_id INTEGER UNIQUE,
+    external_id INTEGER UNIQUE NOT NULL,
     home_team JSONB,
     away_team JSONB,
     home_score INTEGER,
@@ -124,6 +124,9 @@ COMMIT;
 -- ALTER TABLE standings ADD COLUMN IF NOT EXISTS form VARCHAR(10);
 -- CREATE UNIQUE INDEX IF NOT EXISTS standings_competition_position_uniq ON standings(competition, position);
 -- CREATE UNIQUE INDEX IF NOT EXISTS news_url_uniq ON news(url);
+-- Before enforcing this on an existing database, remove or repair rows where
+-- external_id IS NULL, then run:
+-- ALTER TABLE matches ALTER COLUMN external_id SET NOT NULL;
 
 -- M2: CHECK constraints on score columns (migration for existing installations).
 -- Run these ALTER TABLE statements in the Supabase SQL Editor to enforce valid score ranges.

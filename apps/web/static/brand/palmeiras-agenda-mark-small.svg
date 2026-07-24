@@ -1,23 +1,13 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-labelledby="title desc">
-  <title id="title">Palmeiras Agenda small mark</title>
-  <desc id="desc">Small-size Palmeiras Agenda PA calendar logo with simplified pitch lines for favicons and compact app icons.</desc>
-  <defs>
-    <linearGradient id="field" x1="18" y1="12" x2="102" y2="112" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#0a7a4a"/>
-      <stop offset=".58" stop-color="#075c3b"/>
-      <stop offset="1" stop-color="#043522"/>
-    </linearGradient>
-    <linearGradient id="paper" x1="35" y1="29" x2="85" y2="91" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#fffdf3"/>
-      <stop offset="1" stop-color="#e7f1e9"/>
-    </linearGradient>
-  </defs>
-  <path d="M20 87V33c0-9 7-16 16-16h48c9 0 16 7 16 16v54c0 9-7 16-16 16H36c-9 0-16-7-16-16Z" fill="url(#field)"/>
-  <path d="M25 87V33c0-6 5-11 11-11h48c6 0 11 5 11 11v54c0 6-5 11-11 11H36c-6 0-11-5-11-11Z" fill="none" stroke="#c99a3d" stroke-width="5"/>
-  <path d="M34 37c0-6 4-10 10-10h32c6 0 10 4 10 10v47c0 6-4 10-10 10H44c-6 0-10-4-10-10V37Z" fill="url(#paper)"/>
-  <path d="M34 43h52v-6c0-6-4-10-10-10H44c-6 0-10 4-10 10v6Z" fill="#c99a3d"/>
-  <path d="M46 23v14M74 23v14" stroke="#fffdf3" stroke-width="6" stroke-linecap="round"/>
-  <path d="M45 61h30M60 50v34" stroke="#075c3b" stroke-width="3" stroke-linecap="round" opacity=".42"/>
-  <circle cx="60" cy="67" r="12" fill="none" stroke="#075c3b" stroke-width="3" opacity=".5"/>
-  <text x="60" y="75" text-anchor="middle" font-family="DM Sans, Arial, sans-serif" font-size="30" font-weight="900" letter-spacing="-1.4" fill="#043522">PA</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
+  <title id="title">Palmeiras Agenda — Campo marcado compacto</title>
+  <desc id="desc">Versão reforçada da marca para favicons e tamanhos pequenos.</desc>
+  <g fill="none" stroke="#fffdf3" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M40 20H22a8 8 0 0 0-8 8v80a8 8 0 0 0 8 8h84a8 8 0 0 0 8-8V28a8 8 0 0 0-8-8H88M56 20h16" stroke-width="7"/>
+    <path d="M22 68h84" stroke-width="6"/>
+    <circle cx="64" cy="68" r="13" stroke-width="6"/>
+  </g>
+  <circle cx="64" cy="68" r="3.2" fill="#fffdf3"/>
+  <g stroke="#c99a3d" stroke-width="8" stroke-linecap="round">
+    <path d="M48 10v18M80 10v18"/>
+  </g>
 </svg>

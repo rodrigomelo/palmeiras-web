@@ -1,15 +1,13 @@
 import Foundation
 
 struct AppConfiguration {
-    static let appVersion = "1.1.37"
+    static let appVersion = "1.2.0"
 
-    var apiBaseURL: URL
-    var fallbackAPIBaseURLs: [URL] = []
+    let webAppURL: URL
+
+    var apiBaseURL: URL { webAppURL.appending(path: "api/v1") }
 
     static let production = AppConfiguration(
-        apiBaseURL: URL(string: "https://palmeiras.rodrigolanna.com.br/api/v1")!,
-        fallbackAPIBaseURLs: [
-            URL(string: "https://palmeiras.rodrigolanna.com.br/api")!,
-        ]
+        webAppURL: URL(string: "https://palmeiras.rodrigolanna.com.br/")!
     )
 }

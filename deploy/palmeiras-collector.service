@@ -11,16 +11,19 @@ WorkingDirectory=/var/www/palmeiras-web
 Environment=PYTHONUNBUFFERED=1
 Environment=PYTHONDONTWRITEBYTECODE=1
 Environment=PALMEIRAS_COLLECTOR_LOCK=/run/palmeiras-collector/collector.lock
+Environment=PALMEIRAS_STATE_DIR=/var/lib/palmeiras-agenda
 EnvironmentFile=/etc/palmeiras-web.env
 ExecStart=/var/www/palmeiras-web/.venv/bin/python -m services.collector.palmeiras_collector.runner
 RuntimeDirectory=palmeiras-collector
 RuntimeDirectoryMode=0755
+StateDirectory=palmeiras-agenda
+StateDirectoryMode=0750
 TimeoutStartSec=20min
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectHome=true
 ProtectSystem=full
-ReadWritePaths=/var/www/palmeiras-web/apps/web/static/crests /run/palmeiras-collector
+ReadWritePaths=/var/www/palmeiras-web/apps/web/static/crests /run/palmeiras-collector /var/lib/palmeiras-agenda
 
 [Install]
 WantedBy=multi-user.target

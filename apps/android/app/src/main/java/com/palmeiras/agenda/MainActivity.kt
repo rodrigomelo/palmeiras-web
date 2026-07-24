@@ -1,555 +1,633 @@
 package com.palmeiras.agenda
 
+import android.Manifest
+import android.annotation.SuppressLint
 import android.app.Activity
+import android.content.ActivityNotFoundException
+import android.app.NotificationManager
+import android.content.Context
+import android.content.Intent
+import android.content.res.ColorStateList
+import android.content.pm.ApplicationInfo
+import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.graphics.Color
-import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
+import android.view.WindowInsets
+import android.window.OnBackInvokedCallback
+import android.window.OnBackInvokedDispatcher
+import android.webkit.DownloadListener
+import android.webkit.JavascriptInterface
+import android.webkit.WebChromeClient
+import android.webkit.WebResourceError
+import android.webkit.WebResourceRequest
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import android.widget.Button
 import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.LinearLayout
-import android.widget.ScrollView
+import android.widget.ProgressBar
 import android.widget.TextView
-import java.time.OffsetDateTime
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
+import org.json.JSONObject
 import kotlin.math.roundToInt
 
 class MainActivity : Activity() {
-    private val apiClient = PalmeirasApiClient()
-    private lateinit var content: LinearLayout
+    private lateinit var webView: WebView
+    private lateinit var progressBar: ProgressBar
+    private lateinit var loadingPanel: View
+    private lateinit var errorPanel: View
+    private lateinit var statusBarScrim: View
+    private lateinit var contentRoot: FrameLayout
+    private lateinit var bottomBar: NativeBottomBar
+    private lateinit var settingsView: NativeSettingsView
+    private var selectedDestination = NativeDestination.HOME
+    private var pendingWebTab = NativeDestination.HOME.webTab ?: "home"
+    private var pendingMatchID: String? = null
+    private var hasVisiblePage = false
+    private val backInvokedCallback: OnBackInvokedCallback? = if (Build.VERSION.SDK_INT >= 33) {
+        OnBackInvokedCallback(::handleBackNavigation)
+    } else {
+        null
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val root = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setBackgroundColor(AppColor.background)
-        }
-        root.addView(headerBand())
-
-        content = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(16), 0, dp(16), dp(28))
-        }
-        root.addView(content)
-
-        setContentView(
-            ScrollView(this).apply {
-                isFillViewport = true
-                addView(root)
-            }
-        )
-
-        loadDashboard()
-    }
-
-    private fun loadDashboard() {
-        showLoading()
-        Thread {
-            try {
-                val competitions = apiClient.competitionSummaries().competitions
-                val matches = apiClient.upcomingPalmeirasMatches()
-                runOnUiThread { renderDashboard(competitions, matches) }
-            } catch (error: Exception) {
-                runOnUiThread { showError() }
-            }
-        }.start()
-    }
-
-    private fun renderDashboard(competitions: List<CompetitionSummary>, matches: List<Match>) {
-        content.removeAllViews()
-        content.addView(matchHero(matches.firstOrNull() ?: competitions.firstNotNullOfOrNull { it.nextMatch }))
-        content.addView(competitionSection(competitions))
-        content.addView(upcomingSection(matches))
-    }
-
-    private fun showLoading() {
-        content.removeAllViews()
-        content.addView(
-            appCard().apply {
-                addView(text("Carregando Palmeiras Agenda", 18f, AppColor.ink, Typeface.BOLD).apply {
-                    gravity = Gravity.CENTER
-                })
-                addView(text("Buscando jogos, disputas e calendário.", 13f, AppColor.textMuted, Typeface.BOLD).apply {
-                    gravity = Gravity.CENTER
-                    setPadding(0, dp(8), 0, 0)
-                })
-            }
-        )
-    }
-
-    private fun showError() {
-        content.removeAllViews()
-        content.addView(
-            appCard().apply {
-                addView(text("Erro ao carregar", 20f, AppColor.ink, Typeface.BOLD).apply {
-                    gravity = Gravity.CENTER
-                })
-                addView(text("Não foi possível acessar o backend compartilhado.", 13f, AppColor.textMuted, Typeface.BOLD).apply {
-                    gravity = Gravity.CENTER
-                    setPadding(0, dp(8), 0, dp(14))
-                })
-                addView(Button(this@MainActivity).apply {
-                    text = "Tentar novamente"
-                    textSize = 14f
-                    setTypeface(typeface, Typeface.BOLD)
-                    setTextColor(AppColor.onDark)
-                    background = rounded(AppColor.brand, 6f)
-                    setOnClickListener { loadDashboard() }
-                })
-            }
-        )
-    }
-
-    private fun headerBand(): View {
-        return LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.BOTTOM or Gravity.CENTER_VERTICAL
-            setPadding(dp(18), dp(20), dp(18), dp(28))
-            background = gradient(intArrayOf(AppColor.brandStrong, AppColor.brand, AppColor.headerDeep), 0f)
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                dp(148)
-            )
-
-            addView(paAgendaMark(dp(54)))
-            addView(
-                LinearLayout(this@MainActivity).apply {
-                    orientation = LinearLayout.VERTICAL
-                    setPadding(dp(14), 0, 0, 0)
-                    addView(text("Palmeiras Agenda", 24f, AppColor.onDark, Typeface.BOLD))
-                    addView(text("Agenda tática de jogos, desempenho e calendário", 13f, AppColor.onDarkMuted, Typeface.BOLD).apply {
-                        setPadding(0, dp(4), 0, 0)
-                    })
-                },
-                LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-            )
-        }
-    }
-
-    private fun matchHero(match: Match?): View {
-        return LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(18), dp(18), dp(18), dp(18))
-            background = gradient(intArrayOf(AppColor.brand, AppColor.brandBright, AppColor.brandStrong), 8f)
-            elevation = dp(8).toFloat()
-            layoutParams = spacedParams(top = -18, bottom = 14)
-
-            addView(chip(match?.competition?.name ?: "Próximo jogo", AppColor.gold, AppColor.onDarkWash))
-
-            if (match == null) {
-                addView(text("Nenhum jogo agendado", 18f, AppColor.onDark, Typeface.BOLD).apply {
-                    gravity = Gravity.CENTER
-                    setPadding(0, dp(28), 0, dp(20))
-                })
-                return@apply
-            }
-
-            addView(
-                LinearLayout(this@MainActivity).apply {
-                    orientation = LinearLayout.HORIZONTAL
-                    gravity = Gravity.CENTER
-                    setPadding(0, dp(22), 0, dp(18))
-                    addView(teamColumn(teamName(match.homeTeam), match.homeTeam.id == 1769), LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-                    addView(text(scoreText(match), 31f, AppColor.onDark, Typeface.BOLD).apply {
-                        gravity = Gravity.CENTER
-                    }, LinearLayout.LayoutParams(dp(58), LinearLayout.LayoutParams.WRAP_CONTENT))
-                    addView(teamColumn(teamName(match.awayTeam), match.awayTeam.id == 1769), LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-                }
-            )
-
-            addView(text(matchDateText(match.utcDate), 13f, AppColor.onDark, Typeface.BOLD).apply {
-                gravity = Gravity.CENTER
-            })
-            addView(
-                LinearLayout(this@MainActivity).apply {
-                    orientation = LinearLayout.HORIZONTAL
-                    gravity = Gravity.CENTER
-                    setPadding(0, dp(10), 0, 0)
-                    addView(heroPill(match.venue ?: "Estádio a definir"))
-                    addView(heroPill(match.broadcast ?: "TV a confirmar"))
-                }
-            )
-        }
-    }
-
-    private fun competitionSection(competitions: List<CompetitionSummary>): View {
-        return appCard().apply {
-            addView(sectionHeader("Disputas do Palmeiras", "${competitions.size} competições consolidadas"))
-            if (competitions.isEmpty()) {
-                addView(emptyPanel("Nenhuma competição encontrada."))
-            } else {
-                competitions.forEach { competition ->
-                    addView(competitionCard(competition))
-                }
-            }
-        }
-    }
-
-    private fun competitionCard(competition: CompetitionSummary): View {
-        val color = compColor(competition.code)
-        return LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(14), dp(14), dp(14), dp(14))
-            background = rounded(tint(color, 0.10f), 8f, tint(color, 0.34f))
-            layoutParams = spacedParams(top = 10)
-
-            addView(
-                LinearLayout(this@MainActivity).apply {
-                    orientation = LinearLayout.HORIZONTAL
-                    gravity = Gravity.TOP
-                    addView(
-                        LinearLayout(this@MainActivity).apply {
-                            orientation = LinearLayout.VERTICAL
-                            addView(text(competition.code, 10f, color, Typeface.BOLD))
-                            addView(text(displayCompetitionName(competition), 17f, AppColor.ink, Typeface.BOLD).apply {
-                                setPadding(0, dp(4), 0, 0)
-                            })
-                        },
-                        LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-                    )
-                    addView(chip(competitionStatus(competition), statusColor(competition), tint(statusColor(competition), 0.13f)))
-                }
-            )
-
-            addView(
-                LinearLayout(this@MainActivity).apply {
-                    orientation = LinearLayout.HORIZONTAL
-                    setPadding(0, dp(12), 0, dp(12))
-                    addView(statTile("${competition.record.played}", "J"), weightParams())
-                    addView(statTile("${competition.record.wins}", "V"), weightParams())
-                    addView(statTile("${competition.record.draws}", "E"), weightParams())
-                    addView(statTile("${competition.record.losses}", "D"), weightParams())
-                    addView(statTile(performanceText(competition.record), "APR"), weightParams())
-                }
-            )
-
-            (competition.nextMatch ?: competition.lastMatch)?.let { match ->
-                addView(
-                    LinearLayout(this@MainActivity).apply {
-                        orientation = LinearLayout.VERTICAL
-                        setPadding(dp(12), dp(12), dp(12), dp(12))
-                        background = rounded(AppColor.surface, 6f, AppColor.line)
-                        addView(text(if (competition.nextMatch == null) "Último" else "Próximo", 10f, AppColor.textMuted, Typeface.BOLD))
-                        addView(text(matchTitle(match), 14f, AppColor.text, Typeface.BOLD).apply {
-                            setPadding(0, dp(5), 0, dp(5))
-                        })
-                        addView(text(matchDateText(match.utcDate), 11f, color, Typeface.BOLD))
-                    }
+        val isDebuggable = applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
+        WebView.setWebContentsDebuggingEnabled(isDebuggable)
+        pendingMatchID = intent.getStringExtra(NotificationSync.EXTRA_MATCH_ID)
+        setContentView(buildContentView())
+        configureWebView()
+        NotificationSync.initialize(this)
+        if (Build.VERSION.SDK_INT >= 33) {
+            backInvokedCallback?.let {
+                onBackInvokedDispatcher.registerOnBackInvokedCallback(
+                    OnBackInvokedDispatcher.PRIORITY_DEFAULT,
+                    it
                 )
             }
         }
+
+        if (savedInstanceState == null || webView.restoreState(savedInstanceState) == null) {
+            webView.loadUrl(initialWebURL())
+        }
     }
 
-    private fun upcomingSection(matches: List<Match>): View {
-        return appCard().apply {
-            addView(sectionHeader("Próximos jogos", "Agenda imediata do Verdão"))
-            if (matches.isEmpty()) {
-                addView(emptyPanel("Nenhum jogo encontrado."))
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        val matchID = intent.getStringExtra(NotificationSync.EXTRA_MATCH_ID) ?: return
+        pendingMatchID = matchID
+        selectedDestination = NativeDestination.HOME
+        pendingWebTab = NativeDestination.HOME.webTab ?: "home"
+        webView.visibility = View.VISIBLE
+        settingsView.visibility = View.GONE
+        webView.loadUrl("${ApiConfig.WEB_APP_URL}?match=${Uri.encode(matchID)}")
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        webView.saveState(outState)
+        super.onSaveInstanceState(outState)
+    }
+
+    @SuppressLint("GestureBackNavigation")
+    @Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
+    override fun onBackPressed() {
+        handleBackNavigation()
+    }
+
+    private fun handleBackNavigation() {
+        if (selectedDestination == NativeDestination.SETTINGS) {
+            showDestination(NativeDestination.HOME)
+        } else if (webView.canGoBack()) {
+            webView.goBack()
+        } else {
+            finishAfterTransition()
+        }
+    }
+
+    override fun onDestroy() {
+        if (Build.VERSION.SDK_INT >= 33) {
+            backInvokedCallback?.let(onBackInvokedDispatcher::unregisterOnBackInvokedCallback)
+        }
+        webView.apply {
+            stopLoading()
+            loadUrl("about:blank")
+            clearHistory()
+            removeAllViews()
+            destroy()
+        }
+        super.onDestroy()
+    }
+
+    private fun buildContentView(): View {
+        val root = FrameLayout(this).apply {
+            setBackgroundColor(BACKGROUND)
+        }
+        val shell = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(BACKGROUND)
+        }
+        root.addView(
+            shell,
+            FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT
+            )
+        )
+
+        contentRoot = FrameLayout(this).apply {
+            setBackgroundColor(BACKGROUND)
+        }
+        shell.addView(
+            contentRoot,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                0,
+                1f
+            )
+        )
+
+        webView = WebView(this).apply {
+            setBackgroundColor(BACKGROUND)
+            isHorizontalScrollBarEnabled = false
+            layoutParams = FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT
+            )
+        }
+        contentRoot.addView(webView)
+
+        statusBarScrim = View(this).apply {
+            setBackgroundColor(BRAND)
+        }
+        contentRoot.addView(
+            statusBarScrim,
+            FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, 0, Gravity.TOP)
+        )
+
+        loadingPanel = buildLoadingPanel()
+        contentRoot.addView(
+            loadingPanel,
+            FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT
+            )
+        )
+
+        errorPanel = buildErrorPanel()
+        contentRoot.addView(
+            errorPanel,
+            FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                Gravity.CENTER
+            ).apply {
+                marginStart = dp(24)
+                marginEnd = dp(24)
+            }
+        )
+
+        settingsView = NativeSettingsView(
+            activity = this,
+            onRefreshData = {
+                webView.evaluateJavascript("window.refreshAllData?.()", null)
+                NotificationSync.synchronizeAsync(this)
+                showDestination(NativeDestination.HOME)
+            },
+            onAppearanceChanged = ::applyNativeTheme,
+            onNotificationPreferenceEnabled = ::ensureNotificationPermission,
+            onPreferencesChanged = {
+                applyNativeWebState()
+                NotificationSync.synchronizeAsync(this)
+            },
+            onOpenPrivacy = { openExternal(Uri.parse(ApiConfig.PRIVACY_URL)) },
+            onOpenSupport = { openExternal(Uri.parse(ApiConfig.SUPPORT_URL)) }
+        ).apply {
+            visibility = View.GONE
+        }
+        contentRoot.addView(
+            settingsView,
+            FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT
+            )
+        )
+
+        bottomBar = NativeBottomBar(this, ::showDestination)
+        bottomBar.visibility = View.GONE
+        shell.addView(
+            bottomBar,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        )
+
+        applySystemBarInsets(root)
+
+        return root
+    }
+
+    @Suppress("DEPRECATION")
+    private fun applySystemBarInsets(root: FrameLayout) {
+        root.setOnApplyWindowInsetsListener { _, insets ->
+            val topInset: Int
+            val bottomInset: Int
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                topInset = insets.getInsets(WindowInsets.Type.statusBars()).top
+                bottomInset = insets.getInsets(WindowInsets.Type.navigationBars()).bottom
             } else {
-                matches.take(5).forEach { match ->
-                    addView(upcomingRow(match))
+                topInset = insets.systemWindowInsetTop
+                bottomInset = insets.systemWindowInsetBottom
+            }
+
+            (webView.layoutParams as FrameLayout.LayoutParams).apply {
+                topMargin = topInset
+                bottomMargin = 0
+                webView.layoutParams = this
+            }
+            (settingsView.layoutParams as FrameLayout.LayoutParams).apply {
+                topMargin = topInset
+                settingsView.layoutParams = this
+            }
+            (statusBarScrim.layoutParams as FrameLayout.LayoutParams).apply {
+                height = topInset
+                statusBarScrim.layoutParams = this
+            }
+            bottomBar.setNavigationInset(bottomInset)
+            insets
+        }
+    }
+
+    @SuppressLint("SetJavaScriptEnabled")
+    private fun configureWebView() {
+        // The product is a first-party web application that requires JavaScript.
+        // Navigation below keeps only the configured HTTPS host inside WebView.
+        webView.settings.apply {
+            javaScriptEnabled = true
+            domStorageEnabled = true
+            allowFileAccess = false
+            allowContentAccess = false
+            mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
+            mediaPlaybackRequiresUserGesture = true
+            setSupportMultipleWindows(false)
+            useWideViewPort = false
+            loadWithOverviewMode = false
+            userAgentString = "$userAgentString PalmeirasAgendaAndroid/${ApiConfig.APP_VERSION}"
+        }
+
+        webView.webChromeClient = object : WebChromeClient() {
+            override fun onProgressChanged(view: WebView?, newProgress: Int) {
+                loadingPanel.visibility = if (
+                    newProgress < 100 && !hasVisiblePage && errorPanel.visibility != View.VISIBLE
+                ) {
+                    View.VISIBLE
+                } else {
+                    View.GONE
                 }
             }
         }
-    }
 
-    private fun upcomingRow(match: Match): View {
-        return LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(12), dp(12), dp(12), dp(12))
-            background = rounded(AppColor.softSurface, 8f, AppColor.line)
-            layoutParams = spacedParams(top = 8)
+        webView.addJavascriptInterface(NativeWebBridge(), "PalmeirasNative")
 
-            addView(
-                LinearLayout(this@MainActivity).apply {
-                    orientation = LinearLayout.VERTICAL
-                    addView(text(match.competition.name ?: "Campeonato", 10f, compColor(match.competition.code ?: ""), Typeface.BOLD))
-                    addView(text(matchTitle(match), 15f, AppColor.text, Typeface.BOLD).apply {
-                        setPadding(0, dp(4), 0, dp(4))
-                    })
-                    addView(text(matchDateText(match.utcDate), 12f, AppColor.textMuted, Typeface.BOLD))
-                },
-                LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-            )
-            addView(chip(if (match.status == "IN_PLAY") "AO VIVO" else "AGENDADO", AppColor.brand, AppColor.brandSoft))
+        webView.webViewClient = object : WebViewClient() {
+            override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest): Boolean {
+                return openOutsideAppIfNeeded(request.url)
+            }
+
+            override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
+                hasVisiblePage = false
+                errorPanel.visibility = View.GONE
+                loadingPanel.visibility = View.VISIBLE
+                bottomBar.visibility = View.GONE
+            }
+
+            override fun onPageCommitVisible(view: WebView?, url: String?) {
+                hasVisiblePage = true
+                loadingPanel.visibility = View.GONE
+                revealBottomBar()
+            }
+
+            override fun onPageFinished(view: WebView?, url: String?) {
+                hasVisiblePage = true
+                loadingPanel.visibility = View.GONE
+                revealBottomBar()
+                applyNativeWebState()
+            }
+
+            override fun onReceivedError(
+                view: WebView?,
+                request: WebResourceRequest,
+                error: WebResourceError
+            ) {
+                if (request.isForMainFrame) showError()
+            }
         }
+
+        webView.setDownloadListener(DownloadListener { url, _, _, _, _ ->
+            openExternal(Uri.parse(url))
+        })
     }
 
-    private fun sectionHeader(title: String, subtitle: String): View {
+    private fun buildErrorPanel(): View {
         return LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            addView(text(title, 19f, AppColor.ink, Typeface.BOLD))
-            addView(text(subtitle, 12f, AppColor.textMuted, Typeface.BOLD).apply {
-                setPadding(0, dp(4), 0, dp(2))
-            })
-        }
-    }
-
-    private fun appCard(): LinearLayout {
-        return LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(18), dp(18), dp(18), dp(18))
-            background = rounded(AppColor.surface, 8f, AppColor.line)
+            gravity = Gravity.CENTER
+            setPadding(dp(24), dp(24), dp(24), dp(24))
+            background = GradientDrawable().apply {
+                setColor(NativePalette.surface)
+                setStroke(dp(1), NativePalette.line)
+                cornerRadius = dp(12).toFloat()
+            }
             elevation = dp(4).toFloat()
-            layoutParams = spacedParams(bottom = 14)
-        }
-    }
+            visibility = View.GONE
 
-    private fun emptyPanel(message: String): View {
-        return text(message, 13f, AppColor.textMuted, Typeface.BOLD).apply {
-            gravity = Gravity.CENTER
-            setPadding(dp(16), dp(18), dp(16), dp(18))
-            background = rounded(AppColor.softSurface, 8f)
-        }
-    }
-
-    private fun teamColumn(name: String, isPalmeiras: Boolean): View {
-        return LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
-            addView(if (isPalmeiras) paAgendaMark(dp(52)) else unknownBadge(dp(52)))
-            addView(text(name, 17f, AppColor.onDark, Typeface.BOLD).apply {
+            addView(ImageView(this@MainActivity).apply {
+                setImageResource(R.drawable.palmeiras_agenda_logo)
+                scaleType = ImageView.ScaleType.CENTER_INSIDE
+                background = GradientDrawable().apply {
+                    setColor(NativePalette.brandStrong)
+                    cornerRadius = dp(8).toFloat()
+                }
+                setPadding(dp(8), dp(8), dp(8), dp(8))
+            }, LinearLayout.LayoutParams(dp(72), dp(72)).apply {
+                bottomMargin = dp(12)
+            })
+            addView(TextView(this@MainActivity).apply {
+                text = getString(R.string.load_error_title)
+                textSize = 19f
                 gravity = Gravity.CENTER
-                maxLines = 2
-                setPadding(dp(4), dp(8), dp(4), 0)
+                setTextColor(INK)
+                setTypeface(typeface, android.graphics.Typeface.BOLD)
+            })
+            addView(TextView(this@MainActivity).apply {
+                text = getString(R.string.load_error_message)
+                textSize = 14f
+                gravity = Gravity.CENTER
+                setTextColor(TEXT_MUTED)
+                setPadding(0, dp(10), 0, dp(16))
+            })
+            addView(Button(this@MainActivity).apply {
+                text = getString(R.string.retry)
+                isAllCaps = false
+                minimumHeight = dp(48)
+                setTextColor(Color.WHITE)
+                background = GradientDrawable().apply {
+                    setColor(BRAND)
+                    cornerRadius = dp(6).toFloat()
+                }
+                setOnClickListener {
+                    errorPanel.visibility = View.GONE
+                    loadingPanel.visibility = View.VISIBLE
+                    bottomBar.visibility = View.GONE
+                    webView.reload()
+                }
             })
         }
     }
 
-    private fun paAgendaMark(size: Int): View {
+    private fun buildLoadingPanel(): View {
         return FrameLayout(this).apply {
-            background = gradientStroke(
-                intArrayOf(AppColor.brandBright, AppColor.brand, AppColor.brandStrong),
-                size * 0.17f / resources.displayMetrics.density,
-                AppColor.gold,
-                3
-            )
-            layoutParams = LinearLayout.LayoutParams(size, size)
+            background = getDrawable(R.drawable.ic_launcher_background)
+            contentDescription = getString(R.string.loading_content_description)
 
+            val content = LinearLayout(this@MainActivity).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.CENTER
+                addView(ImageView(this@MainActivity).apply {
+                    setImageResource(R.drawable.palmeiras_agenda_logo)
+                    scaleType = ImageView.ScaleType.CENTER_INSIDE
+                }, LinearLayout.LayoutParams(dp(112), dp(112)))
+                addView(TextView(this@MainActivity).apply {
+                    text = getString(R.string.app_name)
+                    textSize = 24f
+                    gravity = Gravity.CENTER
+                    setTextColor(NativePalette.surface)
+                    setTypeface(typeface, android.graphics.Typeface.BOLD)
+                    setPadding(0, dp(8), 0, 0)
+                })
+                addView(TextView(this@MainActivity).apply {
+                    text = getString(R.string.app_tagline)
+                    textSize = 11f
+                    letterSpacing = 0.16f
+                    gravity = Gravity.CENTER
+                    setTextColor(Color.argb(190, 255, 253, 243))
+                    setPadding(0, dp(4), 0, dp(12))
+                })
+                progressBar = ProgressBar(this@MainActivity).apply {
+                    isIndeterminate = true
+                    indeterminateTintList = ColorStateList.valueOf(NativePalette.gold)
+                }
+                addView(progressBar, LinearLayout.LayoutParams(dp(36), dp(36)))
+            }
             addView(
-                FrameLayout(this@MainActivity).apply {
-                    background = rounded(AppColor.surface, 7f)
-
-                    addView(
-                        View(this@MainActivity).apply { background = rounded(AppColor.gold, 0f) },
-                        FrameLayout.LayoutParams(
-                            (size * 0.54f).roundToInt(),
-                            (size * 0.13f).roundToInt(),
-                            Gravity.TOP or Gravity.CENTER_HORIZONTAL
-                        )
-                    )
-
-                    addView(
-                        TextView(this@MainActivity).apply {
-                            text = "PA"
-                            gravity = Gravity.CENTER
-                            textSize = (size / resources.displayMetrics.density) * 0.24f
-                            setTypeface(typeface, Typeface.BOLD)
-                            setTextColor(AppColor.ink)
-                        },
-                        FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT)
-                    )
-                },
+                content,
                 FrameLayout.LayoutParams(
-                    (size * 0.54f).roundToInt(),
-                    (size * 0.62f).roundToInt(),
+                    FrameLayout.LayoutParams.WRAP_CONTENT,
+                    FrameLayout.LayoutParams.WRAP_CONTENT,
                     Gravity.CENTER
                 )
             )
         }
     }
 
-    private fun unknownBadge(size: Int): View {
-        return TextView(this).apply {
-            text = "?"
-            gravity = Gravity.CENTER
-            textSize = 20f
-            setTypeface(typeface, Typeface.BOLD)
-            setTextColor(AppColor.textMuted)
-            background = oval(AppColor.onDarkMuted)
-            layoutParams = LinearLayout.LayoutParams(size, size)
+    private fun openOutsideAppIfNeeded(uri: Uri): Boolean {
+        val scheme = uri.scheme?.lowercase()
+        val isWeb = scheme == "http" || scheme == "https"
+        val isInternal = isWeb && uri.host == ApiConfig.WEB_APP_HOST
+        val isCalendarDownload = uri.path?.endsWith(".ics") == true
+
+        if (isInternal && !isCalendarDownload) return false
+        return openExternal(uri)
+    }
+
+    private fun openExternal(uri: Uri): Boolean {
+        return try {
+            startActivity(Intent(Intent.ACTION_VIEW, uri))
+            true
+        } catch (_: ActivityNotFoundException) {
+            false
         }
     }
 
-    private fun statTile(value: String, label: String): View {
-        return LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
-            setPadding(dp(4), dp(9), dp(4), dp(9))
-            background = rounded(AppColor.surface, 6f, AppColor.line)
-            addView(text(value, 15f, AppColor.ink, Typeface.BOLD).apply { gravity = Gravity.CENTER })
-            addView(text(label, 9f, AppColor.textMuted, Typeface.BOLD).apply {
-                gravity = Gravity.CENTER
-                setPadding(0, dp(4), 0, 0)
-            })
-        }
+    private fun showError() {
+        hasVisiblePage = false
+        loadingPanel.visibility = View.GONE
+        revealBottomBar()
+        errorPanel.visibility = View.VISIBLE
     }
 
-    private fun heroPill(value: String): View {
-        return text(value, 11f, AppColor.onDarkMuted, Typeface.BOLD).apply {
-            setPadding(dp(9), dp(6), dp(9), dp(6))
-            background = rounded(AppColor.onDarkWash, 99f, AppColor.onDarkLine)
-        }
-    }
-
-    private fun chip(value: String, textColor: Int, bgColor: Int): TextView {
-        return text(value, 10f, textColor, Typeface.BOLD).apply {
-            setPadding(dp(9), dp(6), dp(9), dp(6))
-            background = rounded(bgColor, 99f)
-        }
-    }
-
-    private fun text(value: String, size: Float, color: Int, style: Int): TextView {
-        return TextView(this).apply {
-            text = value
-            textSize = size
-            setTextColor(color)
-            setTypeface(typeface, style)
-            includeFontPadding = true
-        }
-    }
-
-    private fun weightParams(): LinearLayout.LayoutParams {
-        return LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
-            marginEnd = dp(6)
-        }
-    }
-
-    private fun spacedParams(top: Int = 0, bottom: Int = 0): LinearLayout.LayoutParams {
-        return LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT,
-            LinearLayout.LayoutParams.WRAP_CONTENT
-        ).apply {
-            topMargin = dp(top)
-            bottomMargin = dp(bottom)
-        }
-    }
-
-    private fun rounded(color: Int, radius: Float, strokeColor: Int? = null): GradientDrawable {
-        return GradientDrawable().apply {
-            setColor(color)
-            cornerRadius = dp(radius).toFloat()
-            strokeColor?.let { setStroke(dp(1), it) }
-        }
-    }
-
-    private fun oval(color: Int, strokeColor: Int? = null, strokeWidth: Int = 0): GradientDrawable {
-        return GradientDrawable().apply {
-            shape = GradientDrawable.OVAL
-            setColor(color)
-            strokeColor?.let { setStroke(dp(strokeWidth), it) }
-        }
-    }
-
-    private fun gradient(colors: IntArray, radius: Float): GradientDrawable {
-        return GradientDrawable(GradientDrawable.Orientation.TL_BR, colors).apply {
-            cornerRadius = dp(radius).toFloat()
-        }
-    }
-
-    private fun gradientStroke(colors: IntArray, radius: Float, strokeColor: Int, strokeWidth: Int): GradientDrawable {
-        return GradientDrawable(GradientDrawable.Orientation.TL_BR, colors).apply {
-            cornerRadius = dp(radius).toFloat()
-            setStroke(dp(strokeWidth), strokeColor)
+    private fun revealBottomBar() {
+        bottomBar.visibility = View.VISIBLE
+        // WebView can complete its first hardware-accelerated frame while this
+        // sibling is still GONE. Refresh the selected state on the next frame
+        // so every tab is painted immediately, not only after user input.
+        bottomBar.post {
+            bottomBar.setSelected(selectedDestination)
+            bottomBar.requestLayout()
+            bottomBar.invalidate()
         }
     }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).roundToInt()
 
-    private fun dp(value: Float): Int = (value * resources.displayMetrics.density).roundToInt()
+    private fun showDestination(destination: NativeDestination) {
+        selectedDestination = destination
+        bottomBar.setSelected(destination)
 
-    private fun tint(color: Int, alpha: Float): Int {
-        return Color.argb((alpha * 255).roundToInt(), Color.red(color), Color.green(color), Color.blue(color))
+        val webTab = destination.webTab
+        if (webTab == null) {
+            webView.visibility = View.INVISIBLE
+            loadingPanel.visibility = View.GONE
+            errorPanel.visibility = View.GONE
+            settingsView.refreshNotificationStatus()
+            settingsView.visibility = View.VISIBLE
+            return
+        }
+
+        pendingWebTab = webTab
+        settingsView.visibility = View.GONE
+        webView.visibility = View.VISIBLE
+        webView.evaluateJavascript("window.nativeSelectTab?.('$webTab')", null)
     }
 
-    private fun teamName(team: Team): String = team.shortName ?: team.name
-
-    private fun matchTitle(match: Match): String = "${teamName(match.homeTeam)} x ${teamName(match.awayTeam)}"
-
-    private fun scoreText(match: Match): String {
-        val home = match.homeScore
-        val away = match.awayScore
-        return if (home != null && away != null) "$home-$away" else "x"
+    private fun applyNativeWebState() {
+        val preferences = getSharedPreferences(NativeSettingsView.PREFERENCES, MODE_PRIVATE)
+        val scope = if (
+            preferences.getString(NativeSettingsView.KEY_TEAM_SCOPE, NativeSettingsView.TEAM_MEN) == NativeSettingsView.TEAM_WOMEN
+        ) NativeSettingsView.TEAM_WOMEN else NativeSettingsView.TEAM_MEN
+        val spoiler = preferences.getBoolean(NativeSettingsView.KEY_SPOILER_FREE, false)
+        val spoilerValue = if (spoiler) "true" else "false"
+        val script = """
+            (() => {
+              let changed = false;
+              if (localStorage.getItem('pa-team-scope') !== '$scope') {
+                localStorage.setItem('pa-team-scope', '$scope'); changed = true;
+              }
+              if (localStorage.getItem('pa-spoiler-free') !== '$spoilerValue') {
+                localStorage.setItem('pa-spoiler-free', '$spoilerValue'); changed = true;
+              }
+              if (changed) location.reload(); else window.nativeSelectTab?.('$pendingWebTab');
+            })()
+        """.trimIndent()
+        webView.evaluateJavascript(script, null)
+        applyNativeTheme()
+        syncNativeNotificationStateToWeb()
     }
 
-    private fun matchDateText(value: String): String {
-        return try {
-            val date = OffsetDateTime.parse(value).atZoneSameInstant(ZoneId.of("America/Sao_Paulo"))
-            date.format(DateTimeFormatter.ofPattern("dd/MM HH:mm"))
-        } catch (error: Exception) {
-            value
+    private fun nativeNotificationState(): JSONObject {
+        val preferences = getSharedPreferences(NativeSettingsView.PREFERENCES, MODE_PRIVATE)
+        val preferencesEnabled = listOf(
+            NativeSettingsView.KEY_ONE_HOUR,
+            NativeSettingsView.KEY_KICKOFF,
+            NativeSettingsView.KEY_RESULTS,
+            NativeSettingsView.KEY_SCHEDULE_CHANGES,
+            NativeSettingsView.KEY_LIVE_EVENTS,
+            NativeSettingsView.KEY_NEWS
+        ).any { preferences.getBoolean(it, false) }
+        val permissionGranted = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+        val systemEnabled =
+            (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).areNotificationsEnabled()
+        val authorized = permissionGranted && systemEnabled
+        val permission = when {
+            authorized -> "authorized"
+            !preferencesEnabled -> "notDetermined"
+            else -> "denied"
+        }
+        return JSONObject()
+            .put("active", preferencesEnabled && authorized)
+            .put("permission", permission)
+    }
+
+    private fun syncNativeNotificationStateToWeb() {
+        if (!::webView.isInitialized) return
+        val payload = nativeNotificationState().toString()
+        webView.evaluateJavascript(
+            "window.PalmeirasFeatures?.setNativeNotificationState($payload)",
+            null
+        )
+    }
+
+    private inner class NativeWebBridge {
+        @JavascriptInterface
+        fun getNotificationState(): String = nativeNotificationState().toString()
+
+        @JavascriptInterface
+        fun openNotificationSettings() {
+            runOnUiThread { showDestination(NativeDestination.SETTINGS) }
         }
     }
 
-    private fun displayCompetitionName(competition: CompetitionSummary): String {
-        return when (competition.code) {
-            "BSA" -> "Brasileirão"
-            "CLI" -> "Libertadores"
-            "COPA" -> "Copa do Brasil"
-            "CPA" -> "Paulistão"
-            "WC" -> "Copa 2026"
-            else -> competition.name
+    private fun initialWebURL(): String {
+        val matchID = pendingMatchID ?: return ApiConfig.WEB_APP_URL
+        return "${ApiConfig.WEB_APP_URL}?match=${Uri.encode(matchID)}"
+    }
+
+    private fun applyNativeTheme() {
+        val preferences = getSharedPreferences(NativeSettingsView.PREFERENCES, MODE_PRIVATE)
+        val appearance = preferences.getString(
+            NativeSettingsView.KEY_APPEARANCE,
+            NativeSettingsView.APPEARANCE_SYSTEM
+        ) ?: NativeSettingsView.APPEARANCE_SYSTEM
+        val systemDark = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK ==
+            Configuration.UI_MODE_NIGHT_YES
+        val theme = when (appearance) {
+            NativeSettingsView.APPEARANCE_DARK -> "dark"
+            NativeSettingsView.APPEARANCE_LIGHT -> "light"
+            else -> if (systemDark) "dark" else "light"
+        }
+        val darkMode = theme == "dark"
+        settingsView.setDarkMode(darkMode)
+        bottomBar.setDarkMode(darkMode)
+        webView.evaluateJavascript("window.nativeSetTheme?.('$theme')", null)
+    }
+
+    private fun ensureNotificationPermission() {
+        if (
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            requestPermissions(
+                arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                NOTIFICATION_PERMISSION_REQUEST
+            )
+        } else {
+            settingsView.refreshNotificationStatus()
+            syncNativeNotificationStateToWeb()
         }
     }
 
-    private fun compColor(code: String): Int {
-        return when (code) {
-            "BSA" -> AppColor.brandBright
-            "CLI" -> AppColor.gold
-            "COPA" -> AppColor.blue
-            "CPA" -> Color.rgb(107, 127, 50)
-            "WC" -> Color.rgb(139, 63, 104)
-            else -> AppColor.textMuted
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == NOTIFICATION_PERMISSION_REQUEST) {
+            settingsView.refreshNotificationStatus()
+            syncNativeNotificationStateToWeb()
         }
     }
 
-    private fun competitionStatus(competition: CompetitionSummary): String {
-        return when {
-            competition.live > 0 -> "Ao vivo"
-            competition.nextMatch != null -> "Em disputa"
-            competition.finished == competition.totalMatches -> "Encerrada"
-            else -> "Sem agenda"
-        }
+    override fun onResume() {
+        super.onResume()
+        if (::settingsView.isInitialized) settingsView.refreshNotificationStatus()
+        syncNativeNotificationStateToWeb()
     }
 
-    private fun statusColor(competition: CompetitionSummary): Int {
-        return when {
-            competition.live > 0 -> AppColor.live
-            competition.nextMatch != null -> AppColor.brand
-            else -> AppColor.textMuted
-        }
+    private companion object {
+        const val NOTIFICATION_PERMISSION_REQUEST = 4901
+        val BRAND = Color.rgb(7, 92, 59)
+        val BACKGROUND = Color.rgb(243, 245, 239)
+        val INK = Color.rgb(16, 35, 26)
+        val TEXT_MUTED = Color.rgb(97, 114, 103)
     }
-
-    private fun performanceText(record: CompetitionRecord): String {
-        if (record.played <= 0) return "0%"
-        val pct = (record.points.toDouble() / (record.played * 3).toDouble() * 100).roundToInt()
-        return "$pct%"
-    }
-}
-
-private object AppColor {
-    val brand = Color.rgb(7, 92, 59)
-    val brandStrong = Color.rgb(4, 53, 34)
-    val brandBright = Color.rgb(10, 122, 74)
-    val headerDeep = Color.rgb(17, 55, 38)
-    val brandSoft = Color.rgb(231, 241, 233)
-    val gold = Color.rgb(201, 154, 61)
-    val blue = Color.rgb(36, 104, 168)
-    val live = Color.rgb(185, 59, 54)
-    val ink = Color.rgb(16, 35, 26)
-    val text = Color.rgb(23, 37, 29)
-    val textMuted = Color.rgb(97, 114, 103)
-    val background = Color.rgb(243, 245, 239)
-    val surface = Color.rgb(251, 252, 248)
-    val softSurface = Color.rgb(233, 239, 232)
-    val line = Color.rgb(217, 226, 216)
-    val onDark = Color.rgb(250, 252, 248)
-    val onDarkMuted = Color.argb(190, 250, 252, 248)
-    val onDarkWash = Color.argb(28, 250, 252, 248)
-    val onDarkLine = Color.argb(40, 250, 252, 248)
 }

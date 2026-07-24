@@ -213,7 +213,8 @@ def _has_final_score_signal(text):
     normalized_text = _normalize_text(text)
     for token in FINAL_SCORE_TOKENS:
         normalized_token = _normalize_text(token)
-        if normalized_token == 'ft':
+        # "ft" is the conventional full-time result marker.
+        if normalized_token == 'ft':  # nosec B105
             if re.search(r'(^|[^a-z0-9])ft([^a-z0-9]|$)', normalized_text):
                 return True
         elif normalized_token in normalized_text:
@@ -261,6 +262,36 @@ def _validate_score(home, away):
 # ═══════════════════════════════════════════════════════════════════════════
 # Sources — each returns a dict {home_score, away_score, half_time_*?} or None
 # ═══════════════════════════════════════════════════════════════════════════
+
+# Results for fixtures that are not covered by football-data.org. These are
+# keyed by our protected manual IDs and sourced from the official Palmeiras
+# match reports. Keeping them in the resolver prevents a stale SCHEDULED row
+# from surviving when a live scraper changes markup or becomes unavailable.
+VERIFIED_RESULTS = {
+    990001: {'home_score': 3, 'away_score': 0},
+    990002: {
+        'home_score': 1,
+        'away_score': 4,
+        'utc_date': '2026-05-14T00:30:00+00:00',
+        'venue': 'Estádio do Café',
+    },
+}
+
+
+class VerifiedResults:
+    """Locally verified results for manually maintained fixtures."""
+
+    name = "verified-results"
+
+    def available(self):
+        return True
+
+    def resolve_batch(self, matches):
+        return {
+            match['external_id']: VERIFIED_RESULTS[match['external_id']]
+            for match in matches
+            if match.get('external_id') in VERIFIED_RESULTS
+        }
 
 class FootballAPI:
     """football-data.org — official source for BSA, Libertadores, etc."""
@@ -411,7 +442,7 @@ class GoogleSearch:
 # Pipeline
 # ═══════════════════════════════════════════════════════════════════════════
 
-SOURCES = [FootballAPI, GoogleSearch]
+SOURCES = [VerifiedResults, FootballAPI, GoogleSearch]
 
 
 def resolve_scores():
@@ -456,10 +487,12 @@ def resolve_scores():
     for source in batch_sources:
         if not source.available():
             continue
-        batch_results = source.resolve_batch(unresolved)
-        if batch_results:
-            _print(f"    [{source.name}] found {len(batch_results)} result(s)")
-            break  # first batch source wins
+        source_results = source.resolve_batch(unresolved)
+        if source_results:
+            _print(f"    [{source.name}] found {len(source_results)} result(s)")
+            # Merge all batch sources so a manual Copa result does not prevent
+            # football-data.org from resolving unrelated competitions.
+            batch_results.update(source_results)
 
     # Phase 2: resolve each match
     for match in unresolved:
@@ -503,6 +536,11 @@ def resolve_scores():
             if score.get('half_time_home') is not None:
                 update['half_time_home'] = score['half_time_home']
                 update['half_time_away'] = score['half_time_away']
+            # A verified manual fixture may also correct placeholder schedule
+            # metadata that was entered before the official kickoff was set.
+            for field in ('utc_date', 'venue'):
+                if score.get(field):
+                    update[field] = score[field]
 
             try:
                 client.table('matches').update(update).eq('external_id', ext_id).execute()

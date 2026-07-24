@@ -1,12 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-labelledby="title desc">
-  <title id="title">Palmeiras Agenda flat light mark</title>
-  <desc id="desc">Flat light Palmeiras Agenda PA calendar logo for dark backgrounds and knockout uses.</desc>
-  <path d="M20 87V33c0-9 7-16 16-16h48c9 0 16 7 16 16v54c0 9-7 16-16 16H36c-9 0-16-7-16-16Z" fill="#fffdf3"/>
-  <path d="M25 87V33c0-6 5-11 11-11h48c6 0 11 5 11 11v54c0 6-5 11-11 11H36c-6 0-11-5-11-11Z" fill="none" stroke="#c99a3d" stroke-width="5"/>
-  <path d="M34 37c0-6 4-10 10-10h32c6 0 10 4 10 10v47c0 6-4 10-10 10H44c-6 0-10-4-10-10V37Z" fill="#043522"/>
-  <path d="M34 43h52v-6c0-6-4-10-10-10H44c-6 0-10 4-10 10v6Z" fill="#c99a3d"/>
-  <path d="M46 23v14M74 23v14" stroke="#fffdf3" stroke-width="6" stroke-linecap="round"/>
-  <path d="M45 61h30M60 50v34" stroke="#fffdf3" stroke-width="3" stroke-linecap="round" opacity=".36"/>
-  <circle cx="60" cy="67" r="12" fill="none" stroke="#fffdf3" stroke-width="3" opacity=".42"/>
-  <text x="60" y="75" text-anchor="middle" font-family="DM Sans, Arial, sans-serif" font-size="30" font-weight="900" letter-spacing="-1.4" fill="#fffdf3">PA</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
+  <title id="title">Palmeiras Agenda — Campo marcado claro</title>
+  <desc id="desc">Versão da marca para fundos verdes e escuros.</desc>
+  <g fill="none" stroke="#fffdf3" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M40 20H22a8 8 0 0 0-8 8v80a8 8 0 0 0 8 8h84a8 8 0 0 0 8-8V28a8 8 0 0 0-8-8H88M56 20h16" stroke-width="5"/>
+    <path d="M22 68h84" stroke-width="4"/>
+    <circle cx="64" cy="68" r="14" stroke-width="4"/>
+  </g>
+  <circle cx="64" cy="68" r="2.6" fill="#fffdf3"/>
+  <g stroke="#c99a3d" stroke-width="6" stroke-linecap="round"><path d="M48 10v18M80 10v18"/></g>
 </svg>

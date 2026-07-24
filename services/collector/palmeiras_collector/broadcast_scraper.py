@@ -171,7 +171,6 @@ TEAM_SLUGS = {
     'junior fc': 'junior',
     'atlético goianiense': 'atletico-go',
     'jacuipense': 'jacuipense',
-    'atlético goianiense': 'atletico-go',
 }
 
 

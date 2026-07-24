@@ -3,9 +3,9 @@ Description=Refresh Palmeiras Agenda data automatically
 
 [Timer]
 OnBootSec=2min
-OnUnitActiveSec=15min
-AccuracySec=1min
-RandomizedDelaySec=45s
+OnUnitActiveSec=5min
+AccuracySec=30s
+RandomizedDelaySec=20s
 Persistent=true
 Unit=palmeiras-collector.service
 

@@ -38,11 +38,13 @@ class CollectorRunnerTests(TestCase):
         }
         with tempfile.TemporaryDirectory() as tmpdir, patch.dict(os.environ, env, clear=True), \
             patch.object(runner, "collect_matches", ok("matches")), \
+            patch.object(runner, "collect_women_matches", ok("women_matches")), \
             patch.object(runner, "collect_copa_brasil", ok("copa_brasil")), \
             patch.object(runner, "collect_standings", fail), \
             patch.object(runner, "resolve_scores", ok("score_resolver", (0, 0))), \
             patch.object(runner, "apply_broadcast_info", ok("broadcasts", 0)), \
-            patch.object(runner, "collect_news", ok("news", 3)):
+            patch.object(runner, "collect_news", ok("news", 3)), \
+            patch.object(runner, "deliver_pending_notifications", ok("notifications", {})):
             code, summary = runner.run(include_world_cup=False, lock_path=f"{tmpdir}/collector.lock")
 
         self.assertEqual(code, 1)
@@ -50,7 +52,16 @@ class CollectorRunnerTests(TestCase):
         self.assertEqual(summary["failed_steps"], ["standings"])
         self.assertEqual(
             calls,
-            ["matches", "copa_brasil", "standings", "score_resolver", "broadcasts", "news"],
+            [
+                "matches",
+                "women_matches",
+                "copa_brasil",
+                "standings",
+                "score_resolver",
+                "broadcasts",
+                "news",
+                "notifications",
+            ],
         )
 
     def test_missing_football_key_does_not_block_independent_steps(self):
@@ -68,16 +79,28 @@ class CollectorRunnerTests(TestCase):
         }
         with tempfile.TemporaryDirectory() as tmpdir, patch.dict(os.environ, env, clear=True), \
             patch.object(runner, "collect_matches", ok("matches")), \
+            patch.object(runner, "collect_women_matches", ok("women_matches")), \
             patch.object(runner, "collect_copa_brasil", ok("copa_brasil")), \
             patch.object(runner, "collect_standings", ok("standings")), \
             patch.object(runner, "resolve_scores", ok("score_resolver", (0, 0))), \
             patch.object(runner, "apply_broadcast_info", ok("broadcasts", 0)), \
-            patch.object(runner, "collect_news", ok("news", 3)):
+            patch.object(runner, "collect_news", ok("news", 3)), \
+            patch.object(runner, "deliver_pending_notifications", ok("notifications", {})):
             code, summary = runner.run(include_world_cup=False, lock_path=f"{tmpdir}/collector.lock")
 
         self.assertEqual(code, 1)
         self.assertEqual(summary["failed_steps"], ["matches", "standings"])
-        self.assertEqual(calls, ["copa_brasil", "score_resolver", "broadcasts", "news"])
+        self.assertEqual(
+            calls,
+            [
+                "women_matches",
+                "copa_brasil",
+                "score_resolver",
+                "broadcasts",
+                "news",
+                "notifications",
+            ],
+        )
 
 
 if __name__ == "__main__":

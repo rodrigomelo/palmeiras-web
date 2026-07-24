@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Palmeiras Agenda</string>
+    <string name="app_tagline">O CALENDÁRIO DO TORCEDOR</string>
+    <string name="loading_content_description">Carregando Palmeiras Agenda</string>
+    <string name="load_error_title">Não foi possível abrir o aplicativo</string>
+    <string name="load_error_message">Verifique sua conexão e tente novamente.</string>
+    <string name="retry">Tentar novamente</string>
+    <string name="widget_description">Próximo jogo e placar do Palmeiras</string>
+</resources>
