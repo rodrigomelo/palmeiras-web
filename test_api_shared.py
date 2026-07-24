@@ -12,7 +12,10 @@ from unittest.mock import patch
 from PIL import Image
 
 from services.api.palmeiras_api import shared
-from services.api.palmeiras_api.notifications import remove_subscription, save_subscription
+from services.api.palmeiras_api.notifications import (
+    remove_subscription,
+    save_subscription,
+)
 from services.api.palmeiras_api.routes import (
     _history_payload,
     _public_news_items,

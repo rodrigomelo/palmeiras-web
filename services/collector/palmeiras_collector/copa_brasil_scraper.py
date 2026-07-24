@@ -10,7 +10,7 @@ This supplements football-data.org which only covers BSA + Libertadores.
 """
 import json
 import re
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 
 TEAM_ID = 1769
 BR_TZ = timezone(timedelta(hours=-3))

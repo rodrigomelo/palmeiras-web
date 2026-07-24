@@ -1,0 +1,28 @@
+target-version = "py39"
+
+[lint]
+# Start from the default rule set and add isort/import sorting.
+extend-select = ["I"]
+
+# Rules that conflict with the codebase's established conventions:
+# - BLE001: top-level API handlers and collectors intentionally catch broad
+#   Exception to ensure resilience (one source failing must not crash the run).
+# - DTZ005/DTZ007: date parsing in collectors uses naive datetimes then attaches
+#   the timezone explicitly (e.g. .replace(tzinfo=SAO_PAULO_TZ)).
+# - EXE001: test files have shebangs for manual invocation but are run via pytest.
+# - RUF012: mutable class defaults in test fixtures are intentional and harmless.
+# - SIM103: readability over clever negations in validation helpers.
+# - UP028: yield-in-for-loop is clearer than yield-from in the collector.
+ignore = [
+    "BLE001",
+    "DTZ005",
+    "DTZ007",
+    "EXE001",
+    "RUF012",
+    "SIM103",
+    "UP028",
+    "FA102",
+]
+
+[lint.isort]
+known-first-party = ["palmeiras_api", "palmeiras_collector"]

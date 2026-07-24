@@ -7,7 +7,9 @@ from types import SimpleNamespace
 from unittest import TestCase, main
 from unittest.mock import patch
 
-from services.collector.palmeiras_collector.copa_brasil_scraper import COPA_BRASIL_2026_KNOWN
+from services.collector.palmeiras_collector.copa_brasil_scraper import (
+    COPA_BRASIL_2026_KNOWN,
+)
 
 MODULE_PATH = Path(__file__).parent / 'collectors' / 'score_resolver.py'
 SPEC = importlib.util.spec_from_file_location('score_resolver_under_test', MODULE_PATH)

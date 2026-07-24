@@ -19,13 +19,13 @@ Usage (from collector pipeline):
     from collectors.score_resolver import resolve_scores
     resolve_scores()
 """
-import json
 import html
+import json
 import os
 import re
 import time
 import unicodedata
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 try:

@@ -5,7 +5,7 @@ thin so compatibility imports cannot drift from the shared service package.
 """
 
 from services.api.palmeiras_api.adapters import write_response
-from services.api.palmeiras_api.shared import *  # noqa: F401,F403
+from services.api.palmeiras_api.shared import *
 
 
 def json_response(handler, status, data, *, cache_control="public, max-age=300"):

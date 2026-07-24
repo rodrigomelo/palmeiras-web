@@ -13,11 +13,13 @@ import json
 import os
 import time
 import traceback
+from collections.abc import Callable, Iterable
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Callable, Iterable
+
+from services.api.palmeiras_api.notifications import deliver_pending_notifications
 
 from . import (
     apply_broadcast_info,
@@ -29,7 +31,6 @@ from . import (
 )
 from .score_resolver import resolve_scores
 from .women_collector import collect_women_matches
-from services.api.palmeiras_api.notifications import deliver_pending_notifications
 
 # Production overrides this with a private systemd RuntimeDirectory path.
 DEFAULT_LOCK_PATH = "/tmp/palmeiras-collector.lock"  # nosec B108

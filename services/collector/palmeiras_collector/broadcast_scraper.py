@@ -12,11 +12,10 @@ Usage:
 from __future__ import annotations
 
 import json
-import re
 import os
+import re
 import time
-from datetime import datetime, timezone, timedelta
-from typing import Optional, List
+from datetime import datetime, timedelta, timezone
 
 import requests
 
@@ -221,7 +220,7 @@ def _get_team_state(team_name: str) -> str:
     return 'sp'  # default for Palmeiras-centric usage
 
 
-def _build_match_urls(date_str: str, home_name: str, away_name: str, comp_code: str) -> List[str]:
+def _build_match_urls(date_str: str, home_name: str, away_name: str, comp_code: str) -> list[str]:
     """Build candidate ge.globo match page URLs.
 
     Returns multiple URLs to try (different state prefixes).
@@ -270,7 +269,7 @@ _session.headers.update({
 })
 
 
-def _scrape_broadcast_from_page(url: str) -> Optional[List[str]]:
+def _scrape_broadcast_from_page(url: str) -> list[str] | None:
     """Fetch a ge.globo match page and extract broadcast channel names.
 
     Returns:
@@ -319,7 +318,7 @@ def _scrape_broadcast_from_page(url: str) -> Optional[List[str]]:
     return channels if channels else None
 
 
-def _format_broadcast(channels: List[str]) -> str:
+def _format_broadcast(channels: list[str]) -> str:
     """Format channel list into display string like 'Premiere / SporTV'."""
     if not channels:
         return ''
@@ -437,6 +436,7 @@ def collect_broadcast_info(limit: int = 10) -> int:
 
 if __name__ == '__main__':
     import sys
+
     from dotenv import load_dotenv
     load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
     count = collect_broadcast_info(limit=int(sys.argv[1]) if len(sys.argv) > 1 else 10)

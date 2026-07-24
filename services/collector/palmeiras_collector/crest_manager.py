@@ -5,15 +5,14 @@ Usage:
     from crest_manager import get_or_download_crest
     crest_url = get_or_download_crest(team_id, original_url)
 """
-import os
 import json
-import hashlib
-import requests
+import os
 from collections import deque
 from io import BytesIO
 from pathlib import Path
 from threading import get_ident
 
+import requests
 from PIL import Image, UnidentifiedImageError
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]

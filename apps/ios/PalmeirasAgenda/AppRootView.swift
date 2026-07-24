@@ -200,6 +200,7 @@ struct AppRootView: View {
         .joined()
     }
 
+    @MainActor
     private func syncWebNotificationState() async {
         let settings = await UNUserNotificationCenter.current().notificationSettings()
         let permission: String
@@ -378,6 +379,7 @@ private struct NativeSettingsView: View {
             .joined()
     }
 
+    @MainActor
     private func refreshNotificationStatus() async {
         let settings = await UNUserNotificationCenter.current().notificationSettings()
         notificationStatus = switch settings.authorizationStatus {

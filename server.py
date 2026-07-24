@@ -29,7 +29,7 @@ if ENV_PATH.exists():
 
 # API configuration is read during module import, so local environment values
 # must be loaded first. Production systemd variables are already present.
-from services.api.palmeiras_api import dispatch_request  # noqa: E402
+from services.api.palmeiras_api import dispatch_request
 
 HOST = os.environ.get("HOST", "127.0.0.1")
 PORT = int(os.environ.get("PORT", "5001"))

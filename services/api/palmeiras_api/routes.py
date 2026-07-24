@@ -2,17 +2,21 @@
 
 import re
 import sys
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from urllib.error import HTTPError
 from urllib.parse import parse_qs
 
+from services.collector.palmeiras_collector.crest_manager import (
+    CRESTS_DIR,
+    get_or_download_crest,
+)
+
 from .ical import render_calendar
-from services.collector.palmeiras_collector.crest_manager import CRESTS_DIR, get_or_download_crest
 from .shared import (
     APP_VERSION,
     BR_TZ,
-    TEAM_IDS,
     TEAM_ID,
+    TEAM_IDS,
     WOMEN_TEAM_ID,
     RequestValidationError,
     calendar_match,

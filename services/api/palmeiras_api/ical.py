@@ -1,6 +1,6 @@
 """iCalendar rendering for Palmeiras Agenda."""
 
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 
 from .shared import BR_TZ, TEAM_ID, parse_json
 

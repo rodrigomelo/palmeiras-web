@@ -2,7 +2,10 @@
 
 from http.server import BaseHTTPRequestHandler
 
-from services.api.palmeiras_api.adapters import cors_options_response, write_current_route
+from services.api.palmeiras_api.adapters import (
+    cors_options_response,
+    write_current_route,
+)
 from services.api.palmeiras_api.ical import render_calendar
 
 __all__ = ["handler", "render_calendar"]

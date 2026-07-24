@@ -17,7 +17,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlparse
 
-from .shared import TEAM_IDS, transform_match
+from .shared import transform_match
 
 PREFERENCE_KEYS = {
     "oneHour",

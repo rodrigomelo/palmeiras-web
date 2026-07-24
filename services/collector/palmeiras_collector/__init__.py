@@ -10,17 +10,18 @@ Usage:
     pip install -r requirements.txt
     python __init__.py
 """
-import os
 import json
-import requests
+import os
 import time
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 from pathlib import Path
 from urllib.parse import quote_plus
-from defusedxml import ElementTree as ET
 
+import requests
+from defusedxml import ElementTree as ET
 from dotenv import load_dotenv
+
 try:
     from .crest_manager import get_or_download_crest
     from .enrichment import palmeiras_venue_fallback
