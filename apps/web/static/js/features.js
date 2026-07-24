@@ -320,12 +320,9 @@
     }
 
     async function enablePush() {
-        const preferences = collectPreferenceInputs();
-        if (!Object.entries(preferences).some(([key, value]) => key !== 'spoilerFree' && value)) {
-            preferences.oneHour = preferences.kickoff = preferences.results = preferences.scheduleChanges = true;
-            writeStorage(KEYS.pushPreferences, JSON.stringify(preferences));
-            syncPreferenceInputs();
-        }
+        // Enable = activate ALL alert types so the user receives every notification.
+        document.querySelectorAll('[data-push-pref]').forEach((input) => { input.checked = true; });
+        collectPreferenceInputs();
         updateNotificationControls({ active: false, busy: true });
         pushStatus('Ativando alertas...');
         try { await savePushSubscription({ requestPermission: true }); }
@@ -336,6 +333,9 @@
     }
 
     async function disablePush() {
+        // Disable = silence ALL alert types.
+        document.querySelectorAll('[data-push-pref]').forEach((input) => { input.checked = false; });
+        collectPreferenceInputs();
         updateNotificationControls({ active: true, busy: true });
         try {
             const registration = await currentRegistration();
