@@ -1,21 +1,13 @@
 /**
- * Futebol Agenda — Shared configuration.
- * Club-aware constants and helpers used across JS modules.
- *
- * The selected club is determined by clubs.js (CLUBS.getSelected()) before
- * this file loads. All team-specific values are derived from the club registry.
+ * Shared configuration for Palmeiras Agenda.
+ * Single source of truth for constants used across JS.
  */
 const CONFIG = {
-    /** Selected club ID (e.g. "palmeiras", "corinthians") */
-    CLUB_ID: CLUBS.getSelected(),
-
-    /** Football-data.org team ID for the active scope (men or women) */
-    TEAM_ID: 0,
-    MEN_TEAM_ID: 0,
-    WOMEN_TEAM_ID: 0,
+    TEAM_ID: 1769,
+    MEN_TEAM_ID: 1769,
+    WOMEN_TEAM_ID: 20002,
     TEAM_SCOPE: 'men',
     BR_TZ: 'America/Sao_Paulo',
-
     API_BASE_URL: (function () {
         const meta = document.querySelector('meta[name="api-base-url"]');
         return (
@@ -31,7 +23,7 @@ const CONFIG = {
         return `${this.API_BASE_URL}/api/v1/${cleanPath}`;
     },
 
-    /** Known stadium names by opponent team ID (shared across all clubs) */
+    /** Known stadium names by opponent team ID */
     STADIUMS: {
         1765: 'Maracanã',
         1766: 'Arena MRV',
@@ -95,8 +87,7 @@ const CONFIG = {
     /** Get venue for a match object */
     getVenue(match) {
         if (match.venue) return match.venue;
-        const club = CLUBS.get(CONFIG.CLUB_ID);
-        if (match.homeTeam && match.homeTeam.id === this.TEAM_ID) return club.stadium;
+        if (match.homeTeam && match.homeTeam.id === this.TEAM_ID) return 'Allianz Parque';
         const awayId = match.awayTeam && match.awayTeam.id === this.TEAM_ID
             ? (match.homeTeam && match.homeTeam.id)
             : (match.awayTeam && match.awayTeam.id);
@@ -117,10 +108,8 @@ const CONFIG = {
 
     /** Fallback crest URLs for teams without football-data.org crests */
     TEAM_CRESTS: {
-        1769: 'https://crests.football-data.org/1769.png',
-        1779: 'https://crests.football-data.org/1779.png',
-        20002: '/static/crests/1769.png', // Palmeiras Feminino
-        20001: '/static/crests/1779.png', // Corinthians Feminino
+        1769: 'https://crests.football-data.org/1769.png', // Palmeiras
+        20002: '/static/crests/1769.png', // Palmeiras Feminino uses the same club crest as Masculino
     },
 
     /** CBF Feminino IDs that represent clubs already available in the Masculino feed. */
@@ -170,11 +159,3 @@ const CONFIG = {
         return 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="18" fill="#ccc"/><text x="20" y="25" text-anchor="middle" fill="#666" font-size="14">?</text></svg>');
     },
 };
-
-// Initialize team IDs from the selected club.
-(function initClubConfig() {
-    const ids = CLUBS.teamIds(CONFIG.CLUB_ID);
-    CONFIG.MEN_TEAM_ID = ids.men;
-    CONFIG.WOMEN_TEAM_ID = ids.women;
-    CONFIG.TEAM_ID = ids.men;
-})();
