@@ -57,6 +57,16 @@ private enum NativeDestination: String, CaseIterable, Identifiable {
     }
 }
 
+/// Extracts only the Sendable authorizationStatus from UNNotificationSettings,
+/// avoiding non-sendable crossing of actor boundaries.
+private func fetchAuthorizationStatus() async -> UNAuthorizationStatus {
+    await withCheckedContinuation { continuation in
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+            continuation.resume(returning: settings.authorizationStatus)
+        }
+    }
+}
+
 struct AppRootView: View {
     @Environment(\.colorScheme) private var systemColorScheme
     @Environment(\.scenePhase) private var scenePhase
@@ -389,16 +399,6 @@ private struct NativeSettingsView: View {
             "A permissão será solicitada ao ativar um alerta."
         @unknown default:
             "Não foi possível verificar a permissão."
-        }
-    }
-
-    /// Extracts only the Sendable authorizationStatus from UNNotificationSettings,
-    /// avoiding non-sendable crossing of actor boundaries.
-    private func fetchAuthorizationStatus() async -> UNAuthorizationStatus {
-        await withCheckedContinuation { continuation in
-            UNUserNotificationCenter.current().getNotificationSettings { settings in
-                continuation.resume(returning: settings.authorizationStatus)
-            }
         }
     }
 
