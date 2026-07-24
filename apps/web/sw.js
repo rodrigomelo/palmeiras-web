@@ -1,14 +1,15 @@
 // Palmeiras Agenda — Service Worker
-const CACHE_NAME = 'palmeiras-v1.2.0-r18';
+const CACHE_NAME = 'palmeiras-v1.2.0-r19';
 const HTML_FALLBACK = '/index.html';
 
 // App shell resources to pre-cache on install
 const APP_SHELL = [
   HTML_FALLBACK,
   '/static/css/styles.css?v=82',
-  '/static/css/design-system.css?v=20',
-  '/static/js/config.js?v=30',
-  '/static/js/features.js?v=7',
+  '/static/css/design-system.css?v=21',
+  '/static/js/config.js?v=31',
+  '/static/js/features.js?v=8',
+  '/static/js/clubs.js?v=1',
   '/static/js/app.js?v=89',
   '/static/favicon.png',
   '/static/brand/palmeiras-agenda-mark.svg?v=12',

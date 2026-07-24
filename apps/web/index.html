@@ -3,21 +3,45 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Palmeiras Agenda — A agenda completa do Verdão</title>
-    <meta name="description" content="Acompanhe Palmeiras masculino e feminino com agenda, alertas, histórico, placares, tabelas e calendário.">
-    <meta name="application-name" content="Palmeiras Agenda">
+    <title>Futebol Agenda — A agenda do seu time</title>
+    <meta name="description" content="Acompanhe Palmeiras, Corinthians e outros clubes com agenda, alertas, histórico, placares, tabelas e calendário.">
+    <meta name="application-name" content="Futebol Agenda">
     <meta name="theme-color" content="#043522">
     <meta name="api-base-url" content="">
     <meta name="color-scheme" content="light dark">
     <meta name="robots" content="index,follow">
     <link rel="canonical" href="https://palmeiras.rodrigolanna.com.br/">
     <meta property="og:type" content="website">
-    <meta property="og:site_name" content="Palmeiras Agenda">
-    <meta property="og:title" content="A agenda completa do Verdão">
-    <meta property="og:description" content="Jogos, placares, tabelas, notícias, calendário do Palmeiras e seção especial da Copa do Mundo 2026.">
+    <meta property="og:site_name" content="Futebol Agenda">
+    <meta property="og:title" content="Futebol Agenda — A agenda do seu time">
+    <meta property="og:description" content="Jogos, placares, tabelas, notícias e calendário do seu clube. Escolha seu time.">
     <meta property="og:url" content="https://palmeiras.rodrigolanna.com.br/">
     <meta property="og:image" content="https://palmeiras.rodrigolanna.com.br/static/brand/palmeiras-agenda-social-card-v12.png">
     <meta property="og:image:width" content="1200">
+
+    <!-- Pre-paint club theme: apply before first render to avoid FOUC -->
+    <script>
+    (function () {
+        try {
+            var params = new URLSearchParams(location.search);
+            var urlClub = params.get('club');
+            var stored = localStorage.getItem('fa-selected-club');
+            var clubId = urlClub || stored || 'palmeiras';
+            var registry = {
+                palmeiras: { brand: '#075c3b', brandStrong: '#043522', brandBright: '#0a7a4a', brandSoft: '#e7f1e9', gold: '#c99a3d', ink: '#10231a', text: '#17251d', bg: '#f3f5ef', bgCard: '#ffffff', bgSoft: '#e9efe8', line: '#d9e2d8', lineStrong: '#bdcabb' },
+                corinthians: { brand: '#1a1a1a', brandStrong: '#000000', brandBright: '#404040', brandSoft: '#e8e8e8', gold: '#c99a3d', ink: '#0a0a0a', text: '#1a1a1a', bg: '#f5f5f5', bgCard: '#ffffff', bgSoft: '#eaeaea', line: '#d5d5d5', lineStrong: '#b8b8b8' }
+            };
+            var theme = registry[clubId] || registry.palmeiras;
+            var root = document.documentElement;
+            Object.keys(theme).forEach(function (key) {
+                var cssKey = '--' + key.replace(/([A-Z])/g, '-$1').toLowerCase();
+                root.style.setProperty(cssKey, theme[key]);
+            });
+            root.style.setProperty('--shadow', '0 18px 50px ' + theme.brandStrong + '1a');
+            root.style.setProperty('--shadow-tight', '0 10px 28px ' + theme.brandStrong + '16');
+        } catch (e) { /* Palmeiras defaults from :root CSS will apply */ }
+    })();
+    </script>
     <meta property="og:image:height" content="630">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:image" content="https://palmeiras.rodrigolanna.com.br/static/brand/palmeiras-agenda-social-card-v12.png">
@@ -35,24 +59,37 @@
     <link rel="manifest" href="/manifest.webmanifest?v=16">
     <link rel="alternate" type="text/calendar" title="Palmeiras Agenda" href="/api/v1/calendar.ics">
     <link rel="stylesheet" href="/static/css/styles.css?v=82">
-    <link rel="stylesheet" href="/static/css/design-system.css?v=20">
+    <link rel="stylesheet" href="/static/css/design-system.css?v=21">
 </head>
 <body>
     <a class="skip-link" href="#main-content">Pular para o conteúdo</a>
+
+    <!-- Club Selector Overlay -->
+    <div class="club-selector-overlay" id="clubSelectorOverlay" hidden>
+        <div class="club-selector-modal">
+            <h2 class="club-selector-title">Escolha seu clube</h2>
+            <p class="club-selector-subtitle">Você pode trocar a qualquer momento</p>
+            <div class="club-selector-grid" id="clubSelectorGrid"></div>
+        </div>
+    </div>
 
     <!-- Compact Header -->
     <header class="header">
         <div class="header-content">
             <div class="header-brand">
                 <a class="logo" href="/" aria-label="Voltar para a página inicial">
-                    <img src="/static/brand/palmeiras-agenda-mark.svg?v=12" alt="Logo Palmeiras Agenda">
+                    <img src="/static/brand/palmeiras-agenda-mark.svg?v=12" alt="Logo Futebol Agenda" id="app-logo">
                 </a>
                 <div class="header-text">
-                    <h1>Palmeiras Agenda</h1>
-                    <div class="subtitle">A agenda completa do Verdão</div>
+                    <h1>Futebol Agenda</h1>
+                    <div class="subtitle" id="app-subtitle">A agenda do seu time</div>
                     <div class="product-disclosure">Aplicativo independente · não oficial</div>
                 </div>
             </div>
+            <button type="button" class="club-selector-badge" id="clubSelectorButton" aria-label="Trocar de clube" title="Trocar de clube">
+                <span class="club-badge-name" id="clubBadgeName">Palmeiras</span>
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
             <div class="team-scope-control" role="group" aria-label="Escolher equipe">
                 <button type="button" data-team-scope="men" aria-pressed="true">Masculino</button>
                 <button type="button" data-team-scope="women" aria-pressed="false">Feminino</button>
@@ -451,8 +488,9 @@
         </div>
     </footer>
 
-    <script src="/static/js/config.js?v=30"></script>
-    <script src="/static/js/features.js?v=7"></script>
+    <script src="/static/js/clubs.js?v=1"></script>
+    <script src="/static/js/config.js?v=31"></script>
+    <script src="/static/js/features.js?v=8"></script>
     <script src="/static/js/app.js?v=89"></script>
 </body>
 </html>

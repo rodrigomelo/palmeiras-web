@@ -1930,3 +1930,102 @@ body {
         padding: 14px;
     }
 }
+
+/* ===== Club Selector ===== */
+.club-selector-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: var(--radius-control);
+    border: 1px solid var(--line);
+    background: var(--bg-card);
+    color: var(--text);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+}
+
+.club-selector-badge:hover {
+    border-color: var(--brand);
+    background: var(--brand-soft);
+}
+
+.club-selector-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+}
+
+.club-selector-overlay[hidden] {
+    display: none;
+}
+
+.club-selector-modal {
+    background: var(--bg-card);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow);
+    padding: 32px 24px;
+    max-width: 420px;
+    width: calc(100% - 32px);
+    text-align: center;
+}
+
+.club-selector-title {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--text);
+    margin: 0 0 8px;
+}
+
+.club-selector-subtitle {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin: 0 0 24px;
+}
+
+.club-selector-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.club-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 20px 12px;
+    border-radius: var(--radius-card);
+    border: 2px solid var(--line);
+    background: var(--bg-card);
+    cursor: pointer;
+    transition: border-color 0.15s, transform 0.1s;
+}
+
+.club-card:hover {
+    border-color: var(--brand);
+    transform: translateY(-2px);
+}
+
+.club-card.active {
+    border-color: var(--brand);
+    background: var(--brand-soft);
+}
+
+.club-card-name {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text);
+}
+
+.club-card-full {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}

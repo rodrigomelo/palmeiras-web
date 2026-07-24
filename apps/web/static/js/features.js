@@ -1,4 +1,4 @@
-/** Palmeiras Agenda — team scopes, match center, history, spoiler mode and Web Push. */
+/** Futebol Agenda — team scopes, match center, history, spoiler mode and Web Push. */
 (function () {
     'use strict';
 
@@ -8,7 +8,7 @@
         followed: 'pa-followed-matches',
         pushPreferences: 'pa-push-preferences',
     };
-    const TEAM_IDS = { men: 1769, women: 20002 };
+    const TEAM_IDS = CLUBS.teamIds(CONFIG.CLUB_ID);
     const DEFAULT_PUSH_PREFERENCES = {
         oneHour: false,
         kickoff: false,
@@ -565,9 +565,15 @@
         if (calendarLink) calendarLink.href = `/api/v1/calendar.ics?team_scope=${CONFIG.TEAM_SCOPE}`;
         const feminine = CONFIG.TEAM_SCOPE === 'women';
         const homeTitle = document.getElementById('palmeiras-home-title');
-        if (homeTitle && feminine) homeTitle.textContent = 'Próximos jogos e resultados do Palmeiras Feminino';
+        if (homeTitle && feminine) {
+            const club = CLUBS.get(CONFIG.CLUB_ID);
+            homeTitle.textContent = `Próximos jogos e resultados do ${club.name} Feminino`;
+        }
         const statsTitle = document.getElementById('stats-title');
-        if (statsTitle && feminine) statsTitle.textContent = 'Estatísticas do Palmeiras Feminino';
+        if (statsTitle && feminine) {
+            const club = CLUBS.get(CONFIG.CLUB_ID);
+            statsTitle.textContent = `Estatísticas do ${club.name} Feminino`;
+        }
     }
 
     async function shareFocusMatch() {
@@ -575,7 +581,7 @@
         const text = `${teamName(focusMatch.homeTeam)} x ${teamName(focusMatch.awayTeam)} · ${formattedKickoff(focusMatch.utcDate)}`;
         const url = `${location.origin}/?match=${encodeURIComponent(focusMatch.id)}`;
         try {
-            if (navigator.share) await navigator.share({ title: 'Palmeiras Agenda', text, url });
+            if (navigator.share) await navigator.share({ title: 'Futebol Agenda', text, url });
             else { await navigator.clipboard.writeText(`${text} ${url}`); setFeatureStatus('Link do jogo copiado.'); }
         } catch (_) { /* Share cancellation is not an error state. */ }
     }
@@ -623,9 +629,74 @@
         await Promise.allSettled(work);
     }
 
+    function initClubSelector() {
+        const grid = document.getElementById('clubSelectorGrid');
+        const overlay = document.getElementById('clubSelectorOverlay');
+        const badge = document.getElementById('clubSelectorButton');
+        const badgeName = document.getElementById('clubBadgeName');
+        if (!grid || !overlay) return;
+
+        // Populate grid with club cards
+        grid.innerHTML = CLUBS.all().map((club) => `
+            <div class="club-card${club.id === CONFIG.CLUB_ID ? ' active' : ''}" data-club="${club.id}" role="button" tabindex="0" aria-label="Selecionar ${club.name}">
+                <div class="club-card-name">${club.name}</div>
+                <div class="club-card-full">${club.fullName}</div>
+            </div>
+        `).join('');
+
+        // Update badge
+        const club = CLUBS.get(CONFIG.CLUB_ID);
+        if (badgeName) badgeName.textContent = club.name;
+
+        // Show selector on badge click
+        badge?.addEventListener('click', () => {
+            overlay.hidden = false;
+        });
+
+        // Handle club selection
+        grid.addEventListener('click', (event) => {
+            const card = event.target.closest('.club-card');
+            if (!card) return;
+            selectClub(card.dataset.club);
+            overlay.hidden = true;
+        });
+
+        // Close on overlay backdrop click
+        overlay.addEventListener('click', (event) => {
+            if (event.target === overlay) overlay.hidden = true;
+        });
+
+        // Close on Escape
+        overlay.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') overlay.hidden = true;
+        });
+    }
+
+    function selectClub(clubId) {
+        if (!CLUBS.get(clubId) || clubId === CONFIG.CLUB_ID) return;
+        CLUBS.setSelected(clubId);
+        // Reload with new club — simplest way to re-init everything cleanly
+        const url = new URL(window.location);
+        url.searchParams.set('club', clubId);
+        window.location.href = url.toString();
+    }
+
+    function applyClubBranding() {
+        const club = CLUBS.get(CONFIG.CLUB_ID);
+        const badgeName = document.getElementById('clubBadgeName');
+        const subtitle = document.getElementById('app-subtitle');
+        if (badgeName) badgeName.textContent = club.name;
+        if (subtitle) subtitle.textContent = `${club.name} · A agenda do seu time`;
+        document.title = `Futebol Agenda — ${club.name}`;
+    }
+
     function init() {
         if (initialized) return;
         initialized = true;
+        // Apply club theme + branding
+        CLUBS.applyTheme(CONFIG.CLUB_ID);
+        applyClubBranding();
+        initClubSelector();
         syncScopeUi();
         applySpoilerPreference();
         syncPreferenceInputs();
